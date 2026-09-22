@@ -1,10 +1,10 @@
 # Project Master Tracker
 ## ISRO / SIH PS 26168: AI-ML Based Intelligent Dead Reckoning System
 
-**Current Phase:** PHASE 3 — ATTITUDE / HEADING OBSERVABILITY HARDENING (COMPLETED / READY FOR PHASE 4)  
-**Overall Status:** IN PROGRESS (Phase 3 Heading Observability Hardened & Verified; Ready for Phase 4 AI Velocity Model)  
+**Current Phase:** PHASE 4 — AI VELOCITY MODEL VALIDATION & HARDENING (COMPLETED / READY FOR PHASE 5)  
+**Overall Status:** IN PROGRESS (Phase 4 AI Velocity Model Validated, Leakage Audited, and Frozen; Ready for Phase 5 AI Fusion / Adaptive Noise)  
 **Last Updated:** 2026-09-23  
-**Active Git Commit:** `phase-03-heading`  
+**Active Git Commit:** `phase-04-ai-velocity-validation`  
 **Execution Environment:** Windows (x86_64) | Python 3.11.0 | NumPy 2.4.6 | Scikit-Learn 1.9.1 | SciPy 1.17.1 | Joblib 1.4.2 | Java 25.0.2 | MinGW GCC 6.3.0  
 
 ---
@@ -17,7 +17,7 @@
 | **Phase 1** | Navigation Core Validation | **COMPLETED** | **PASSED** | Mathematical invariants verified (SO(3), ENU/FLU, Rodrigues, Jacobians, P symmetry; 33/33 tests passed). |
 | **Phase 2** | Alignment & Initialization Hardening | **COMPLETED** | **PASSED** | Multi-mode alignment engine, stationary start protection (KF-02 resolved), AlignmentQuality diagnostics, 20/20 tests passed. |
 | **Phase 3** | Attitude / Heading Observability | **COMPLETED** | **PASSED** | Multi-source HeadingSupervisor, GNSS course deriver, 3D mag disturbance detector, multi-epoch reacquisition, 24/24 tests passed (83/83 total regression). |
-| **Phase 4** | AI Velocity Model Validation | NOT STARTED | PENDING | Top45 Huber GBDT verification, feature scaling, 0–60 km/h metric interpretation. |
+| **Phase 4** | AI Velocity Model Validation | **COMPLETED** | **PASSED** | Top-45 Huber GBDT validated across 10,019 authentic IO-VNBD samples (RMSE 3.63 m/s, zero leakage, 15/15 tests passed, 98/98 full regression). |
 | **Phase 5** | AI-Based Adaptive Measurement Noise | NOT STARTED | PENDING | Learned $R_v(t)$ conditioned on vibration energy, jerk, and turn rate. |
 | **Phase 6** | 3D Offline OSM Map-Matching | NOT STARTED | PENDING | Multi-layer topological graph, Viterbi HMM, $4\text{ m}$ vertical elevation barrier. |
 | **Phase 7** | Full GNSS / INS Supervisor | NOT STARTED | PENDING | Seamless state machine, $\chi^2$ innovation gate ($\gamma \le 11.35$), outage handover. |
@@ -45,17 +45,19 @@
 - `tests/test_phase1_navigation_core.py`: **19 Passed / 0 Failed**.
 - `tests/test_phase2_alignment_initialization.py`: **20 Passed / 0 Failed**.
 - `tests/test_phase3_heading_observability.py`: **24 Passed / 0 Failed**.
-- **Total Regression Suite:** **83 Passed / 0 Failed (100% Pass Rate)**.
+- `tests/test_phase4_ai_velocity.py`: **15 Passed / 0 Failed**.
+- **Total Regression Suite:** **98 Passed / 0 Failed (100% Pass Rate)**.
 
-### Files Modified/Created in Phase 3
-- `idr_pipeline/heading_supervisor.py` (NEW: Multi-source HeadingSupervisor, GNSSCourseDeriver, MagneticDisturbanceDetector, multi-epoch reacquisition confirmation).
-- `idr_pipeline/eskf_fusion.py` (Added `wrap_pi`, updated `update_heading` and `_apply_kalman_update` with optional Chi-Square innovation gating and default initialization parameters).
-- `idr_pipeline/gnss_ins_fusion_engine.py` (Integrated HeadingSupervisor and GNSS velocity vector updates).
-- `idr_pipeline/__init__.py` (Exported HeadingSupervisor and related classes).
-- `tests/test_phase3_heading_observability.py` (NEW: 24 comprehensive test scenarios).
-- `docs/PHASE_3_HEADING_OBSERVABILITY_REPORT.md` (NEW: comprehensive Phase 3 report).
+### Files Modified/Created in Phase 4
+- `models/gbdt_speed_model_iovnbd_top45.joblib` (FROZEN: Verified 45 features, zero data leakage, $297\ \mu\text{s}$ inference).
+- `reports/phase4_feature_leakage_audit.csv` (NEW: 45/45 features causality & window audit).
+- `reports/phase4_per_drive_generalization.csv` (NEW: 10,019 samples across 5 authentic drives).
+- `reports/phase4_speed_regimes_breakdown.csv` (NEW: Kinematic breakdown by speed bin & motion type).
+- `scripts/evaluate_phase4_ai_velocity_validation.py` (NEW: Evaluation & benchmark script).
+- `tests/test_phase4_ai_velocity.py` (NEW: 15 dedicated mathematical, physical & temporal validation tests).
+- `docs/PHASE_4_AI_VELOCITY_VALIDATION_REPORT.md` (NEW: Comprehensive Phase 4 report).
 
 ---
 
 ## 3. Next Actions
-1. **Standby for Phase 4 Authorization**: Proceed to Phase 4 — AI Velocity Model Validation (Top45 Huber GBDT verification, feature scaling, 0–60 km/h metric interpretation).
+1. **Standby for Phase 5 Authorization**: Proceed to Phase 5 — AI-Based Adaptive Measurement Noise (Learned $R_v(t)$ conditioned on vibration energy, jerk, and turn rate).

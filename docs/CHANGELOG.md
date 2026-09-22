@@ -6,6 +6,26 @@ All notable changes, phase completions, and model evolutions will be documented 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to strict phase-gate change control.
 
+## [Phase 4] - AI Velocity Model Validation & Hardening — 2026-09-23
+
+### Added
+- Completed comprehensive feature leakage and temporal causality audit across all 45 feature dimensions (`reports/phase4_feature_leakage_audit.csv`).
+- Created multi-drive generalization benchmark evaluating 10,019 authentic IO-VNBD samples (`reports/phase4_per_drive_generalization.csv`).
+- Created kinematic regimes performance breakdown across speed bins and motion states (`reports/phase4_speed_regimes_breakdown.csv`).
+- Created Phase 4 evaluation harness (`scripts/evaluate_phase4_ai_velocity_validation.py`).
+- Implemented dedicated 15-test Phase 4 validation suite (`tests/test_phase4_ai_velocity.py`).
+- Published `docs/PHASE_4_AI_VELOCITY_VALIDATION_REPORT.md`.
+
+### Verified
+- 100% causal feature extraction over sliding window $[t - 1.0\text{ s}, t]$ with zero future data leakage.
+- Verified invariance under future sample perturbations ($\Delta = 0.00\times 10^0$).
+- Global authentic performance on real IO-VNBD data: RMSE = $3.63\text{ m/s}$, MAE = $2.83\text{ m/s}$, Median AE = $2.31\text{ m/s}$, P95 AE = $7.20\text{ m/s}$, Bias = $+0.49\text{ m/s}$.
+- Speed regimes: $3.30\text{ m/s}$ RMSE in 20–40 km/h (zero bias: $+0.06\text{ m/s}$); constant cruising RMSE = $3.22\text{ m/s}$.
+- Verified ESKF measurement residual $dz = v_{\text{AI}} - \mathbf{R}_{:, 0}^T \mathbf{v}^n$ and linearized measurement Jacobian $H_{v_{\text{AI}}} = [0_{1\times 3}, \mathbf{R}_{:, 0}^T, \mathbf{R}_{:, 0}^T \lfloor\mathbf{v}^n\rfloor_\times, 0_{1\times 6}]$ via finite-difference ($<10^{-5}$).
+- Verified velocity covariance reduction ($P_{v_x}^+ < P_{v_x}^-$) and adaptive measurement noise scaling.
+- Benchmark profiling: feature extraction $5.66\text{ ms}$, GBDT inference $0.30\text{ ms}$ ($297\ \mu\text{s}$), total cycle $6.76\text{ ms}$ ($147.9\text{ Hz}$ throughput, 14.8x real-time margin for 10 Hz mobile).
+- 15/15 Phase 4 tests passed; 98/98 full regression tests passed (100% pass rate).
+
 ---
 
 ## [Phase 3] - Attitude / Heading Observability Hardening — 2026-09-23

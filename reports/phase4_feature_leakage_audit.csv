@@ -1,0 +1,46 @@
+index,feature_name,source_sensor,physical_units,time_support,future_leakage,gnss_can_leakage,leakage_status
+0,std_az,Inertial Accelerometer (Body Frame),m/s^2,"[t - 1.0s, t]",NONE (Past-only slice [i-9 : i+1]),NONE (Pure IMU stream),PASS
+1,std_gy,Inertial Gyroscope (Body Frame),rad/s,"[t - 1.0s, t]",NONE (Past-only slice [i-9 : i+1]),NONE (Pure IMU stream),PASS
+2,roughness,Inertial Accelerometer (Body Frame),dimensionless / ratio,"[t - 1.0s, t]",NONE (Past-only slice [i-9 : i+1]),NONE (Pure IMU stream),PASS
+3,std_gyro_rate_gx,Inertial Gyroscope (Body Frame),rad/s,"[t - 1.0s, t]",NONE (Past-only slice [i-9 : i+1]),NONE (Pure IMU stream),PASS
+4,std_gyro_rate_gy,Inertial Gyroscope (Body Frame),rad/s,"[t - 1.0s, t]",NONE (Past-only slice [i-9 : i+1]),NONE (Pure IMU stream),PASS
+5,rms_ay,Inertial Accelerometer (Body Frame),m/s^2,"[t - 1.0s, t]",NONE (Past-only slice [i-9 : i+1]),NONE (Pure IMU stream),PASS
+6,std_gx,Inertial Gyroscope (Body Frame),rad/s,"[t - 1.0s, t]",NONE (Past-only slice [i-9 : i+1]),NONE (Pure IMU stream),PASS
+7,std_gyro_rate_gz,Inertial Gyroscope (Body Frame),rad/s,"[t - 1.0s, t]",NONE (Past-only slice [i-9 : i+1]),NONE (Pure IMU stream),PASS
+8,rms_gz,Inertial Gyroscope (Body Frame),rad/s,"[t - 1.0s, t]",NONE (Past-only slice [i-9 : i+1]),NONE (Pure IMU stream),PASS
+9,ptp_az,Inertial Accelerometer (Body Frame),m/s^2,"[t - 1.0s, t]",NONE (Past-only slice [i-9 : i+1]),NONE (Pure IMU stream),PASS
+10,rms_gyro_rate_gy,Inertial Gyroscope (Body Frame),rad/s,"[t - 1.0s, t]",NONE (Past-only slice [i-9 : i+1]),NONE (Pure IMU stream),PASS
+11,mean_tilt_rate,Inertial Gyroscope (Body Frame),rad/s,"[t - 1.0s, t]",NONE (Past-only slice [i-9 : i+1]),NONE (Pure IMU stream),PASS
+12,rms_gyro_rate_gz,Inertial Gyroscope (Body Frame),rad/s,"[t - 1.0s, t]",NONE (Past-only slice [i-9 : i+1]),NONE (Pure IMU stream),PASS
+13,mean_ay,Inertial Accelerometer (Body Frame),m/s^2,"[t - 1.0s, t]",NONE (Past-only slice [i-9 : i+1]),NONE (Pure IMU stream),PASS
+14,sma_gyr,Inertial Gyroscope (Body Frame),rad/s^2,"[t - 1.0s, t]",NONE (Past-only slice [i-9 : i+1]),NONE (Pure IMU stream),PASS
+15,rms_gx,Inertial Gyroscope (Body Frame),rad/s,"[t - 1.0s, t]",NONE (Past-only slice [i-9 : i+1]),NONE (Pure IMU stream),PASS
+16,dyn_acc_norm,Inertial Accelerometer (Body Frame),dimensionless / ratio,"[t - 1.0s, t]",NONE (Past-only slice [i-9 : i+1]),NONE (Pure IMU stream),PASS
+17,std_jerk_ax,Inertial Accelerometer (Body Frame),m/s^2,"[t - 1.0s, t]",NONE (Past-only slice [i-9 : i+1]),NONE (Pure IMU stream),PASS
+18,pitch_sin_hint,Kinematic IMU Envelope / Dimensionless Ratio,dimensionless ratio,"[t - 1.0s, t]",NONE (Past-only slice [i-9 : i+1]),NONE (Pure IMU stream),PASS
+19,mean_gy,Inertial Gyroscope (Body Frame),rad/s,"[t - 1.0s, t]",NONE (Past-only slice [i-9 : i+1]),NONE (Pure IMU stream),PASS
+20,std_jerk_ay,Inertial Accelerometer (Body Frame),m/s^2,"[t - 1.0s, t]",NONE (Past-only slice [i-9 : i+1]),NONE (Pure IMU stream),PASS
+21,rms_gy,Inertial Gyroscope (Body Frame),rad/s,"[t - 1.0s, t]",NONE (Past-only slice [i-9 : i+1]),NONE (Pure IMU stream),PASS
+22,sma_acc,Inertial Accelerometer (Body Frame),dimensionless / ratio,"[t - 1.0s, t]",NONE (Past-only slice [i-9 : i+1]),NONE (Pure IMU stream),PASS
+23,std_gz,Inertial Gyroscope (Body Frame),rad/s,"[t - 1.0s, t]",NONE (Past-only slice [i-9 : i+1]),NONE (Pure IMU stream),PASS
+24,rms_jerk_ax,Inertial Accelerometer (Body Frame),m/s^2,"[t - 1.0s, t]",NONE (Past-only slice [i-9 : i+1]),NONE (Pure IMU stream),PASS
+25,rms_jerk_az,Inertial Accelerometer (Body Frame),m/s^2,"[t - 1.0s, t]",NONE (Past-only slice [i-9 : i+1]),NONE (Pure IMU stream),PASS
+26,ptp_gy,Inertial Gyroscope (Body Frame),rad/s,"[t - 1.0s, t]",NONE (Past-only slice [i-9 : i+1]),NONE (Pure IMU stream),PASS
+27,rms_gyro_rate_gx,Inertial Gyroscope (Body Frame),rad/s,"[t - 1.0s, t]",NONE (Past-only slice [i-9 : i+1]),NONE (Pure IMU stream),PASS
+28,std_jerk_az,Inertial Accelerometer (Body Frame),m/s^2,"[t - 1.0s, t]",NONE (Past-only slice [i-9 : i+1]),NONE (Pure IMU stream),PASS
+29,mean_ax,Inertial Accelerometer (Body Frame),m/s^2,"[t - 1.0s, t]",NONE (Past-only slice [i-9 : i+1]),NONE (Pure IMU stream),PASS
+30,mean_gx,Inertial Gyroscope (Body Frame),rad/s,"[t - 1.0s, t]",NONE (Past-only slice [i-9 : i+1]),NONE (Pure IMU stream),PASS
+31,rms_az,Inertial Accelerometer (Body Frame),m/s^2,"[t - 1.0s, t]",NONE (Past-only slice [i-9 : i+1]),NONE (Pure IMU stream),PASS
+32,std_ax,Inertial Accelerometer (Body Frame),m/s^2,"[t - 1.0s, t]",NONE (Past-only slice [i-9 : i+1]),NONE (Pure IMU stream),PASS
+33,std_yaw_rate,Inertial Gyroscope (Body Frame),rad/s,"[t - 1.0s, t]",NONE (Past-only slice [i-9 : i+1]),NONE (Pure IMU stream),PASS
+34,vib_ratio,Kinematic IMU Envelope / Dimensionless Ratio,dimensionless ratio,"[t - 1.0s, t]",NONE (Past-only slice [i-9 : i+1]),NONE (Pure IMU stream),PASS
+35,mean_yaw_rate,Inertial Gyroscope (Body Frame),rad/s,"[t - 1.0s, t]",NONE (Past-only slice [i-9 : i+1]),NONE (Pure IMU stream),PASS
+36,ptp_gx,Inertial Gyroscope (Body Frame),rad/s,"[t - 1.0s, t]",NONE (Past-only slice [i-9 : i+1]),NONE (Pure IMU stream),PASS
+37,rms_jerk_ay,Inertial Accelerometer (Body Frame),m/s^2,"[t - 1.0s, t]",NONE (Past-only slice [i-9 : i+1]),NONE (Pure IMU stream),PASS
+38,ptp_gz,Inertial Gyroscope (Body Frame),rad/s,"[t - 1.0s, t]",NONE (Past-only slice [i-9 : i+1]),NONE (Pure IMU stream),PASS
+39,norm_vib_energy,Inertial Gyroscope (Body Frame),rad/s^2,"[t - 1.0s, t]",NONE (Past-only slice [i-9 : i+1]),NONE (Pure IMU stream),PASS
+40,mean_gz,Inertial Gyroscope (Body Frame),rad/s,"[t - 1.0s, t]",NONE (Past-only slice [i-9 : i+1]),NONE (Pure IMU stream),PASS
+41,mean_az,Inertial Accelerometer (Body Frame),m/s^2,"[t - 1.0s, t]",NONE (Past-only slice [i-9 : i+1]),NONE (Pure IMU stream),PASS
+42,var_horiz,Inertial IMU Window Statistics,SI units,"[t - 1.0s, t]",NONE (Past-only slice [i-9 : i+1]),NONE (Pure IMU stream),PASS
+43,mean_gyro_rate_gy,Inertial Gyroscope (Body Frame),rad/s,"[t - 1.0s, t]",NONE (Past-only slice [i-9 : i+1]),NONE (Pure IMU stream),PASS
+44,mean_gyro_rate_gx,Inertial Gyroscope (Body Frame),rad/s,"[t - 1.0s, t]",NONE (Past-only slice [i-9 : i+1]),NONE (Pure IMU stream),PASS

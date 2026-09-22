@@ -75,3 +75,14 @@
   2. 3D tilt-compensated magnetometer leveling in FLU body frame ($B_{fx} = B_x \cos\theta + B_y \sin\theta \sin\phi + B_z \sin\theta \cos\phi$, $B_{fy} = B_y \cos\phi - B_z \sin\phi \implies \psi_{\text{mag}} = \text{atan2}(B_{fy}, B_{fx})$) with multi-tier anomaly gating ($|\Delta B| > 12\ \mu\text{T}$, gradient $>35\ \mu\text{T/s}$).
   3. $\chi^2$ innovation gating ($\gamma \le 6.635$) with angular wrap protection ($[-\pi, +\pi]$) and 2-epoch consistency confirmation for post-outage re-acquisition.
 - **Consequences:** Reduces authentic IO-VNBD outage drift on `Vta01b` from 51.2% to **5.68%** (9.0x improvement, beating <10% PS benchmark) with $83.9\ \mu\text{s}$ execution latency.
+
+---
+
+### ADR-010: Retention of Frozen Top-45 Huber GBDT Speed Model and Adaptive Measurement Noise Formulation
+- **Status:** APPROVED & FROZEN (Phase 4)
+- **Context:** Phase 4 required auditing the frozen Top-45 GBDT model (`models/gbdt_speed_model_iovnbd_top45.joblib`) for feature leakage, temporal causality, kinematic generalization across authentic IO-VNBD drives, and numerical fusion correctness.
+- **Decision:**
+  1. **Retain Top-45 GBDT Model:** Confirmed 100% causal feature extraction over $[t - 1.0\text{ s}, t]$, 0% leakage, and consistent multi-drive generalization across 10,019 authentic samples (RMSE: $3.63\text{ m/s}$, MAE: $2.83\text{ m/s}$, latency: $297\ \mu\text{s}$). Retain without retraining.
+  2. **Adopt Dynamic Adaptive Measurement Noise Formulation:** Formulate $R_{\text{adaptive}}(t) = R_0 \cdot (1.0 + 0.5\cdot\text{Vib} + 1.2\cdot|\omega_z| + 0.8\cdot|\text{Jerk}|)$ to de-weight speed updates during aggressive maneuvers, rough terrain, and high angular rates.
+  3. **Preserve Standstill Clamp via ZUPT:** Confirm that positive GBDT bias during stationary idle ($+2.08$ to $+3.14\text{ m/s}$) is strictly handled by the multi-sensor ZUPT module ($v < 0.2\text{ m/s} \implies v=0$), validating pipeline synergy.
+- **Consequences:** Provides a rock-solid, leakage-free velocity foundation for Phase 5 learned adaptive noise and Phase 10 C++ decision-tree transpilation.

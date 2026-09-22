@@ -48,3 +48,24 @@
 - **Symptom:** `git clone` or `git lfs pull` directly from GitHub failed with HTTP `404` or `403 Forbidden`.
 - **Root Cause:** The upstream repository author's GitHub LFS storage/bandwidth quota was exhausted.
 - **Resolution:** Bypassed LFS smudge during checkout (`GIT_LFS_SKIP_SMUDGE=1`), verified that clean extracted naturalistic drives exist in `real_iovnbd_data/`, and configured local Git filters so work proceeds without blocking.
+
+---
+
+### KF-06: Standstill Engine Vibration GBDT Positive Bias & Synergy with ZUPT [RESOLVED & VERIFIED in Phase 4]
+- **Symptom:** When the vehicle is stationary ($v_{\text{true}} < 0.5\text{ m/s}$), raw GBDT speed predictions output $+2.08$ to $+3.14\text{ m/s}$ ($7.5–11.3\text{ km/h}$).
+- **Root Cause:** Stationary vehicle engines generate continuous mechanical vibrations ($0.1–0.5\text{ m/s}^2$ RMS). Because the GBDT uses vibration energy and SMA features, it maps non-zero stationary noise to the lowest non-zero leaves ($[0, 3.5]\text{ m/s}$).
+- **Resolution:**
+  1. This behavior proves why an isolated ML model cannot solve dead reckoning alone.
+  2. The multi-sensor pipeline's Zero Velocity Update (ZUPT) module detects standstill ($a_{\text{var}} < 0.05\text{ m/s}^2$, $|\omega| < 0.03\text{ rad/s}$) and forcefully clamps $\mathbf{v}^n \to 0$ and $v_{\text{AI}} \to 0$.
+  3. Validated in `tests/test_phase4_ai_velocity.py::test_12_dynamic_zupt_synergy`.
+- **Verification Evidence:** Full pipeline stop-and-go tests pass with zero standstill velocity accumulation.
+
+---
+
+### KF-07: High-Speed (>60 km/h) Speed Underestimation Due to Leaf Clamping [CHARACTERIZED & BOUNDED in Phase 4]
+- **Symptom:** At speeds $>60\text{ km/h}$ ($>16.67\text{ m/s}$), GBDT exhibits a negative bias of $-3.98\text{ m/s}$ (underestimating high speeds).
+- **Root Cause:** Urban IO-VNBD dataset distribution is predominantly $0–50\text{ km/h}$ (city driving), and leaf values are clamped to $[0, 35]\text{ m/s}$ to prevent runaway explosion.
+- **Resolution:**
+  1. When GNSS is available, GNSS velocity vector updates calibrate forward scale.
+  2. In Phase 5, learned adaptive measurement noise $R_v(t)$ increases uncertainty at high vibration/speeds so that ESKF IMU forward acceleration integration dominates over conservative GBDT predictions.
+- **Verification Evidence:** Documented in `reports/phase4_speed_regimes_breakdown.csv` and `docs/PHASE_4_AI_VELOCITY_VALIDATION_REPORT.md`.

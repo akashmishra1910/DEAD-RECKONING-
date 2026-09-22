@@ -16,5 +16,14 @@ from .vibration_filter import (
     butterworth_bandpass_coefficients
 )
 from .gnss_ins_fusion_engine import SeamlessGNSSDeficitEngine, NavigationMode, NavigationTelemetry
+from .heading_supervisor import (
+    HeadingSupervisor,
+    HeadingQuality,
+    HeadingSourceType,
+    HeadingMeasurement,
+    HeadingSupervisorTelemetry,
+    MagneticDisturbanceDetector,
+    GNSSCourseDeriver
+)
 from .edge_engine import EdgeNavigationEngine, benchmark_edge_throughput, TACTICAL_FOG_CONFIG, SMARTPHONE_MEMS_CONFIG
 

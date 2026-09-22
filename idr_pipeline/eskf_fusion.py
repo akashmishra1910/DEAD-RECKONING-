@@ -24,6 +24,11 @@ import numpy as np
 from typing import Tuple, Optional
 
 
+def wrap_pi(angle: float) -> float:
+    """Wraps an angle in radians to [-pi, +pi]."""
+    return float(np.arctan2(np.sin(angle), np.cos(angle)))
+
+
 def skew_symmetric(v: np.ndarray) -> np.ndarray:
     """Computes 3x3 skew-symmetric cross-product matrix [v]_x."""
     return np.array([
@@ -113,9 +118,9 @@ class ErrorStateKalmanFilter:
 
     def __init__(
         self,
-        init_pos: np.ndarray,
-        init_vel: np.ndarray,
-        init_euler: np.ndarray,  # [roll, pitch, yaw]
+        init_pos: Optional[np.ndarray] = None,
+        init_vel: Optional[np.ndarray] = None,
+        init_euler: Optional[np.ndarray] = None,  # [roll, pitch, yaw]
         init_ba: Optional[np.ndarray] = None,
         init_bg: Optional[np.ndarray] = None,
         acc_noise: float = 0.15,
@@ -124,11 +129,12 @@ class ErrorStateKalmanFilter:
         gyro_bias_noise: float = 1e-5
     ):
         # 1. Nominal States
-        self.p = init_pos.astype(float).copy()    # [East, North, Up] in meters
-        self.v = init_vel.astype(float).copy()    # [vx, vy, vz] in m/s (nav frame)
-        self.roll = float(init_euler[0])
-        self.pitch = float(init_euler[1])
-        self.yaw = float(init_euler[2])
+        self.p = np.zeros(3) if init_pos is None else init_pos.astype(float).copy()    # [East, North, Up] in meters
+        self.v = np.zeros(3) if init_vel is None else init_vel.astype(float).copy()    # [vx, vy, vz] in m/s (nav frame)
+        euler = np.zeros(3) if init_euler is None else init_euler.astype(float)
+        self.roll = float(euler[0])
+        self.pitch = float(euler[1])
+        self.yaw = float(euler[2])
         self.R = euler_to_rotation_matrix(self.roll, self.pitch, self.yaw)
 
         self.ba = np.zeros(3) if init_ba is None else init_ba.astype(float).copy()
@@ -271,27 +277,56 @@ class ErrorStateKalmanFilter:
         R_cov = np.array([[r_alt**2]])
         self._apply_kalman_update(dz, H, R_cov)
 
-    def update_heading(self, heading_meas: float, r_yaw: float = 0.05):
+    def update_heading(self, heading_meas: float, r_yaw: float = 0.05, chi2_gate: Optional[float] = None) -> Tuple[bool, float]:
         """
-        Magnetometer / compass tilt-compensated heading measurement update.
+        Magnetometer / compass / GNSS course tilt-compensated heading measurement update.
         Constrains heading drift in vehicle yaw state.
+        
+        Args:
+            heading_meas: Azimuth in radians clockwise from North [0, 2*pi)
+            r_yaw: 1-sigma measurement noise in radians
+            chi2_gate: Optional chi-square threshold for innovation gating
+            
+        Returns:
+            (is_accepted, gamma): Gating acceptance status and normalized innovation
         """
-        # Smallest signed angle difference
-        dyaw = np.arctan2(np.sin(heading_meas - self.yaw), np.cos(heading_meas - self.yaw))
+        # Smallest signed angle difference in [-pi, +pi]
+        dyaw = float(np.arctan2(np.sin(heading_meas - self.yaw), np.cos(heading_meas - self.yaw)))
         dz = np.array([dyaw])
         H = np.zeros((1, 15))
         # In ENU (Up = +z), delta_theta_z^n is CCW while yaw azimuth is CW from North, so delta_yaw = -delta_theta_z^n
         H[0, 8] = -1.0
         R_cov = np.array([[r_yaw**2]])
-        self._apply_kalman_update(dz, H, R_cov)
+        return self._apply_kalman_update(dz, H, R_cov, chi2_gate=chi2_gate)
 
-    def _apply_kalman_update(self, dz: np.ndarray, H: np.ndarray, R_cov: np.ndarray):
+    def _apply_kalman_update(
+        self,
+        dz: np.ndarray,
+        H: np.ndarray,
+        R_cov: np.ndarray,
+        chi2_gate: Optional[float] = None
+    ) -> Tuple[bool, float]:
         """
         Applies Joseph-form covariance update, performs full 3D attitude correction,
         and executes consistent error-state reset.
+        
+        Args:
+            dz: (m,) Innovation vector
+            H: (m, 15) Measurement Jacobian matrix
+            R_cov: (m, m) Measurement noise covariance matrix
+            chi2_gate: Optional Chi-Square gate threshold (gamma <= chi2_gate)
+            
+        Returns:
+            (is_accepted, gamma): Whether measurement passed gate, and normalized innovation
         """
         S = H @ self.P @ H.T + R_cov
-        K = self.P @ H.T @ np.linalg.inv(S)
+        S_inv = np.linalg.inv(S)
+        gamma = float(dz.T @ S_inv @ dz)
+
+        if chi2_gate is not None and gamma > chi2_gate:
+            return False, gamma
+
+        K = self.P @ H.T @ S_inv
 
         dx = K @ dz
 
@@ -318,8 +353,9 @@ class ErrorStateKalmanFilter:
         # 5. ESKF Error-State Reset Jacobian
         # Higher-order attitude error reset: G_reset = I - 0.5 * skew(dtheta_n)
         G_reset = np.eye(15)
-        G_reset[6:9, 6:9] -= 0.5 * skew_symmetric(dtheta_n)
+        G_reset[6:9, 6:9] = np.eye(3) - 0.5 * skew_symmetric(dtheta_n)
         self.P = G_reset @ self.P @ G_reset.T
 
-        # Symmetrize covariance matrix for numerical stability
+        # Guarantee numerical symmetry of covariance matrix
         self.P = 0.5 * (self.P + self.P.T)
+        return True, gamma

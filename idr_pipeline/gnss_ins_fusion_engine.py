@@ -34,6 +34,7 @@ from typing import Optional, Dict, Any, Tuple
 from .eskf_fusion import ErrorStateKalmanFilter
 from .alignment_engine import InVehicleAlignmentEngine
 from .vibration_filter import VibrationPotholeFilter, VibrationState
+from .heading_supervisor import HeadingSupervisor, HeadingSupervisorTelemetry
 
 
 class NavigationMode(str, Enum):
@@ -63,11 +64,13 @@ class NavigationTelemetry:
     pothole_count: int
     is_idling: bool
     covariance_diag: np.ndarray # (15,) diagonal of P matrix
+    heading_telemetry: Optional[HeadingSupervisorTelemetry] = None
 
 
 class SeamlessGNSSDeficitEngine:
     """
-    Complete real-time GNSS+INS Fusion Engine with autonomous mode transition.
+    Complete real-time GNSS+INS Fusion Engine with autonomous mode transition
+    and multi-source attitude/heading supervision.
     """
 
     def __init__(
@@ -76,7 +79,8 @@ class SeamlessGNSSDeficitEngine:
         init_vel: np.ndarray = np.array([0.0, 0.0, 0.0]),
         init_euler: np.ndarray = np.array([0.0, 0.0, 0.0]),
         chi2_threshold: float = 11.345, # 99% confidence for 3-DOF position innovation
-        dt: float = 0.1
+        dt: float = 0.1,
+        enable_heading_supervisor: bool = True
     ):
         self.dt = dt
         self.chi2_threshold = chi2_threshold
@@ -89,6 +93,8 @@ class SeamlessGNSSDeficitEngine:
             init_vel=init_vel,
             init_euler=init_euler
         )
+        self.enable_heading_supervisor = enable_heading_supervisor
+        self.heading_supervisor = HeadingSupervisor(chi2_gate=6.635) if enable_heading_supervisor else None
 
         # Operational state
         self.mode = NavigationMode.INITIALIZING
@@ -108,7 +114,9 @@ class SeamlessGNSSDeficitEngine:
         baro_alt: float,
         gnss_pos: Optional[np.ndarray],
         gnss_valid: bool,
-        ai_speed: Optional[float] = None
+        ai_speed: Optional[float] = None,
+        gnss_vel: Optional[np.ndarray] = None,
+        mag_raw_p: Optional[np.ndarray] = None
     ) -> NavigationTelemetry:
         """
         Executes one full navigation fusion cycle (10Hz on mobile, up to 200Hz on edge).
@@ -121,6 +129,8 @@ class SeamlessGNSSDeficitEngine:
             gnss_pos: (3,) GNSS ENU position (if available)
             gnss_valid: Flag indicating whether GNSS fix is reliable
             ai_speed: AI regressed longitudinal forward speed (m/s)
+            gnss_vel: (3,) GNSS ENU velocity vector (if available)
+            mag_raw_p: (3,) raw magnetometer from phone/cradle (if available)
         """
         # Step 1: In-Vehicle Mounting Calibration & Frame Transformation
         is_stationary = (ai_speed is not None and ai_speed < 0.2) or (gnss_valid and gnss_pos is not None and np.linalg.norm(self.eskf.v) < 0.2)
@@ -139,6 +149,20 @@ class SeamlessGNSSDeficitEngine:
 
         # Step 4: Barometric Altitude Update
         self.eskf.update_altitude(baro_alt, r_alt=0.8)
+
+        # Step 4b: Multi-Source Heading & Attitude Supervision
+        heading_telem = None
+        if self.heading_supervisor is not None:
+            heading_telem = self.heading_supervisor.process_step(
+                time_s=time_s,
+                eskf=self.eskf,
+                R_p2b=self.alignment_engine.R_p2b,
+                gnss_vel=gnss_vel,
+                gnss_valid=gnss_valid,
+                mag_raw_p=mag_raw_p,
+                current_yaw_rate=float(clean_gyro_b[2]),
+                is_forward=True
+            )
 
         # Step 5: Seamless GNSS Deficit Handler State Machine
         if not gnss_valid:
@@ -199,6 +223,9 @@ class SeamlessGNSSDeficitEngine:
             if is_fix_accepted and gnss_pos is not None:
                 self.eskf.update_gnss(gnss_pos, r_gnss=2.5)
 
+            if is_fix_accepted and gnss_vel is not None:
+                self.eskf.update_gnss_velocity(gnss_vel, r_vel=0.2)
+
             # Always apply physical NHC constraints to maintain vehicle chassis physics
             self.eskf.update_nhc(r_lat=0.08, r_vert=0.08)
 
@@ -236,5 +263,6 @@ class SeamlessGNSSDeficitEngine:
             is_pothole_active=vib_state.is_pothole_detected,
             pothole_count=vib_state.pothole_event_count,
             is_idling=vib_state.is_engine_idling,
-            covariance_diag=np.diag(self.eskf.P).copy()
+            covariance_diag=np.diag(self.eskf.P).copy(),
+            heading_telemetry=heading_telem
         )

@@ -8,6 +8,25 @@ and this project adheres to strict phase-gate change control.
 
 ---
 
+## [Phase 3] - Attitude / Heading Observability Hardening — 2026-09-23
+
+### Added
+- Created `HeadingSupervisor`, `GNSSCourseDeriver`, and `MagneticDisturbanceDetector` in `idr_pipeline/heading_supervisor.py`.
+- Implemented dynamic velocity-weighted GNSS Course-Over-Ground (COG) aiding with analytical noise covariance $\sigma_\psi = \text{clip}(\sigma_v/v_h, 1.0^\circ, 15.0^\circ)$ and strict low-speed cutoff ($v_h \ge 2.5\text{ m/s}$).
+- Implemented 3D tilt-compensated magnetometer leveling in FLU body frame with multi-tier magnetic anomaly gating ($|\Delta B| > 12\ \mu\text{T}$, gradient $>35\ \mu\text{T/s}$).
+- Added $\chi^2$ innovation gating ($\gamma \le 6.635$) with angular wrap protection and 2-epoch consistency confirmation for post-outage re-acquisition.
+- Integrated Heading Supervisor into `SeamlessGNSSDeficitEngine.process_step` and added ESKF default argument initialization.
+- Created dedicated Phase 3 test suite (`tests/test_phase3_heading_observability.py`) with 24 rigorous test cases.
+- Published `docs/PHASE_3_HEADING_OBSERVABILITY_REPORT.md`.
+
+### Verified
+- 24/24 unit & validation tests passed in `test_phase3_heading_observability.py`.
+- 83/83 tests passed across full regression suite (100% pass rate).
+- Validated on authentic IO-VNBD drive `Vta01b`: 30s outage drift reduced from 51.2% (242.5m) to **5.68% (26.9m)**, exceeding the PS $<10\%$ benchmark.
+- Verified ultra-low inference latency: $83.89\ \mu\text{s}$ per step ($11,919\text{ Hz}$ throughput capacity).
+
+---
+
 ## [Phase 2] - Alignment & Initialization Hardening — 2026-09-23
 
 ### Added

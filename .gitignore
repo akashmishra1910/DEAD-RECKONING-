@@ -9,6 +9,7 @@ __pycache__/
 .DS_Store
 
 # Scratch and test files
+scratch/
 test_arch.png
 test.pdf
 test.xml

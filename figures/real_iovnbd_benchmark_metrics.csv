@@ -1,0 +1,4 @@
+Method,Final_Error_m,Relative_Drift_pct,ATE_RMSE_m,Max_Deviation_m
+Naive Strapdown INS,749.52,107.11,298.04,749.52
+Standalone AI Velocity DR,315.52,45.09,176.25,315.52
+Proposed 15-State ESKF,194.96,27.86,128.13,211.45

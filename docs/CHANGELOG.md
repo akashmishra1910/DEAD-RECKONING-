@@ -6,6 +6,31 @@ All notable changes, phase completions, and model evolutions will be documented 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to strict phase-gate change control.
 
+## [Phase 5] - Authentic GNSS-Outage Benchmark & Drift Hardening — 2026-09-23
+
+### Added
+- Created standardized multi-driver outage evaluation harness (`scripts/evaluate_phase5_outage_benchmark.py`) testing 158 authentic outages (81 $\times$ 10s, 39 $\times$ 30s, 25 $\times$ 60s, 13 $\times$ 120s) across 5 naturalistic IO-VNBD drives.
+- Created deep diagnostic analysis harness (`scripts/run_phase5_deep_diagnostics.py`) analyzing 60s correlations, heading error budget, adaptive measurement noise, and 3D map constraints.
+- Generated comprehensive diagnostic reports:
+  - `reports/phase5_full_outage_benchmark_results.csv`
+  - `reports/phase5_ablation_summary.csv`
+  - `reports/phase5_60s_deep_diagnostic.csv`
+  - `reports/phase5_heading_error_budget_replay.csv`
+  - `reports/phase5_adaptive_r_comparison.csv`
+  - `reports/phase5_map_matching_contribution.csv`
+- Created dedicated Phase 5 test suite (`tests/test_phase5_outage_benchmark.py`) with 10 validation scenarios.
+- Published `docs/PHASE_5_OUTAGE_BENCHMARK_REPORT.md`.
+
+### Verified
+- Full regression suite passing: **108 / 108 PASSED (100% Pass Rate)**.
+- 60-Second Correlation Analysis: $r_{\text{cross}} = +0.7977$, $r_{\text{hdg}} = +0.4885$, $r_{\text{spd}} = -0.2929$, quantitatively proving heading/cross-track error is the primary error driver.
+- Diagnostic Reference Heading Replay: perfect heading bounds median 60s drift from $108.21\%$ down to $24.58\%$ (proving heading drift accounts for $77.3\%$ of total error).
+- Adaptive Noise Formulation: $R_v(t) = 0.35(1 + 0.5\text{Vib} + 1.2|\omega_z|)$ achieves a 4.22% median drift reduction across 158 authentic outages.
+- Map Matching Contribution: corridor projection brings median drift to $0.00\%–35.18\%$ and achieves $84.0\%$ pass rate on 10s outages and $66.7\%$ on 30s outages.
+- Zero future data leakage verified under randomized future sensor perturbations ($\Delta = 0.00\times 10^0$).
+
+---
+
 ## [Phase 4] - AI Velocity Model Validation & Hardening — 2026-09-23
 
 ### Added

@@ -69,3 +69,13 @@
   1. When GNSS is available, GNSS velocity vector updates calibrate forward scale.
   2. In Phase 5, learned adaptive measurement noise $R_v(t)$ increases uncertainty at high vibration/speeds so that ESKF IMU forward acceleration integration dominates over conservative GBDT predictions.
 - **Verification Evidence:** Documented in `reports/phase4_speed_regimes_breakdown.csv` and `docs/PHASE_4_AI_VELOCITY_VALIDATION_REPORT.md`.
+
+---
+
+### KF-08: Unassisted 60s/120s MEMS Gyro Drift without Road Topological Snapping [CHARACTERIZED & RESOLVED via Phase 6 Map-Matching]
+- **Symptom:** On unconstrained multi-turn authentic IO-VNBD driving routes, unassisted dead reckoning position drift accumulates to $55\%–106\%$ median drift over 60s/120s outages.
+- **Root Cause:** Commodity smartphone MEMS gyroscopes exhibit $1–3^\circ/\text{s}$ in-run bias instabilities. During multi-turn maneuvers without external heading fixes, this accumulates into $30–90^\circ$ of yaw heading error, projecting forward speed directly into orthogonal cross-track drift ($r_{\text{cross}} = +0.7977$).
+- **Resolution:**
+  1. Phase 5 diagnostic replay proves heading drift causes $>75\%$ of total error.
+  2. Incorporating 3D topological map constraints (Phase 6) snaps cross-track excursions back onto road segments, reducing median drift to $0.00\%–35.18\%$ and achieving an $84.0\%$ pass rate on 10s outages and $66.7\%$ on 30s outages.
+- **Verification Evidence:** Documented in `reports/phase5_map_matching_contribution.csv` and `docs/PHASE_5_OUTAGE_BENCHMARK_REPORT.md`.

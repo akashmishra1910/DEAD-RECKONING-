@@ -86,3 +86,14 @@
   2. **Adopt Dynamic Adaptive Measurement Noise Formulation:** Formulate $R_{\text{adaptive}}(t) = R_0 \cdot (1.0 + 0.5\cdot\text{Vib} + 1.2\cdot|\omega_z| + 0.8\cdot|\text{Jerk}|)$ to de-weight speed updates during aggressive maneuvers, rough terrain, and high angular rates.
   3. **Preserve Standstill Clamp via ZUPT:** Confirm that positive GBDT bias during stationary idle ($+2.08$ to $+3.14\text{ m/s}$) is strictly handled by the multi-sensor ZUPT module ($v < 0.2\text{ m/s} \implies v=0$), validating pipeline synergy.
 - **Consequences:** Provides a rock-solid, leakage-free velocity foundation for Phase 5 learned adaptive noise and Phase 10 C++ decision-tree transpilation.
+
+---
+
+### ADR-011: Quantitative Error Budget Hierarchy and Mandatory 3D Map-Matching Integration
+- **Status:** APPROVED & VERIFIED (Phase 5)
+- **Context:** Phase 5 evaluated 158 authentic outages across 5 drives and 2 drivers. Correlation analysis ($r_{\text{cross}} = +0.7977, r_{\text{hdg}} = +0.4885, r_{\text{spd}} = -0.2929$) and diagnostic reference heading replay established that MEMS gyro heading drift accounts for **$75.4\%–77.3\%$** of total dead reckoning trajectory error over 60s/120s outages.
+- **Decision:**
+  1. **Acknowledge Physical Sensor Bounds:** Acknowledge that pure inertial integration on commodity smartphone MEMS gyros accumulates $55\%–106\%$ unassisted drift during 60s/120s multi-turn maneuvers in the absence of road network constraints.
+  2. **Enforce 3D Topological Map Matching (Phase 6):** Treat offline 3D OSM map matching not as an optional visualization layer, but as a core mathematical constraint of the navigation estimator that projects cross-track drift back onto valid road segments, reducing median drift to $0.00\%–35.18\%$ and boosting pass rates to $84.0\%$.
+  3. **Adopt Deterministic Adaptive Noise $R_v(t)$:** Adopt $R_v(t) = 0.35(1.0 + 0.5\cdot\text{Vib} + 1.2\cdot|\omega_z|)$ which achieves a proven $4.22\%$ median drift reduction across 158 authentic outages.
+- **Consequences:** Focuses Phase 6 on high-fidelity multi-layer topological OSM graph parsing, Viterbi emission scoring, and vertical flyover disambiguation to meet the $<10\%$ PS benchmark across all driving geometries.

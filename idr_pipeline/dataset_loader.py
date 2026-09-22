@@ -373,15 +373,106 @@ def generate_benchmark_dataset(num_train_drives: int = 3, dt: float = 0.1) -> Tu
     return train_drives, test_drive
 
 
+FEATURE_NAMES_39 = [
+    "mean_ax", "mean_ay", "mean_az",
+    "std_ax", "std_ay", "std_az",
+    "rms_ax", "rms_ay", "rms_az",
+    "ptp_ax", "ptp_ay", "ptp_az",
+    "mean_gx", "mean_gy", "mean_gz",
+    "std_gx", "std_gy", "std_gz",
+    "rms_gx", "rms_gy", "rms_gz",
+    "ptp_gx", "ptp_gy", "ptp_gz",
+    "sma_acc", "sma_gyr",
+    "kinematic_v_hint",
+    "var_vert", "var_horiz", "vib_ratio",
+    "zcr_vert", "zcr_horiz",
+    "roughness", "dyn_acc_norm", "norm_vib_energy",
+    "mean_yaw_rate", "std_yaw_rate", "mean_tilt_rate",
+    "pitch_sin_hint"
+]
+
+NEW_TEMPORAL_FEATURES_12 = [
+    "min_ax", "max_ax",
+    "min_ay", "max_ay",
+    "min_az", "max_az",
+    "min_gx", "max_gx",
+    "min_gy", "max_gy",
+    "min_gz", "max_gz"
+]
+
+FEATURE_NAMES_51 = FEATURE_NAMES_39 + NEW_TEMPORAL_FEATURES_12
+
+JERK_FEATURE_NAMES_18 = [
+    "mean_jerk_ax", "std_jerk_ax", "rms_jerk_ax",
+    "mean_jerk_ay", "std_jerk_ay", "rms_jerk_ay",
+    "mean_jerk_az", "std_jerk_az", "rms_jerk_az",
+    "mean_gyro_rate_gx", "std_gyro_rate_gx", "rms_gyro_rate_gx",
+    "mean_gyro_rate_gy", "std_gyro_rate_gy", "rms_gyro_rate_gy",
+    "mean_gyro_rate_gz", "std_gyro_rate_gz", "rms_gyro_rate_gz"
+]
+
+FEATURE_NAMES_57 = FEATURE_NAMES_39 + JERK_FEATURE_NAMES_18
+
+FREQ_FEATURE_NAMES_18 = [
+    "dom_freq_ax", "centroid_ax", "energy_ax",
+    "dom_freq_ay", "centroid_ay", "energy_ay",
+    "dom_freq_az", "centroid_az", "energy_az",
+    "dom_freq_gx", "centroid_gx", "energy_gx",
+    "dom_freq_gy", "centroid_gy", "energy_gy",
+    "dom_freq_gz", "centroid_gz", "energy_gz"
+]
+
+FEATURE_NAMES_75 = FEATURE_NAMES_57 + FREQ_FEATURE_NAMES_18
+
+
+def compute_channel_freq_features(signal: np.ndarray, dt: float = 0.1) -> Tuple[float, float, float]:
+    """Computes dominant frequency, spectral centroid, and spectral energy for a 1D window."""
+    N = len(signal)
+    if N <= 1:
+        return 0.0, 0.0, 0.0
+    x = signal - np.mean(signal)
+    fft_vals = np.abs(np.fft.rfft(x))
+    freqs = np.fft.rfftfreq(N, d=max(dt, 1e-4))
+
+    # Exclude DC component (0 Hz)
+    mag = fft_vals[1:]
+    f = freqs[1:]
+
+    sum_mag = np.sum(mag)
+    if sum_mag > 1e-6:
+        dom_freq = float(f[np.argmax(mag)])
+        spec_centroid = float(np.sum(f * mag) / sum_mag)
+    else:
+        dom_freq = 0.0
+        spec_centroid = 0.0
+
+    spec_energy = float(np.sum(mag**2) / len(f)) if len(f) > 0 else 0.0
+    return dom_freq, spec_centroid, spec_energy
+
+
 def extract_sliding_window_features(
     accel: np.ndarray,
     gyro: np.ndarray,
     window_size: int = 10,
-    stride: int = 1
+    stride: int = 1,
+    dt: float = 0.1,
+    include_temporal_extrema: bool = False,
+    include_jerk: bool = False,
+    include_frequency: bool = False
 ) -> np.ndarray:
     """
     Extracts time-series sliding window statistical, spectral, and kinematic
-    features with pitch-tilt compensation.
+    features with dynamic gravity leveling, mount invariance, and road-roughness normalization.
+
+    Args:
+        accel: (N, 3) vehicle body acceleration [ax, ay, az]
+        gyro: (N, 3) vehicle body angular rate [gx, gy, gz]
+        window_size: samples per window (default 10 = 1.0s at 10 Hz)
+        stride: step size between windows
+        dt: sampling interval in seconds (default 0.1s for 10 Hz)
+        include_temporal_extrema: If True, adds 12 temporal extrema (min & max per axis).
+        include_jerk: If True, adds 18 temporal difference / jerk features (diff/dt per axis).
+        include_frequency: If True, adds 18 frequency-domain features (dom freq, centroid, energy per channel).
     """
     N = accel.shape[0]
     features = []
@@ -392,6 +483,7 @@ def extract_sliding_window_features(
         w_acc = accel[start:end]
         w_gyr = gyro[start:end]
 
+        # 1. Classical statistical moments
         mean_acc = np.mean(w_acc, axis=0)
         std_acc = np.std(w_acc, axis=0)
         rms_acc = np.sqrt(np.mean(w_acc**2, axis=0))
@@ -402,36 +494,115 @@ def extract_sliding_window_features(
         rms_gyr = np.sqrt(np.mean(w_gyr**2, axis=0))
         ptp_gyr = np.ptp(w_gyr, axis=0)
 
-        # Signal Magnitude Area (SMA)
-        sma_acc = np.sum(np.abs(w_acc)) / len(w_acc)
-        sma_gyr = np.sum(np.abs(w_gyr)) / len(w_gyr)
+        sma_acc = float(np.mean(np.abs(w_acc)))
+        sma_gyr = float(np.mean(np.abs(w_gyr)))
 
-        # Kinematic centripetal velocity clue: v ≈ a_y / w_z
-        recent_ay = np.abs(w_acc[-1, 1])
-        recent_wz = np.abs(w_gyr[-1, 2])
-        kinematic_v_hint = np.clip(recent_ay / (recent_wz + 1e-3), 0.0, 35.0)
+        # 2. Dynamic gravity alignment (Mount Invariance)
+        g_est = np.linalg.norm(mean_acc) + 1e-6
+        g_hat = mean_acc / g_est
 
-        # Dynamic high-frequency vibration energy (wheel-road excitation indicator)
-        # Subtract low-pass gravity to isolate road-induced vibration power
-        vibration_energy = np.mean((w_acc[:, 0] - mean_acc[0])**2 + (w_acc[:, 2] - mean_acc[2])**2)
-        var_horiz = float(np.var(w_acc[:, 0]) + np.var(w_acc[:, 1]))
-        var_vert = float(np.var(w_acc[:, 2]))
-        vib_ac_std = float(np.std(np.linalg.norm(w_acc - mean_acc, axis=1)))
+        diff_acc = w_acc - mean_acc
+        a_dyn_vert = np.dot(diff_acc, g_hat)
+        a_dyn_horiz = diff_acc - np.outer(a_dyn_vert, g_hat)
+        a_dyn_horiz_norm = np.linalg.norm(a_dyn_horiz, axis=1)
 
-        # Dynamic specific force magnitude without static gravity
-        dyn_acc_norm = float(np.mean(np.linalg.norm(w_acc - mean_acc, axis=1)))
+        # 3. Mount-invariant yaw rate & tilt
+        w_yaw = np.dot(w_gyr, g_hat)
+        w_tilt = w_gyr - np.outer(w_yaw, g_hat)
+        w_tilt_norm = np.linalg.norm(w_tilt, axis=1)
 
-        # Pitch-tilt compensation clue: estimate static longitudinal gravity bias
-        # mean_acc[1] carries g * sin(pitch)
-        g_nominal = 9.80665
-        estimated_pitch_sin = np.clip(mean_acc[1] / g_nominal, -0.3, 0.3)
+        # 4. Invariant centripetal speed hint: v ~ a_horiz / |w_yaw|
+        recent_yaw = abs(w_yaw[-1])
+        recent_a_horiz = a_dyn_horiz_norm[-1]
+        kinematic_v_hint = float(np.clip(recent_a_horiz / (recent_yaw + 1e-3), 0.0, 35.0)) if recent_yaw > 0.04 else 0.0
 
-        feat_row = np.concatenate([
+        # 5. Road roughness & normalized vibration features
+        var_vert = float(np.var(a_dyn_vert))
+        var_horiz = float(np.var(a_dyn_horiz_norm))
+        vib_ratio = float(var_vert / (var_horiz + 1e-3))
+
+        # Zero crossing rates (wheel rotational frequency indicator)
+        if len(a_dyn_vert) > 1:
+            zcr_vert = float(np.mean((a_dyn_vert[1:] * a_dyn_vert[:-1]) < 0))
+            diff_h = a_dyn_horiz_norm - np.mean(a_dyn_horiz_norm)
+            zcr_horiz = float(np.mean((diff_h[1:] * diff_h[:-1]) < 0))
+        else:
+            zcr_vert, zcr_horiz = 0.0, 0.0
+
+        roughness = float(np.std(np.linalg.norm(w_acc, axis=1)))
+        dyn_acc_norm = float(np.mean(np.linalg.norm(diff_acc, axis=1)))
+        norm_vib_energy = float(dyn_acc_norm / (roughness + 0.1))
+
+        mean_yaw_rate = float(np.mean(np.abs(w_yaw)))
+        std_yaw_rate = float(np.std(w_yaw))
+        mean_tilt_rate = float(np.mean(w_tilt_norm))
+        pitch_sin_hint = float(np.clip((g_est - 9.80665) / 9.80665, -0.3, 0.3))
+
+        feat_components = [
             mean_acc, std_acc, rms_acc, ptp_acc,
             mean_gyr, std_gyr, rms_gyr, ptp_gyr,
-            [sma_acc, sma_gyr, kinematic_v_hint, vibration_energy, var_horiz, var_vert, vib_ac_std,
-             dyn_acc_norm, estimated_pitch_sin]
-        ])
+            [sma_acc, sma_gyr, kinematic_v_hint,
+             var_vert, var_horiz, vib_ratio,
+             zcr_vert, zcr_horiz, roughness, dyn_acc_norm, norm_vib_energy,
+             mean_yaw_rate, std_yaw_rate, mean_tilt_rate, pitch_sin_hint]
+        ]
+
+        if include_temporal_extrema:
+            min_acc = np.min(w_acc, axis=0)
+            max_acc = np.max(w_acc, axis=0)
+            min_gyr = np.min(w_gyr, axis=0)
+            max_gyr = np.max(w_gyr, axis=0)
+            feat_components.append([
+                min_acc[0], max_acc[0],
+                min_acc[1], max_acc[1],
+                min_acc[2], max_acc[2],
+                min_gyr[0], max_gyr[0],
+                min_gyr[1], max_gyr[1],
+                min_gyr[2], max_gyr[2]
+            ])
+
+        if include_jerk:
+            if len(w_acc) > 1:
+                eff_dt = max(dt, 1e-4)
+                jerk_acc = np.diff(w_acc, axis=0) / eff_dt
+                jerk_gyr = np.diff(w_gyr, axis=0) / eff_dt
+
+                mean_jerk_acc = np.mean(jerk_acc, axis=0)
+                std_jerk_acc = np.std(jerk_acc, axis=0)
+                rms_jerk_acc = np.sqrt(np.mean(jerk_acc**2, axis=0))
+
+                mean_rate_gyr = np.mean(jerk_gyr, axis=0)
+                std_rate_gyr = np.std(jerk_gyr, axis=0)
+                rms_rate_gyr = np.sqrt(np.mean(jerk_gyr**2, axis=0))
+            else:
+                mean_jerk_acc = np.zeros(3)
+                std_jerk_acc = np.zeros(3)
+                rms_jerk_acc = np.zeros(3)
+                mean_rate_gyr = np.zeros(3)
+                std_rate_gyr = np.zeros(3)
+                rms_rate_gyr = np.zeros(3)
+
+            feat_components.append([
+                mean_jerk_acc[0], std_jerk_acc[0], rms_jerk_acc[0],
+                mean_jerk_acc[1], std_jerk_acc[1], rms_jerk_acc[1],
+                mean_jerk_acc[2], std_jerk_acc[2], rms_jerk_acc[2],
+                mean_rate_gyr[0], std_rate_gyr[0], rms_rate_gyr[0],
+                mean_rate_gyr[1], std_rate_gyr[1], rms_rate_gyr[1],
+                mean_rate_gyr[2], std_rate_gyr[2], rms_rate_gyr[2]
+            ])
+
+        if include_frequency:
+            freq_feats = []
+            for c in range(3):
+                df, sc, se = compute_channel_freq_features(w_acc[:, c], dt=dt)
+                freq_feats.extend([df, sc, se])
+            for c in range(3):
+                df, sc, se = compute_channel_freq_features(w_gyr[:, c], dt=dt)
+                freq_feats.extend([df, sc, se])
+            feat_components.append(freq_feats)
+
+        feat_row = np.concatenate(feat_components)
         features.append(feat_row)
 
     return np.array(features)
+

@@ -9,9 +9,10 @@ with non-holonomic vehicle constraints inside an Error-State Kalman Filter keeps
 position drift under 10% of distance traveled during a GNSS outage."
 
 Coordinate System:
-- Navigation Frame (n): Local East (x), North (y), Up (z) tangent to WGS-84.
-- Body Frame (b): Forward (x_b), Lateral/Right (y_b), Up (z_b).
-- Attitude: Yaw (azimuth from North), Pitch (elevation), Roll (bank).
+- Navigation Frame (n): Local East (x), North (y), Up (z) tangent to WGS-84 (right-handed, det = +1).
+- Body Frame (b): Forward (x_b), Left (y_b), Up (z_b) (right-handed, det = +1).
+- Attitude: Yaw (azimuth clockwise from North), Pitch (elevation angle), Roll (bank angle).
+- DCM: R_b^n in SO(3) transforms body coordinates to navigation coordinates (det(R_b^n) = +1.0).
 
 States:
     delta_x = [delta_p^n, delta_v^n, delta_theta^n, delta_b_a^b, delta_b_g^b]^T in R^15
@@ -32,52 +33,89 @@ def skew_symmetric(v: np.ndarray) -> np.ndarray:
     ])
 
 
+def rodrigues(rot_vec: np.ndarray) -> np.ndarray:
+    """Computes 3x3 rotation matrix from rotation vector using Rodrigues' formula."""
+    theta = float(np.linalg.norm(rot_vec))
+    if theta < 1e-12:
+        return np.eye(3) + skew_symmetric(rot_vec)
+    axis = rot_vec / theta
+    K = skew_symmetric(axis)
+    return np.eye(3) + np.sin(theta) * K + (1.0 - np.cos(theta)) * (K @ K)
+
+
 def euler_to_rotation_matrix(roll: float, pitch: float, yaw: float) -> np.ndarray:
     """
-    Direction Cosine Matrix R_b^n from vehicle body frame (b) to navigation frame (n: East, North, Up).
-    Yaw is azimuth from North (0 = North, pi/2 = East).
-    Pitch is elevation angle.
-    Roll is bank angle.
+    Direction Cosine Matrix R_b^n from vehicle body frame (b: Forward, Left, Up)
+    to navigation frame (n: East, North, Up).
+    R_b^n in SO(3) with det(R_b^n) = +1.0.
+
+    Yaw is azimuth from North (0 = North, pi/2 = East, clockwise).
+    Pitch is elevation angle (positive = nose up).
+    Roll is bank angle (positive = right side down / left side up).
     """
+    cy = np.cos(yaw)
+    sy = np.sin(yaw)
+    cp = np.cos(pitch)
+    sp = np.sin(pitch)
+    cr = np.cos(roll)
+    sr = np.sin(roll)
+
     # Column 0: Forward x_b vector in navigation frame
     r1 = np.array([
-        np.sin(yaw) * np.cos(pitch),
-        np.cos(yaw) * np.cos(pitch),
-        np.sin(pitch)
+        sy * cp,
+        cy * cp,
+        sp
     ])
-    # Column 1: Lateral/Right y_b vector in navigation frame
-    r2 = np.array([
-        np.cos(yaw),
-        -np.sin(yaw),
-        0.0
-    ])
-    # Column 2: Vertical z_b vector in navigation frame
-    r3 = np.array([
-        -np.sin(yaw) * np.sin(pitch),
-        -np.cos(yaw) * np.sin(pitch),
-        np.cos(pitch)
-    ])
+
+    # Base lateral (Left y_b) and vertical (Up z_b) columns before roll:
+    # In horizontal plane, when facing azimuth yaw:
+    # Forward = [sy, cy, 0]
+    # Left (90 deg CCW from Forward) = [-cy, sy, 0]
+    # Up = r1 x r2_base = [-sy * sp, -cy * sp, cp]
+    r2_base = np.array([-cy, sy, 0.0])
+    r3_base = np.array([-sy * sp, -cy * sp, cp])
+
+    # Bank/roll rotation applied around forward axis x_b:
+    r2 = cr * r2_base + sr * r3_base
+    r3 = -sr * r2_base + cr * r3_base
+
     return np.column_stack([r1, r2, r3])
 
 
 def rotation_matrix_to_euler(R: np.ndarray) -> Tuple[float, float, float]:
-    """Extracts roll, pitch, yaw (azimuth from North) from R_b^n."""
+    """
+    Extracts roll, pitch, yaw (azimuth clockwise from North) from R_b^n (FLU -> ENU).
+    """
     pitch = float(np.arcsin(np.clip(R[2, 0], -1.0, 1.0)))
     yaw = float(np.arctan2(R[0, 0], R[1, 0]))
-    roll = float(np.arctan2(-R[2, 1], R[2, 2]))
+    roll = float(np.arctan2(R[2, 1], R[2, 2]))
     return roll, pitch, yaw
+
+
+def renormalize_rotation_matrix(R: np.ndarray) -> np.ndarray:
+    """
+    Re-orthogonalizes R using SVD projection to the nearest SO(3) matrix.
+    Guarantees R @ R.T = I and det(R) = +1.0.
+    """
+    U, _, Vt = np.linalg.svd(R)
+    R_ortho = U @ Vt
+    if np.linalg.det(R_ortho) < 0.0:
+        U[:, -1] *= -1.0
+        R_ortho = U @ Vt
+    return R_ortho
 
 
 class ErrorStateKalmanFilter:
     """
     15-State Error-State Kalman Filter for 3D land vehicle dead reckoning.
+    Supports complete 3D attitude propagation and Kalman correction.
     """
 
     def __init__(
         self,
         init_pos: np.ndarray,
         init_vel: np.ndarray,
-        init_euler: np.ndarray, # [roll, pitch, yaw]
+        init_euler: np.ndarray,  # [roll, pitch, yaw]
         init_ba: Optional[np.ndarray] = None,
         init_bg: Optional[np.ndarray] = None,
         acc_noise: float = 0.15,
@@ -116,7 +154,8 @@ class ErrorStateKalmanFilter:
 
     def predict(self, accel_meas: np.ndarray, gyro_meas: np.ndarray, dt: float):
         """
-        Mechanization and Error State Covariance Propagation.
+        3D Mechanization and Error State Covariance Propagation.
+        Propagates full 3-axis attitude using body angular rate vector.
         """
         # Unbias measurements
         f_b = accel_meas - self.ba
@@ -132,15 +171,27 @@ class ErrorStateKalmanFilter:
         self.p += self.v * dt + 0.5 * a_n * dt**2
         self.v += a_n * dt
 
-        # Attitude update via yaw rate integration
-        self.yaw += float(w_b[2] * dt)
-        self.R = euler_to_rotation_matrix(self.roll, self.pitch, self.yaw)
+        # Full 3D attitude propagation using Rodrigues rotation formula
+        # Continuous DCM kinematics: dR/dt = R @ [w_b]_x
+        # Discrete step: R(t + dt) = R(t) @ Exp([w_b * dt]_x)
+        dtheta_b = w_b * dt
+        self.R = self.R @ rodrigues(dtheta_b)
+        self.R = renormalize_rotation_matrix(self.R)
+
+        # Update Euler angles to maintain synchronization and API compatibility
+        self.roll, self.pitch, self.yaw = rotation_matrix_to_euler(self.R)
 
         # --- B. Continuous Error State Matrix F (15x15) ---
+        # Error states: [delta_p^n, delta_v^n, delta_theta^n, delta_b_a^b, delta_b_g^b]
+        # In navigation frame tangent plane (omega_in^n ≈ 0):
+        # dot(delta_p) = delta_v
+        # dot(delta_v) = -[f_n]_x * delta_theta^n - R * delta_b_a
+        # dot(delta_theta^n) = -[omega_in^n]_x * delta_theta^n - R * delta_b_g
         F = np.zeros((15, 15))
         F[0:3, 3:6] = np.eye(3)
         F[3:6, 6:9] = -skew_symmetric(f_n)
         F[3:6, 9:12] = -self.R
+        # Attitude error dynamics: -R maps body gyro bias error into nav frame
         F[6:9, 12:15] = -self.R
 
         Phi = np.eye(15) + F * dt
@@ -153,6 +204,7 @@ class ErrorStateKalmanFilter:
         Q_d[12:15, 12:15] = np.eye(3) * self.q_bg * dt
 
         self.P = Phi @ self.P @ Phi.T + Q_d
+        self.P = 0.5 * (self.P + self.P.T)  # Minimal numerical symmetrization
 
     def update_gnss(self, gnss_pos: np.ndarray, r_gnss: float = 2.5):
         """Measurement update using GNSS absolute position."""
@@ -220,27 +272,46 @@ class ErrorStateKalmanFilter:
         dyaw = np.arctan2(np.sin(heading_meas - self.yaw), np.cos(heading_meas - self.yaw))
         dz = np.array([dyaw])
         H = np.zeros((1, 15))
-        H[0, 8] = 1.0
+        # In ENU (Up = +z), delta_theta_z^n is CCW while yaw azimuth is CW from North, so delta_yaw = -delta_theta_z^n
+        H[0, 8] = -1.0
         R_cov = np.array([[r_yaw**2]])
         self._apply_kalman_update(dz, H, R_cov)
 
     def _apply_kalman_update(self, dz: np.ndarray, H: np.ndarray, R_cov: np.ndarray):
-        """Applies Joseph-form covariance update and injects errors into nominal state."""
+        """
+        Applies Joseph-form covariance update, performs full 3D attitude correction,
+        and executes consistent error-state reset.
+        """
         S = H @ self.P @ H.T + R_cov
         K = self.P @ H.T @ np.linalg.inv(S)
 
         dx = K @ dz
 
-        # Inject into nominal states
+        # 1. Inject into nominal translational states
         self.p += dx[0:3]
         self.v += dx[3:6]
 
-        self.yaw += float(dx[8]) # Yaw error correction
-        self.R = euler_to_rotation_matrix(self.roll, self.pitch, self.yaw)
+        # 2. Inject full 3D attitude error dx[6:9] into nominal attitude
+        # In navigation frame error-state convention:
+        # R_nominal_corrected = Exp([dx[6:9]]_x) @ R_nominal
+        dtheta_n = dx[6:9]
+        self.R = rodrigues(dtheta_n) @ self.R
+        self.R = renormalize_rotation_matrix(self.R)
+        self.roll, self.pitch, self.yaw = rotation_matrix_to_euler(self.R)
 
+        # 3. Inject bias corrections
         self.ba += dx[9:12]
         self.bg += dx[12:15]
 
-        # Joseph form update for numerical stability:
+        # 4. Joseph-form covariance update
         I_KH = np.eye(15) - K @ H
         self.P = I_KH @ self.P @ I_KH.T + K @ R_cov @ K.T
+
+        # 5. ESKF Error-State Reset Jacobian
+        # Higher-order attitude error reset: G_reset = I - 0.5 * skew(dtheta_n)
+        G_reset = np.eye(15)
+        G_reset[6:9, 6:9] -= 0.5 * skew_symmetric(dtheta_n)
+        self.P = G_reset @ self.P @ G_reset.T
+
+        # Symmetrize covariance matrix for numerical stability
+        self.P = 0.5 * (self.P + self.P.T)

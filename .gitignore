@@ -18,3 +18,6 @@ documentation.pdf
 # Large dataset archives (>100MB)
 Synchronised_V_and_S_datasets.zip
 synchronised_iovnbd_data/
+IO-VNBD-ACTUAL/
+*.zip
+

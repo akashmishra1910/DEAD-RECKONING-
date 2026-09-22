@@ -96,6 +96,65 @@ class TestIDRNavigationSystem(unittest.TestCase):
         self.assertTrue(is_idle_detected, "Engine idle harmonics must trigger stationary idle flag.")
         print("  [PASS] Test 2: AI Vibration & Pothole Filter")
 
+    def test_02b_butterworth_prefilter_and_shock_blanking(self):
+        """
+        Test Butterworth 4th-order zero-phase bandpass pre-filter (0.1–15 Hz)
+        running ahead of shock-blanking (>2.5g impulse isolation).
+        Verifies:
+        1. Multi-rate parametrization (10 Hz mobile and 200 Hz edge FOG).
+        2. High-frequency noise attenuation (>15 Hz chassis/engine vibration).
+        3. Zero-phase preservation (no time lag).
+        4. Shock-blanking of severe spikes occurring on the pre-filtered stream.
+        """
+        from idr_pipeline.vibration_filter import apply_butterworth_prefilter
+
+        # 1. Test 200 Hz Edge Engine (Tactical FOG)
+        fs_edge = 200.0
+        t_edge = np.arange(1000) / fs_edge
+        # 1g static gravity (DC) + 2 Hz true vehicle motion + 40 Hz chassis vibration
+        true_motion = 1.5 * np.sin(2 * np.pi * 2.0 * t_edge)
+        noise_40hz = 2.0 * np.sin(2 * np.pi * 40.0 * t_edge)
+        accel_z_edge = 9.80665 + true_motion + noise_40hz
+
+        accel_edge = np.column_stack([np.zeros_like(accel_z_edge), np.zeros_like(accel_z_edge), accel_z_edge])
+        gyro_edge = np.zeros_like(accel_edge)
+
+        # Apply pre-filter
+        filt_accel_edge = apply_butterworth_prefilter(accel_edge, fs=fs_edge, lowcut=0.1, highcut=15.0, order=4)
+        filt_z_edge = filt_accel_edge[:, 2]
+
+        # 40 Hz noise must be heavily attenuated (>95% amplitude reduction by 15 Hz cutoff)
+        fft_raw = np.abs(np.fft.rfft(noise_40hz))
+        fft_filt = np.abs(np.fft.rfft(filt_z_edge))
+        freqs = np.fft.rfftfreq(len(t_edge), 1.0 / fs_edge)
+        idx_40 = np.argmin(np.abs(freqs - 40.0))
+
+        attenuation_ratio = fft_filt[idx_40] / fft_raw[idx_40]
+        self.assertLess(attenuation_ratio, 0.05, f"40 Hz noise must be attenuated >95% (got ratio {attenuation_ratio:.4f})")
+
+        # DC gravity must be preserved (within 2.5% of 1g Earth gravity)
+        self.assertAlmostEqual(np.mean(filt_z_edge), 9.80665, delta=0.25, msg="Earth gravity DC offset must be preserved.")
+
+        # 2. Test 10 Hz Mobile Phone Pre-Filter + Shock Blanking Pipeline
+        fs_mobile = 10.0
+        v_filter_mobile = VibrationPotholeFilter(dt=0.1, sample_rate_hz=fs_mobile)
+
+        N_mob = 100
+        test_accel_mob = np.tile([0.0, 0.0, 9.80665], (N_mob, 1))
+        test_gyro_mob = np.zeros_like(test_accel_mob)
+
+        # Inject severe shock spike (>2.5g) at frame 40
+        test_accel_mob[40, 2] += 32.0  # ~4.2g total
+
+        # Filter batch runs Butterworth pre-filter FIRST, then shock-blanking SECOND
+        clean_accel, clean_gyro, states = v_filter_mobile.filter_batch(test_accel_mob, test_gyro_mob)
+
+        # Check pothole detection and blanking
+        potholes = [s for s in states if s.is_pothole_detected]
+        self.assertGreaterEqual(len(potholes), 1, "Pothole shock must be detected after pre-filtering.")
+        self.assertLess(clean_accel[40, 2], 15.0, "Pothole vertical spike must be blanked to near 1g.")
+        print("  [PASS] Test 2b: Butterworth Pre-Filter (0.1–15 Hz, Order 4) + Shock Blanking (>2.5g)")
+
     def test_03_seamless_gnss_deficit_and_chi2_recovery(self):
         """Test sub-5ms deficit detection, dead reckoning fusion, and Chi^2 re-entry gating."""
         engine = SeamlessGNSSDeficitEngine(

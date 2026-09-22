@@ -89,14 +89,30 @@ def run_benchmark():
     X_train = np.vstack(X_train_list)
     y_train = np.concatenate(y_train_list)
 
-    print(f"\n[*] Training GBDT Speed Regressor on {len(y_train)} real samples...")
-    ai_model = AIVelocityEstimator(model_type='gradient_boosting')
-    metrics = ai_model.train(X_train, y_train)
-    print(f"    Training RMSE: {metrics['train_rmse']:.3f} m/s | R²: {metrics['train_r2']:.4f} | MAE: {metrics['train_mae']:.3f} m/s")
+    # 3. Phone-to-Vehicle Alignment (Stage 1 Mounting Calibration)
+    from idr_pipeline.alignment_engine import InVehicleAlignmentEngine
+    R_p2b = InVehicleAlignmentEngine.estimate_mounting_matrix_batch(
+        test_drive.accel[:i0], test_drive.gyro[:i0], test_drive.gt_speed[:i0]
+    )
 
-    # Predict speed on test drive
-    test_feats = extract_sliding_window_features(test_drive.accel, test_drive.gyro, window_size=10)
-    pred_speeds = ai_model.predict(test_feats)
+    accel_b_all = (R_p2b @ test_drive.accel.T).T
+    gyro_b_all = (R_p2b @ test_drive.gyro.T).T
+
+    checkpoint_path = 'models/gbdt_speed_model_iovnbd.joblib'
+    if os.path.exists(checkpoint_path):
+        print(f"\n[*] Loading trained 71-drive GBDT checkpoint: {checkpoint_path}")
+        import joblib
+        ckpt = joblib.load(checkpoint_path)
+        test_feats = extract_sliding_window_features(accel_b_all, gyro_b_all, window_size=10)
+        pred_speeds = np.clip(ckpt['model'].predict(ckpt['scaler'].transform(test_feats)), 0.0, 35.0)
+    else:
+        print(f"\n[*] Training GBDT Speed Regressor on {len(y_train)} real samples...")
+        ai_model = AIVelocityEstimator(model_type='gradient_boosting')
+        metrics = ai_model.train(X_train, y_train)
+        print(f"    Training RMSE: {metrics['train_rmse']:.3f} m/s | R²: {metrics['train_r2']:.4f} | MAE: {metrics['train_mae']:.3f} m/s")
+        test_feats = extract_sliding_window_features(accel_b_all, gyro_b_all, window_size=10)
+        pred_speeds = ai_model.predict(test_feats)
+
     outage_pred_speeds = pred_speeds[i0:i1]
     outage_gt_speeds = test_drive.gt_speed[i0:i1]
 
@@ -104,20 +120,12 @@ def run_benchmark():
     spd_mae = float(np.mean(np.abs(outage_gt_speeds - outage_pred_speeds)))
     print(f"    Outage Speed Estimation: RMSE = {spd_rmse:.3f} m/s | MAE = {spd_mae:.3f} m/s")
 
-    # 3. Phone-to-Vehicle Alignment
-    # Gravity leveling and transient alignment during pre-outage
-    f_pre = np.mean(test_drive.accel[:i0], axis=0)
-    z_b = f_pre / np.linalg.norm(f_pre)
-    x_b_cand = np.array([1.0, 0.0, 0.0]) - np.dot([1.0, 0.0, 0.0], z_b) * z_b
-    x_b = x_b_cand / np.linalg.norm(x_b_cand)
-    y_b = np.cross(z_b, x_b)
-    R_p2b = np.vstack([x_b, y_b, z_b])
-
     # Pre-outage gyro bias estimation
-    bg_est = np.mean(R_p2b @ test_drive.gyro[:i0].T, axis=1)
+    bg_est = np.mean(gyro_b_all[:i0], axis=0)
 
     # 4. Run Multi-Baseline Dead Reckoning during Outage
     p0 = test_drive.gt_pos[i0].copy()
+
     v0 = test_drive.gt_vel[i0].copy()
     yaw0 = float(test_drive.gt_heading[i0])
     init_euler = np.array([0.0, 0.0, yaw0])

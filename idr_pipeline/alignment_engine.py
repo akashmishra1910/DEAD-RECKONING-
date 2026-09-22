@@ -210,3 +210,57 @@ class InVehicleAlignmentEngine:
             return 0.0
         cos_theta = np.clip(np.dot(v1, v2) / (n1 * n2), -1.0, 1.0)
         return float(np.degrees(np.arccos(cos_theta)))
+
+    @staticmethod
+    def estimate_mounting_matrix_batch(
+        accel_phone: np.ndarray,
+        gyro_phone: Optional[np.ndarray] = None,
+        speed: Optional[np.ndarray] = None
+    ) -> np.ndarray:
+        """
+        Computes the static mounting matrix R_p2b (phone frame -> vehicle body frame)
+        over an entire drive via gravity leveling and PCA longitudinal alignment.
+        """
+        mean_a = np.mean(accel_phone, axis=0)
+        norm_a = np.linalg.norm(mean_a)
+        if norm_a < 1e-3:
+            return np.eye(3)
+        z_b = mean_a / norm_a
+
+        diff_a = accel_phone - mean_a
+        a_vert = np.dot(diff_a, z_b)
+        a_horiz = diff_a - np.outer(a_vert, z_b)
+
+        cov_h = np.cov(a_horiz.T)
+        eigvals, eigvecs = np.linalg.eigh(cov_h)
+        x_b = eigvecs[:, -1]
+        x_b = x_b - np.dot(x_b, z_b) * z_b
+        norm_x = np.linalg.norm(x_b)
+        if norm_x > 1e-3:
+            x_b = x_b / norm_x
+        else:
+            cand = np.array([1.0, 0.0, 0.0]) - np.dot([1.0, 0.0, 0.0], z_b) * z_b
+            x_b = cand / (np.linalg.norm(cand) + 1e-6)
+
+        # Resolve forward sign
+        if speed is not None and len(speed) > 10:
+            dv = np.gradient(speed)
+            a_x = np.dot(a_horiz, x_b)
+            valid = (np.abs(dv) > 0.05) & (np.abs(a_x) > 0.1)
+            if np.sum(valid) > 20:
+                if np.corrcoef(a_x[valid], dv[valid])[0, 1] < 0:
+                    x_b = -x_b
+        else:
+            # Vehicle braking decelerations are sharper than forward acceleration (negative skewness)
+            a_x = np.dot(a_horiz, x_b)
+            skew_x = np.mean((a_x - np.mean(a_x))**3) / (np.std(a_x)**3 + 1e-6)
+            if skew_x > 0.1:
+                x_b = -x_b
+
+        y_b = np.cross(z_b, x_b)
+        norm_y = np.linalg.norm(y_b)
+        if norm_y > 1e-3:
+            y_b = y_b / norm_y
+
+        R_p2b = np.vstack([x_b, y_b, z_b])
+        return R_p2b

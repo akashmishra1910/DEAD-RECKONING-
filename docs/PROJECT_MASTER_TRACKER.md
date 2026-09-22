@@ -1,10 +1,10 @@
 # Project Master Tracker
 ## ISRO / SIH PS 26168: AI-ML Based Intelligent Dead Reckoning System
 
-**Current Phase:** PHASE 6 — PRODUCTION OFFLINE 3D OSM MAP MATCHING & ROAD-CONSTRAINED DEAD RECKONING (COMPLETED / READY FOR PHASE 7)  
-**Overall Status:** IN PROGRESS (Phase 6 3D OSM Map Matching Completed; Ready for Phase 7 Full GNSS/INS Supervisor)  
+**Current Phase:** PHASE 7 — FULL GNSS / INS SUPERVISOR, SEAMLESS GNSS DEFICIT ENGINE & CLOSED-LOOP CONSTRAINT DIAGNOSTICS (COMPLETED)  
+**Overall Status:** IN PROGRESS (Phase 7 Completed; 139/139 Tests Passing; Ready for Phase 8 Authorization)  
 **Last Updated:** 2026-09-23  
-**Active Git Commit:** `phase-06-offline-3d-osm-map-matching`  
+**Active Git Commit:** `phase-07-gnss-ins-supervisor`  
 **Execution Environment:** Windows (x86_64) | Python 3.11.0 | NumPy 2.4.6 | Scikit-Learn 1.9.1 | SciPy 1.17.1 | Joblib 1.4.2 | Java 25.0.2 | MinGW GCC 6.3.0  
 
 ---
@@ -20,7 +20,7 @@
 | **Phase 4** | AI Velocity Model Validation | **COMPLETED** | **PASSED** | Top-45 Huber GBDT validated across 10,019 authentic IO-VNBD samples (RMSE 3.63 m/s, zero leakage, 15/15 tests passed). |
 | **Phase 5** | Authentic Outage Benchmark & Drift Hardening | **COMPLETED** | **PASSED** | 158 authentic outages evaluated, 5-config ablation, 60s deep correlation ($r_{\text{cross}}=+0.7977$), adaptive R validated, 10/10 tests passed (108/108 total regression). |
 | **Phase 6** | 3D Offline OSM Map-Matching | **COMPLETED** | **PASSED** | Topological 3D graph, causal online HMM, $4\text{ m}$ elevation barrier, soft ESKF road heading/position constraints, 15/15 tests passed (123/123 total regression). |
-| **Phase 7** | Full GNSS / INS Supervisor | NOT STARTED | PENDING | Seamless state machine, $\chi^2$ innovation gate ($\gamma \le 11.35$), outage handover. |
+| **Phase 7** | Full GNSS / INS Supervisor | **COMPLETED** | **PASSED** | 6-state FSM supervisor, causal outage detection, seamless handover ($\Delta p < 0.05\text{ m}$), forensic along/cross error breakdown, 16/16 tests passed (139/139 total regression). |
 | **Phase 8** | Two-Wheeler Mode | NOT STARTED | PENDING | Roll-compensated NHC and lateral dynamics for motorcycles/scooters. |
 | **Phase 9** | Portable C++ Core (`idr-core`) | NOT STARTED | PENDING | C++17 standalone library with CMake, sample-rate agnostic, 200 Hz capable. |
 | **Phase 10** | GBDT Edge Deployment | NOT STARTED | PENDING | Transpiled branchless static C++ decision tables matching Python Top45 bit-for-bit. |
@@ -48,24 +48,21 @@
 - `tests/test_phase4_ai_velocity.py`: **15 Passed / 0 Failed**.
 - `tests/test_phase5_outage_benchmark.py`: **10 Passed / 0 Failed**.
 - `tests/test_phase6_map_matching.py`: **15 Passed / 0 Failed**.
-- **Total Regression Suite:** **123 Passed / 0 Failed (100% Pass Rate)**.
+- `tests/test_phase7_gnss_ins_supervisor.py`: **16 Passed / 0 Failed**.
+- **Total Regression Suite:** **139 Passed / 0 Failed (100% Pass Rate)**.
 
-### Files Modified/Created in Phase 6
-- `idr_pipeline/offline_osm_graph.py` (NEW: Offline 3D topological OSM graph engine, WGS84/ENU geodetics, spatial grid, vectorized polyline snapping).
-- `idr_pipeline/map_matcher_3d.py` (UPDATED: Production Causal3DMapMatcher, MapMatchConfidence, MapMatchResult, closed-loop soft constraint helpers).
-- `idr_pipeline/eskf_fusion.py` (UPDATED: Soft road heading `update_road_heading` and soft cross-track normal position `update_road_position` measurement updates).
-- `idr_pipeline/__init__.py` (UPDATED: Exported Phase 6 OSM graph and map matcher classes).
-- `scripts/evaluate_phase6_map_matching.py` (NEW: 158-outage 5-config evaluation, 25 60s detailed, PS thresholds, wrong-road safety).
-- `reports/phase6_outage_benchmark_158.csv` (NEW: Complete 158 outage metrics).
-- `reports/phase6_60s_outages_detailed.csv` (NEW: 25 individual 60s outage results).
-- `reports/phase6_ablation_summary.csv` (NEW: 5-config ablation table).
-- `reports/phase6_wrong_road_recovery.csv` (NEW: Safety gating evaluation).
-- `reports/phase6_latency_memory.csv` (NEW: Execution cycle profiling).
-- `tests/test_phase6_map_matching.py` (NEW: 15 dedicated Phase 6 tests).
-- `docs/PHASE_6_OFFLINE_3D_OSM_MAP_MATCHING_REPORT.md` (NEW: Full technical report).
+### Files Modified/Created in Phase 7
+- `idr_pipeline/gnss_ins_fusion_engine.py` (UPDATED: Full 6-state FSM supervisor, causal outage detection, seamless handover, dynamic velocity arbitration, reacquisition gating).
+- `idr_pipeline/heading_supervisor.py` (UPDATED: Multi-epoch maneuver consistency, chi2 gate alignment, innovation starvation fix).
+- `idr_pipeline/outage_catalog.py` (NEW: Stratified 158-outage builder across 5 authentic drives).
+- `scripts/run_phase7_closed_loop_diagnostics.py` (NEW: Forensic along/cross error breakdown, M0–M7 controlled ablation).
+- `scripts/evaluate_phase7_supervisor_benchmark.py` (NEW: 158-outage evaluation, 7 failure injection scenarios, strict causality proof, 200 Hz edge benchmark).
+- `reports/phase7_map_closed_loop_diagnostics.csv` (NEW: Cycle-by-cycle ESKF map update diagnostic logs).
+- `tests/test_phase7_gnss_ins_supervisor.py` (NEW: 16 dedicated unit/integration tests).
+- `docs/PHASE_7_GNSS_INS_SUPERVISOR_REPORT.md` (NEW: Comprehensive technical report).
 
 ---
 
 ## 3. Next Actions
-1. **Standby for Phase 7 Authorization**: Proceed to Phase 7 — Full GNSS / INS Supervisor (Seamless state machine, $\chi^2$ innovation gate $\gamma \le 11.35$, outage handover).
+1. **Standby for Phase 8 Authorization**: Two-Wheeler Vehicle Mode (Roll-compensated NHC and leaning lateral dynamics).
 

@@ -93,3 +93,14 @@
   1. Phase 5 diagnostic replay proves heading drift causes $>75\%$ of total error.
   2. Incorporating 3D topological map constraints (Phase 6) snaps cross-track excursions back onto road segments, reducing median drift to $0.00\%–35.18\%$ and achieving an $84.0\%$ pass rate on 10s outages and $66.7\%$ on 30s outages.
 - **Verification Evidence:** Documented in `reports/phase5_map_matching_contribution.csv` and `docs/PHASE_5_OUTAGE_BENCHMARK_REPORT.md`.
+
+---
+
+### KF-09: Unobservability of Along-Track Speed Drift under Road-Normal Position Constraints [CHARACTERIZED & EXPLAINED in Phase 7]
+- **Symptom:** Feeding closed-loop road constraints into the 15-state ESKF yields $\sim 108\%$ median drift on 60s outages (similar to raw DR $\sim 106\%$), while post-hoc geometric snapping yields $\sim 35\%$.
+- **Root Cause:** Road-normal position innovations $z_{\text{cross}} = \hat{\mathbf{n}}^T (\mathbf{p}_{\text{road}} - \mathbf{p})$ collapse lateral cross-track error to $< 1.5\text{ m}$. However, road geometry provides **zero information along the road tangent vector $\hat{\mathbf{t}}$**. Along-track error accumulates freely from AI longitudinal speed integration ($\int (\hat{v} - v_{\text{true}}) dt$). In closed-loop mode, lateral updates inject small cross-covariance velocity perturbations, whereas post-hoc geometric snapping projects the estimated point directly to the road manifold without modifying filter velocity states.
+- **Resolution:**
+  1. Full forensic instrumentation logged in `reports/phase7_map_closed_loop_diagnostics.csv` and M0–M7 ablation in `reports/phase7_map_ablation.csv`.
+  2. Dual-mode architecture implemented in `SeamlessGNSSDeficitEngine`: ESKF maintains stable physical strapdown state while UI visualization utilizes post-hoc manifold snapping (M5) for seamless, non-jumping map display.
+- **Verification Evidence:** Documented in `docs/PHASE_7_GNSS_INS_SUPERVISOR_REPORT.md` and validated in `tests/test_phase7_gnss_ins_supervisor.py`.
+

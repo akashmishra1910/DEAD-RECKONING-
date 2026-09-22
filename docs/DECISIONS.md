@@ -114,3 +114,19 @@
   4. **Deterministic Confidence & Safety Rejection:** 4 discrete confidence levels (`HIGH`, `MEDIUM`, `LOW`, `INVALID`). Off-road perturbations ($>35\text{ m}$) drop confidence to `INVALID`, disabling soft updates to protect filter stability.
 - **Consequences:** Tested across 158 authentic outages and 15 dedicated unit/integration tests (123/123 total repository tests passing). Achieves $84.0\%$ flyover disambiguation accuracy (vs $72.0\%$ 2D baseline) and runs at $390.1\text{ Hz}$ in Python ($2.56\text{ ms/cycle}$), scaling to $>6000\text{ Hz}$ in C++.
 
+---
+
+### ADR-013: 6-State Navigation Supervisor, Seamless Outage Handover, and Forensic Along-Track vs. Cross-Track Map Error Characterization
+- **Status:** APPROVED & VERIFIED (Phase 7)
+- **Context:** Transitioning to full closed-loop operations required addressing: (1) seamless outage handover without state/covariance jumps; (2) robust anti-snapback GNSS reacquisition at tunnel exits; and (3) forensic resolution of why closed-loop road constraints in ESKF achieve ~108% drift while post-hoc geometric snapping achieves ~35%.
+- **Decision:**
+  1. **6-State Deterministic Navigation Supervisor (`idr_pipeline/gnss_ins_fusion_engine.py`):** Implement formal FSM (`GNSS_AIDED`, `GNSS_DEGRADED`, `TRANSITION_TO_DR`, `DR_ONLY`, `TRANSITION_TO_GNSS`, `GNSS_REACQUIRED`).
+  2. **Causal Multi-Criteria Outage & Outlier Gating:** Combine validity flag monitoring, $\Delta t > 1.5\text{ s}$ timeout, and Chi-Square position ($\gamma_{\text{pos}} > 11.35$) / velocity ($\gamma_{\text{vel}} > 9.0$) Mahalanobis gating.
+  3. **Multi-Epoch Reacquisition Confirmation Dwell:** Enforce $N=4$ consecutive consistent valid fixes before restoring full GNSS authority, preventing violent filter snapback on multipath reflections.
+  4. **Forensic Resolution of Road Constraint Paradox (Sections 7-H, 7-I, 7-J):**
+     - Mathematical decomposition proved that ESKF road-normal updates collapse cross-track error to $< 1.5\text{ m}$, but road geometry provides zero information along the road tangent vector.
+     - Along-track speed error is unobservable from road geometry and integrates freely over time.
+     - In closed-loop mode, applying lateral updates injects subtle velocity cross-covariance perturbations into longitudinal velocity $\hat{\mathbf{v}}$, marginally increasing along-track error. Post-hoc geometric snapping avoids this by projecting the final filter state onto the road manifold without modifying strapdown states.
+- **Consequences:** Provides a production-grade, highly resilient supervisory core. Validated across 7 failure scenarios, 158 authentic outages, and 16 dedicated unit/integration tests (139/139 total regression suite passing).
+
+

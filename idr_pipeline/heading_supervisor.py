@@ -457,37 +457,30 @@ class HeadingSupervisor:
                 self.reacquisition_count = 0
                 rejection_reason = "ACCEPTED_AND_UPDATED"
             else:
-                # Innovation exceeded gate: check if recovering from outage
-                if self.outage_duration_s > 1.5:
-                    if (
-                        self.last_candidate_heading_rad is not None
-                        and abs(wrap_pi(selected.heading_rad - self.last_candidate_heading_rad)) < np.radians(10.0)
-                    ):
-                        self.reacquisition_count += 1
-                    else:
-                        self.reacquisition_count = 1
-                    self.last_candidate_heading_rad = selected.heading_rad
-
-                    if self.reacquisition_count >= 2:
-                        # 2 consecutive consistent fixes confirm legitimate post-outage turn
-                        dz = np.array([dyaw])
-                        eskf._apply_kalman_update(dz, H, R_cov)
-                        is_updated = True
-                        selected.is_accepted = True
-                        self.total_updates += 1
-                        self.last_update_time_s = time_s
-                        self.outage_duration_s = 0.0
-                        self.reacquisition_count = 0
-                        rejection_reason = "ACCEPTED_REACQUISITION_CONFIRMED"
-                    else:
-                        self.total_rejections += 1
-                        rejection_reason = f"REACQUISITION_PENDING_CONFIRMATION_COUNT_{self.reacquisition_count}"
-                        self.rejection_history.append(rejection_reason)
-                        selected.is_accepted = False
+                # Innovation exceeded gate: check if 2 consecutive consistent measurements confirm legitimate turn or recovery
+                if (
+                    self.last_candidate_heading_rad is not None
+                    and abs(wrap_pi(selected.heading_rad - self.last_candidate_heading_rad)) < np.radians(15.0)
+                ):
+                    self.reacquisition_count += 1
                 else:
+                    self.reacquisition_count = 1
+                self.last_candidate_heading_rad = selected.heading_rad
+
+                if self.reacquisition_count >= 2:
+                    # 2 consecutive consistent fixes confirm legitimate maneuver / post-outage turn
+                    dz = np.array([dyaw])
+                    eskf._apply_kalman_update(dz, H, R_cov)
+                    is_updated = True
+                    selected.is_accepted = True
+                    self.total_updates += 1
+                    self.last_update_time_s = time_s
+                    self.outage_duration_s = 0.0
                     self.reacquisition_count = 0
+                    rejection_reason = "ACCEPTED_REACQUISITION_CONFIRMED"
+                else:
                     self.total_rejections += 1
-                    rejection_reason = f"REJECTED_CHI2_GATE_EXCEEDED_GAMMA_{gamma:.2f}_GT_{self.chi2_gate:.2f}"
+                    rejection_reason = f"REJECTED_CHI2_GATE_EXCEEDED_GAMMA_{gamma:.2f}_GT_{self.chi2_gate:.2f}_PENDING_CONFIRMATION_{self.reacquisition_count}"
                     self.rejection_history.append(rejection_reason)
                     selected.is_accepted = False
 

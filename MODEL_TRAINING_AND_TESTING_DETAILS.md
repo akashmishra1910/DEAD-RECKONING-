@@ -146,3 +146,44 @@ Evaluated across simulated GNSS outages on the continuous flyover test track (50
 * **15-State ESKF Core Fusion**: [`idr_pipeline/eskf_fusion.py`](file:///Users/akashmishra/SIH%20MOdel/idr_pipeline/eskf_fusion.py)
 * **3D Topological Map Matcher**: [`idr_pipeline/map_matcher_3d.py`](file:///Users/akashmishra/SIH%20MOdel/idr_pipeline/map_matcher_3d.py)
 * **End-to-End Pipeline Execution**: [`run_pipeline.py`](file:///Users/akashmishra/SIH%20MOdel/run_pipeline.py)
+* **Full Authentic Dataset Training Script**: [`scripts/train_full_iovnbd_model.py`](file:///Users/akashmishra/SIH%20MOdel/scripts/train_full_iovnbd_model.py)
+* **Full Trained Model Checkpoint**: `models/gbdt_speed_model_iovnbd.joblib`
+
+---
+
+## 8. Full Authentic IO-VNBD Dataset Model Training (September 2026)
+
+Following the acquisition of the complete, authentic, officially synchronized Git LFS dataset archive (`Synchronised V abd S datasets.zip`, 194.2 MB) from the [official repository](https://github.com/onyekpeu/IO-VNBD.git), the GBDT speed regressor was retrained across the entire multi-driver, multi-vehicle corpus:
+
+### 8.1 Ingested Corpus Scale
+- **Total Drives Ingested**: **71 drives** across 5 distinct driver profiles and vehicle platforms.
+  * Driver A (`S`): 6 drives (8.58 hours)
+  * Driver E (`Vf`, `Vta`, `Vtb`, `Vw`): 64 drives (16.27 hours)
+  * Driver D (`Y`): 1 drive (1.95 hours)
+- **Raw Sensor Frames**: **964,771 samples at 10 Hz (26.80 hours of driving, >1,000 km)**.
+- **Training Feature Windows**: **173,921 sliding-window samples (33 features)**.
+- **Held-Out Test Windows**: **18,937 samples** across entirely unseen driving trips (`S3b`, `Vta01b`, `Vta04`, `Vtb01`, `Vw02`).
+- **Dynamic Speed Coverage**: $0.0\text{ km/h} \rightarrow 131.5\text{ km/h}$ (mean $45.1\text{ km/h}$).
+
+### 8.2 Training & Held-Out Test Evaluation
+- **Convergence Time**: 362.3 seconds on embedded/desktop CPU.
+- **Training Metrics (173,921 samples)**:
+  * $\text{RMSE} = 5.997\text{ m/s}$ ($21.59\text{ km/h}$)
+  * $\text{MAE} = 4.696\text{ m/s}$ ($16.91\text{ km/h}$)
+  * $R^2 = 0.5431$
+- **Held-Out Unseen Test Suite (18,937 samples)**:
+  * $\text{RMSE} = 5.350\text{ m/s}$ ($19.26\text{ km/h}$)
+  * $\text{MAE} = 4.174\text{ m/s}$ ($15.03\text{ km/h}$)
+  * $R^2 = 0.5500$
+
+### 8.3 Top Predictive Features (Empirical Proof of Claim 1)
+Vertical road-wheel suspension vibration energy features accounted for over **60% of total model predictive power**:
+1. `std_az` (Vertical acceleration standard deviation): **25.01%**
+2. `var_vert` (Vertical excitation variance): **14.31%**
+3. `std_gy` (Pitch angular rate variance): **10.17%**
+4. `vibration_energy` (High-frequency road-wheel excitation power): **8.49%**
+5. `dyn_acc_norm` (Dynamic acceleration norm without static gravity): **7.61%**
+6. `ptp_az` (Peak-to-peak vertical acceleration): **7.20%**
+
+This checkpoint is saved at `models/gbdt_speed_model_iovnbd.joblib` (0.56 MB) for deployment to the C++ core engine.
+

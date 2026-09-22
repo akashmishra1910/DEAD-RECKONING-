@@ -207,11 +207,19 @@ class ErrorStateKalmanFilter:
         self.P = 0.5 * (self.P + self.P.T)  # Minimal numerical symmetrization
 
     def update_gnss(self, gnss_pos: np.ndarray, r_gnss: float = 2.5):
-        """Measurement update using GNSS absolute position."""
+        """Measurement update using GNSS absolute position in navigation frame (ENU)."""
         dz = gnss_pos - self.p
         H = np.zeros((3, 15))
         H[0:3, 0:3] = np.eye(3)
         R_cov = np.eye(3) * (r_gnss**2)
+        self._apply_kalman_update(dz, H, R_cov)
+
+    def update_gnss_velocity(self, gnss_vel: np.ndarray, r_vel: float = 0.2):
+        """Measurement update using GNSS velocity in navigation frame (ENU)."""
+        dz = gnss_vel - self.v
+        H = np.zeros((3, 15))
+        H[0:3, 3:6] = np.eye(3)
+        R_cov = np.eye(3) * (r_vel**2)
         self._apply_kalman_update(dz, H, R_cov)
 
     def update_ai_velocity(self, v_ai: float, r_ai: float = 0.35):
@@ -224,7 +232,7 @@ class ErrorStateKalmanFilter:
 
         H = np.zeros((1, 15))
         H[0, 3:6] = self.R[:, 0]  # First column of R is forward body axis in nav frame
-        H[0, 6:9] = -self.R[:, 0] @ skew_symmetric(self.v)
+        H[0, 6:9] = self.R[:, 0] @ skew_symmetric(self.v)
 
         R_cov = np.array([[r_ai**2]])
         self._apply_kalman_update(dz, H, R_cov)
@@ -239,10 +247,10 @@ class ErrorStateKalmanFilter:
 
         H = np.zeros((2, 15))
         H[0, 3:6] = self.R[:, 1]  # Lateral axis
-        H[0, 6:9] = -self.R[:, 1] @ skew_symmetric(self.v)
+        H[0, 6:9] = self.R[:, 1] @ skew_symmetric(self.v)
 
         H[1, 3:6] = self.R[:, 2]  # Vertical axis
-        H[1, 6:9] = -self.R[:, 2] @ skew_symmetric(self.v)
+        H[1, 6:9] = self.R[:, 2] @ skew_symmetric(self.v)
 
         R_cov = np.diag([r_lat**2, r_vert**2])
         self._apply_kalman_update(dz, H, R_cov)

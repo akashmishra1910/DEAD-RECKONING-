@@ -1,10 +1,10 @@
 # Project Master Tracker
 ## ISRO / SIH PS 26168: AI-ML Based Intelligent Dead Reckoning System
 
-**Current Phase:** PHASE 0 — REPOSITORY FORENSICS & BASELINE FREEZE  
-**Overall Status:** IN PROGRESS (Phase 0 Baseline Complete; Ready for Phase 1 Navigation Core Validation)  
+**Current Phase:** PHASE 1 — NAVIGATION CORE VALIDATION (COMPLETED / READY FOR PHASE 2)  
+**Overall Status:** IN PROGRESS (Phase 1 Validation Passed; Ready for Phase 2 Alignment Hardening)  
 **Last Updated:** 2026-09-23  
-**Active Git Commit:** `f58b9210fd51e80291df5d96e98fcbe8fdb7be8d`  
+**Active Git Commit:** `phase-01-navigation-core`  
 **Execution Environment:** Windows (x86_64) | Python 3.11.0 | NumPy 2.4.6 | Scikit-Learn 1.9.1 | SciPy 1.17.1 | Joblib 1.4.2 | Java 25.0.2 | MinGW GCC 6.3.0  
 
 ---
@@ -13,8 +13,8 @@
 
 | Phase | Phase Name | Status | Gate Status | Blockers / Critical Notes |
 |:---:|---|:---:|:---:|---|
-| **Phase 0** | Repository Forensics & Baseline Freeze | **IN PROGRESS** | **READY TO PASS** | Environment audited, unit/integration tests verified, 8 master docs established. |
-| **Phase 1** | Navigation Core Validation | NOT STARTED | PENDING | Mathematical invariants (Rodrigues SO(3), ENU/FLU, error injection, P symmetry). |
+| **Phase 0** | Repository Forensics & Baseline Freeze | **COMPLETED** | **PASSED** | Environment audited, unit/integration tests verified, 8 master docs established. |
+| **Phase 1** | Navigation Core Validation | **COMPLETED** | **PASSED** | Mathematical invariants verified (SO(3), ENU/FLU, Rodrigues, Jacobians, P symmetry; 33/33 tests passed). |
 | **Phase 2** | Alignment & Initialization Hardening | NOT STARTED | PENDING | Multi-mode alignment (stationary, slow start, surge, confidence metrics). |
 | **Phase 3** | Attitude / Heading Observability | NOT STARTED | PENDING | Magnetic heading + disturbance rejection, GNSS course, road heading. |
 | **Phase 4** | AI Velocity Model Validation | NOT STARTED | PENDING | Top45 Huber GBDT verification, feature scaling, 0–60 km/h metric interpretation. |
@@ -55,23 +55,21 @@
 - *None.*
 
 ### Tests Passed / Failed
-- `test_suite.py`: **6 Passed / 0 Failed** (Run duration: 9.99s).
-- `tests/test_eskf_fusion.py`: **14 Passed / 0 Failed** (Run duration: 0.355s).
-- Overall baseline: **20 Passed / 0 Failed**.
+- `test_suite.py`: **6 Passed / 0 Failed** (Edge engine throughput: 1064.3 Hz).
+- `tests/test_eskf_fusion.py`: **14 Passed / 0 Failed**.
+- `tests/test_phase1_navigation_core.py`: **19 Passed / 0 Failed**.
+- Overall regression test suite: **39 Passed / 0 Failed** (100% pass rate).
 
-### Files Modified in Phase 0
-- `idr_pipeline/ai_velocity_model.py` (added `Optional` to typing imports).
-- `docs/PROJECT_MASTER_TRACKER.md` (NEW).
-- `docs/REQUIREMENTS_TRACEABILITY_MATRIX.md` (NEW).
-- `docs/ARCHITECTURE.md` (NEW).
-- `docs/VALIDATION_POLICY.md` (NEW).
-- `docs/CHANGELOG.md` (NEW).
-- `docs/KNOWN_FAILURES.md` (NEW).
-- `docs/DECISIONS.md` (NEW).
-- `docs/PS_COMPLIANCE_MATRIX.md` (NEW).
+### Files Modified in Phase 1
+- `idr_pipeline/eskf_fusion.py` (added `update_gnss_velocity`, corrected attitude Jacobian signs in `update_ai_velocity` and `update_nhc`).
+- `tests/test_phase1_navigation_core.py` (NEW: 19 mathematical & physical invariant unit tests).
+- `docs/PHASE_1_NAVIGATION_CORE_REPORT.md` (NEW).
+- `docs/PROJECT_MASTER_TRACKER.md` (Updated).
+- `docs/CHANGELOG.md` (Updated).
+- `docs/REQUIREMENTS_TRACEABILITY_MATRIX.md` (Updated).
+- `docs/PS_COMPLIANCE_MATRIX.md` (Updated).
 
 ---
 
 ## 3. Next Actions
-1. **Pass Phase 0 Gate**: Sign off baseline documentation and test records.
-2. **Launch Phase 1 (Navigation Core Validation)**: Conduct complete mathematical audit of error-state kinematics, Rodrigues propagation, covariance updates, and observability in `idr_pipeline/eskf_fusion.py`.
+1. **Standby for Phase 2 Authorization**: Implement Multi-Mode In-Vehicle Alignment Engine (handling stationary starts, delayed PCA surge, and `AlignmentQuality` metrics).

@@ -8,6 +8,23 @@ and this project adheres to strict phase-gate change control.
 
 ---
 
+## [Phase 1] - Navigation Core Validation — 2026-09-23
+
+### Added
+- Created comprehensive Phase 1 mathematical validation suite (`tests/test_phase1_navigation_core.py`) with 19 new invariant and dynamic tests.
+- Added `update_gnss_velocity` method to `ErrorStateKalmanFilter` in `idr_pipeline/eskf_fusion.py` to enable 6-DOF velocity aiding.
+- Published `docs/PHASE_1_NAVIGATION_CORE_REPORT.md`.
+
+### Fixed
+- Corrected attitude error Jacobian sign in `update_ai_velocity` and `update_nhc` in `idr_pipeline/eskf_fusion.py` (`+self.R[:, i] @ skew_symmetric(self.v)`). Verified exact agreement against numerical finite difference perturbations ($<10^{-5}$).
+
+### Verified
+- 33/33 unit tests passed across `test_phase1_navigation_core.py` and `test_eskf_fusion.py`.
+- 6/6 integration tests passed in `test_suite.py` (Edge throughput: 1064.3 Hz).
+- All 20 mathematical and physical invariants verified (SO(3) orthonormality, det=+1.0, ENU/FLU frames, Rodrigues DCM formula, Joseph-form covariance symmetry & positive-definiteness).
+
+---
+
 ## [Phase 0] - Baseline Freeze & Repository Forensics — 2026-09-23
 
 ### Added

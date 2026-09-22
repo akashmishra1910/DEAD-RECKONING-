@@ -1,0 +1,4 @@
+stage,final_confidence,gating_status
+On-Road Normal,HIGH,CONSTRAINED
+Off-Road Divergence (+45m),INVALID,REJECTED_UNCONSTRAINED
+Re-entry Recovery,HIGH,CONSTRAINED

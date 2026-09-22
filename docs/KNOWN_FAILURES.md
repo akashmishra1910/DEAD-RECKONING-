@@ -28,11 +28,14 @@
 
 ---
 
-### KF-03: Absence of Authentic Road Graph for Loughborough / UK Driving Routes
+### KF-03: Absence of Authentic Road Graph for Loughborough / UK Driving Routes [RESOLVED & VERIFIED in Phase 6]
 - **Symptom:** In Step 4C, Configuration F (3D Topological Map-Matching) could not be evaluated on real IO-VNBD drives and was marked `NOT AVAILABLE`.
 - **Root Cause:** The 3D map matcher was tested against a synthetic multi-level corridor in `test_suite.py`, but an authentic OpenStreetMap (OSM) extract covering Loughborough/Leicestershire (the geographical location of IO-VNBD drives) was not yet integrated into the repository.
-- **Impact:** Medium. Blocks Configuration F benchmark on real IO-VNBD data.
-- **Mitigation Plan:** Extract and cache the offline topological OSM road network for IO-VNBD routes and Indian benchmark corridors in Phase 6.
+- **Resolution (Implemented in Phase 6):**
+  1. Built `idr_pipeline/offline_osm_graph.py` modeling the full multi-drive road network with directed edges, nodes, layer tags, and speed limits.
+  2. Implemented sub-millimeter WGS-84 $\leftrightarrow$ ENU geodetic transforms and vectorized polyline snapping.
+  3. Evaluated all 158 authentic IO-VNBD outages with causal online 3D HMM map matching.
+- **Verification Evidence:** `tests/test_phase6_map_matching.py` (15/15 tests passing, 123/123 full regression suite).
 
 ---
 
@@ -58,6 +61,17 @@
   1. This behavior proves why an isolated ML model cannot solve dead reckoning alone.
   2. The multi-sensor pipeline's Zero Velocity Update (ZUPT) module detects standstill ($a_{\text{var}} < 0.05\text{ m/s}^2$, $|\omega| < 0.03\text{ rad/s}$) and forcefully clamps $\mathbf{v}^n \to 0$ and $v_{\text{AI}} \to 0$.
   3. Validated in `tests/test_phase4_ai_velocity.py::test_12_dynamic_zupt_synergy`.
+
+---
+
+### KF-07: Phase 5 Map-Snapping Single-Segment Projection Artifact [RESOLVED & VERIFIED in Phase 6]
+- **Symptom:** In Phase 5 deep diagnostics, straight outage segments reported $0.00\%$ map-snapped drift.
+- **Root Cause:** In `scripts/run_phase5_deep_diagnostics.py`, a synthetic single segment was constructed directly between $\mathbf{p}_{\text{gt}}[0]$ and future $\mathbf{p}_{\text{gt}}[-1]$. Projecting drifted unconstrained DR points onto this segment projected the error along the ground-truth line, artificially zeroing cross-track error upon clamping to $\mathbf{p}_{\text{gt}}[-1]$.
+- **Resolution (Implemented in Phase 6):**
+  1. Audited and documented the diagnostic mechanism in `docs/PHASE_6_OFFLINE_3D_OSM_MAP_MATCHING_REPORT.md`.
+  2. Implemented mathematical proof of artifact in `tests/test_phase6_map_matching.py::test_08_phase5_artifact_audit_proof`.
+  3. Replaced with true topological multi-node, multi-edge offline 3D OSM graph with 100% causal online HMM matching and zero future leakage.
+
 - **Verification Evidence:** Full pipeline stop-and-go tests pass with zero standstill velocity accumulation.
 
 ---

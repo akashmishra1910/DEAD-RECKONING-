@@ -1,0 +1,6 @@
+Duration,Config 1 (Raw DR) Median Drift %,Config 1 (Raw DR) P90 Drift %,Config 1 (Raw DR) Pass Rate %,Config 2 (HdgSup) Median Drift %,Config 2 (HdgSup) P90 Drift %,Config 2 (HdgSup) Pass Rate %,Config 3 (Map 2D) Median Drift %,Config 3 (Map 2D) P90 Drift %,Config 3 (Map 2D) Pass Rate %,Config 4 (Map 3D Post) Median Drift %,Config 4 (Map 3D Post) P90 Drift %,Config 4 (Map 3D Post) Pass Rate %,Config 5 (Closed-Loop 3D DR) Median Drift %,Config 5 (Closed-Loop 3D DR) P90 Drift %,Config 5 (Closed-Loop 3D DR) Pass Rate %
+10 s (N=81),46.2,170.09,4.9,55.46,163.54,4.9,28.52,153.86,19.8,28.96,131.41,18.5,55.3,163.13,4.9
+30 s (N=39),92.6,165.7,0.0,101.34,173.74,0.0,67.78,135.58,10.3,67.61,135.58,10.3,101.1,173.8,0.0
+60 s (N=25),110.83,194.37,0.0,108.21,194.61,0.0,91.43,193.22,0.0,91.43,193.22,0.0,108.33,193.98,0.0
+120 s (N=13),97.91,132.44,0.0,84.48,125.92,0.0,65.28,91.75,7.7,65.28,91.75,7.7,86.37,125.43,0.0
+ALL 158 Outages,78.41,180.07,2.5,70.0,176.2,2.5,42.53,149.65,13.3,46.58,148.91,12.7,76.78,175.12,2.5

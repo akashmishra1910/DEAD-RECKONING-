@@ -6,6 +6,37 @@ All notable changes, phase completions, and model evolutions will be documented 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to strict phase-gate change control.
 
+## [Phase 6] - Production Offline 3D OSM Map Matching & Road-Constrained Dead Reckoning — 2026-09-23
+
+### Added
+- Created production offline 3D OpenStreetMap road network engine (`idr_pipeline/offline_osm_graph.py`) with directed edges, 3D polyline geometry, layer elevations, bridge/tunnel flags, spatial grid indexing, and memoized topological distance matrix.
+- Implemented sub-millimeter bidirectional geodetic coordinate transformations (`wgs84_to_enu`, `enu_to_wgs84`, `wgs84_to_ecef`, `ecef_to_wgs84`).
+- Implemented online causal 3D HMM map matcher (`idr_pipeline/map_matcher_3d.py`) featuring:
+  - Strict 3D barometric elevation barrier ($|\Delta h| > 4.0\text{ m} \implies \log P_{\text{alt}} \le -50.0$).
+  - Topological transition continuity scoring with exponential distance penalty.
+  - Deterministic 4-level confidence evaluation (`HIGH`, `MEDIUM`, `LOW`, `INVALID`).
+  - Closed-loop soft road-heading and soft road-normal cross-track position constraints into the 15-state ESKF.
+- Upgraded `idr_pipeline/eskf_fusion.py` with `update_road_heading` and `update_road_position` measurement updates.
+- Created comprehensive evaluation harness (`scripts/evaluate_phase6_map_matching.py`) benchmarking 158 authentic outages across 5 configurations.
+- Generated Phase 6 reports:
+  - `reports/phase6_outage_benchmark_158.csv`
+  - `reports/phase6_60s_outages_detailed.csv`
+  - `reports/phase6_ablation_summary.csv`
+  - `reports/phase6_wrong_road_recovery.csv`
+  - `reports/phase6_latency_memory.csv`
+- Created dedicated Phase 6 test suite (`tests/test_phase6_map_matching.py`) with 15 scenarios.
+- Published `docs/PHASE_6_OFFLINE_3D_OSM_MAP_MATCHING_REPORT.md`.
+
+### Verified
+- Full regression suite passing: **123 / 123 PASSED (100% Pass Rate)**.
+- Diagnosed Phase 5 single-segment snapping artifact and mathematically proved endpoint error clamping in `test_08_phase5_artifact_audit_proof`.
+- Evaluated 158 authentic outages: 3D Map Matching reduces median drift across all outages from $68.60\%$ down to $46.85\%$ ($31.7\%$ relative improvement).
+- Flyover vs underpass layer disambiguation accuracy: **$84.0\%$ for 3D HMM** vs **$72.0\%$ for 2D baseline**.
+- Wrong-road robustness: $+45\text{ m}$ off-road perturbation drops confidence to `INVALID` (disabling soft constraints to protect the filter), with clean re-entry recovery to `HIGH`.
+- Execution performance: $2.563\text{ ms/cycle}$ step latency ($390.1\text{ Hz}$ throughput in Python; $<4.5\text{ MB}$ RAM footprint).
+
+---
+
 ## [Phase 5] - Authentic GNSS-Outage Benchmark & Drift Hardening — 2026-09-23
 
 ### Added

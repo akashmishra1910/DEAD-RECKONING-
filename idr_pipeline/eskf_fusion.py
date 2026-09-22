@@ -20,6 +20,7 @@ States:
 Author: Autonomous Navigation Research Team
 """
 
+import math
 import numpy as np
 from typing import Tuple, Optional
 
@@ -298,6 +299,66 @@ class ErrorStateKalmanFilter:
         H[0, 8] = -1.0
         R_cov = np.array([[r_yaw**2]])
         return self._apply_kalman_update(dz, H, R_cov, chi2_gate=chi2_gate)
+
+    def update_road_heading(
+        self,
+        road_azimuth: float,
+        r_road_yaw: float = 0.087,
+        chi2_gate: Optional[float] = 9.0
+    ) -> Tuple[bool, float]:
+        """
+        Soft Road Direction Constraint Update (Phase 6).
+        Constrains yaw drift by aligning with the topological road centerline azimuth.
+
+        Args:
+            road_azimuth: Road direction in radians clockwise from North [0, 2*pi)
+            r_road_yaw: 1-sigma road heading measurement uncertainty (default: 0.087 rad ~ 5.0 deg)
+            chi2_gate: Chi-square innovation gate threshold
+        """
+        dyaw = float(np.arctan2(np.sin(road_azimuth - self.yaw), np.cos(road_azimuth - self.yaw)))
+        # Reject if heading discrepancy > 60 deg (wrong way or turn)
+        if abs(dyaw) > math.radians(60.0):
+            return False, 999.0
+
+        dz = np.array([dyaw])
+        H = np.zeros((1, 15))
+        H[0, 8] = -1.0
+        R_cov = np.array([[r_road_yaw**2]])
+        return self._apply_kalman_update(dz, H, R_cov, chi2_gate=chi2_gate)
+
+    def update_road_position(
+        self,
+        road_snapped_pos: np.ndarray,
+        road_tangent_2d: np.ndarray,
+        r_cross: float = 1.75,
+        chi2_gate: Optional[float] = 16.0
+    ) -> Tuple[bool, float]:
+        """
+        Soft Road-Normal Cross-Track Position Constraint Update (Phase 6).
+        Constrains lateral cross-track drift along the normal to the road polyline.
+
+        Args:
+            road_snapped_pos: Snapped position [East, North, Up] on road centerline
+            road_tangent_2d: Unit 2D tangent vector [t_E, t_N]
+            r_cross: 1-sigma lateral road uncertainty (e.g. half lane width = 1.75m)
+            chi2_gate: Chi-square innovation gate threshold
+        """
+        t_E, t_N = float(road_tangent_2d[0]), float(road_tangent_2d[1])
+        # Unit normal vector (perpendicular to road direction)
+        n_E, n_N = -t_N, t_E
+
+        # Cross-track lateral innovation: projection of position error along normal
+        err_pos = road_snapped_pos[0:2] - self.p[0:2]
+        dz_cross = float(n_E * err_pos[0] + n_N * err_pos[1])
+        dz = np.array([dz_cross])
+
+        H = np.zeros((1, 15))
+        H[0, 0] = n_E
+        H[0, 1] = n_N
+
+        R_cov = np.array([[r_cross**2]])
+        return self._apply_kalman_update(dz, H, R_cov, chi2_gate=chi2_gate)
+
 
     def _apply_kalman_update(
         self,

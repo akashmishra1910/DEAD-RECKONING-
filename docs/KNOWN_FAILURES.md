@@ -16,13 +16,14 @@
 
 ---
 
-### KF-02: Mounting Alignment Failure during Initial Stillness
-- **Symptom:** On drive `Vtb01`, where the vehicle remained stationary ($v < 0.05\text{ m/s}$) for the first 20 seconds, the longitudinal PCA surge algorithm produced an arbitrary forward axis, leading to massive downstream divergence ($>900\%$ drift).
-- **Root Cause:** Principal Component Analysis (PCA) requires dynamic linear acceleration variance along the vehicle driving direction ($a_{\text{long}} > 0.4\text{ m/s}^2$). When the vehicle is stopped, horizontal accelerometer measurements contain only sensor noise, making the longitudinal axis unobservable.
-- **Impact:** High for stop-start drive initializations.
-- **Mitigation Plan:**
-  1. Implement **Phase 2 (Alignment & Initialization Hardening)**: Multi-mode alignment engine with explicit `AlignmentQuality` confidence metrics (`gravity_confidence`, `forward_axis_confidence`, `heading_confidence`).
-  2. The system must defer full mounting alignment until an actual acceleration surge or GNSS velocity vector is observed, rather than assuming unverified axes.
+### KF-02: Mounting Alignment Failure during Initial Stillness [RESOLVED & VERIFIED in Phase 2]
+- **Symptom:** On drive `Vtb01`, where the vehicle remained stationary ($v < 0.05\text{ m/s}$) for the first 20 seconds, the legacy longitudinal PCA surge algorithm produced an arbitrary forward axis from sensor noise, leading to massive downstream divergence ($>900\%$ drift).
+- **Root Cause:** Principal Component Analysis (PCA) requires dynamic linear acceleration variance along the vehicle driving direction ($a_{\text{long}} > 0.4\text{ m/s}^2$). When the vehicle is stopped, horizontal accelerometer measurements contain only isotropic sensor noise, making the longitudinal axis unobservable.
+- **Resolution (Implemented in Phase 2):**
+  1. Implemented multi-mode alignment engine with explicit `AlignmentQuality` confidence metrics (`gravity_confidence`, `forward_axis_confidence`, `heading_confidence`).
+  2. Enforced strict dual-threshold surge gating: forward alignment requires both horizontal eigenvalue separation $\kappa = \lambda_{\text{long}} / \lambda_{\text{trans}} \ge 2.0$ and peak surge $a_{\text{surge}} \ge 0.35\text{ m/s}^2$.
+  3. When excitation is unobservable, the engine remains in `STATIONARY_LEVELED` mode, leveling roll and pitch while safely declaring `forward_axis_confidence = 0.0` and `alignment_valid = False` to prevent unassisted drift.
+- **Verification Evidence:** `tests/test_phase2_alignment_initialization.py::test_06` and `test_07` strictly pass.
 
 ---
 

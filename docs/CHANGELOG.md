@@ -8,6 +8,25 @@ and this project adheres to strict phase-gate change control.
 
 ---
 
+## [Phase 2] - Alignment & Initialization Hardening — 2026-09-23
+
+### Added
+- Upgraded `InVehicleAlignmentEngine` in `idr_pipeline/alignment_engine.py` with multi-mode alignment (`AlignmentMode`), stationary start protection, initial gyro bias estimation, and machine-readable `AlignmentQuality` diagnostics.
+- Implemented robust horizontal covariance eigenvalue ratio evaluation ($\kappa = \lambda_{\text{long}} / \lambda_{\text{trans}}$) and peak surge amplitude gating ($a_{\text{surge}} \ge 0.35\text{ m/s}^2$) resolving Known Failure KF-02.
+- Created comprehensive Phase 2 validation test suite (`tests/test_phase2_alignment_initialization.py`) with 20 dedicated unit and edge-case tests.
+- Published `docs/PHASE_2_ALIGNMENT_INITIALIZATION_REPORT.md`.
+
+### Fixed
+- Fixed 3D horizontal eigenvalue extraction bug in `idr_pipeline/alignment_engine.py` by comparing the two active horizontal eigenvalues (`eigvals[-1]` vs `eigvals[-2]`) rather than vertical axis eigenvalue $\lambda_0 \approx 0$.
+- Fixed cradle slip detection responsiveness by performing direct gravity vector checks during stationary periods ($<0.1\text{ s}$ bump response).
+
+### Verified
+- 20/20 tests passed in `test_phase2_alignment_initialization.py`.
+- 59/59 tests passed across full regression suite.
+- Reconciled Phase 1 documentation: 19 test methods validate all 20 enumerated mathematical invariants.
+
+---
+
 ## [Phase 1] - Navigation Core Validation — 2026-09-23
 
 ### Added

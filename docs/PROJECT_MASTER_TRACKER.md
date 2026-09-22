@@ -1,10 +1,10 @@
 # Project Master Tracker
 ## ISRO / SIH PS 26168: AI-ML Based Intelligent Dead Reckoning System
 
-**Current Phase:** PHASE 1 — NAVIGATION CORE VALIDATION (COMPLETED / READY FOR PHASE 2)  
-**Overall Status:** IN PROGRESS (Phase 1 Validation Passed; Ready for Phase 2 Alignment Hardening)  
+**Current Phase:** PHASE 2 — ALIGNMENT & INITIALIZATION HARDENING (COMPLETED / READY FOR PHASE 3)  
+**Overall Status:** IN PROGRESS (Phase 2 Hardening Passed; Ready for Phase 3 Heading Observability)  
 **Last Updated:** 2026-09-23  
-**Active Git Commit:** `phase-01-navigation-core`  
+**Active Git Commit:** `phase-02-alignment`  
 **Execution Environment:** Windows (x86_64) | Python 3.11.0 | NumPy 2.4.6 | Scikit-Learn 1.9.1 | SciPy 1.17.1 | Joblib 1.4.2 | Java 25.0.2 | MinGW GCC 6.3.0  
 
 ---
@@ -15,7 +15,7 @@
 |:---:|---|:---:|:---:|---|
 | **Phase 0** | Repository Forensics & Baseline Freeze | **COMPLETED** | **PASSED** | Environment audited, unit/integration tests verified, 8 master docs established. |
 | **Phase 1** | Navigation Core Validation | **COMPLETED** | **PASSED** | Mathematical invariants verified (SO(3), ENU/FLU, Rodrigues, Jacobians, P symmetry; 33/33 tests passed). |
-| **Phase 2** | Alignment & Initialization Hardening | NOT STARTED | PENDING | Multi-mode alignment (stationary, slow start, surge, confidence metrics). |
+| **Phase 2** | Alignment & Initialization Hardening | **COMPLETED** | **PASSED** | Multi-mode alignment engine, stationary start protection (KF-02 resolved), AlignmentQuality diagnostics, 20/20 tests passed. |
 | **Phase 3** | Attitude / Heading Observability | NOT STARTED | PENDING | Magnetic heading + disturbance rejection, GNSS course, road heading. |
 | **Phase 4** | AI Velocity Model Validation | NOT STARTED | PENDING | Top45 Huber GBDT verification, feature scaling, 0–60 km/h metric interpretation. |
 | **Phase 5** | AI-Based Adaptive Measurement Noise | NOT STARTED | PENDING | Learned $R_v(t)$ conditioned on vibration energy, jerk, and turn rate. |
@@ -58,18 +58,21 @@
 - `test_suite.py`: **6 Passed / 0 Failed** (Edge engine throughput: 1064.3 Hz).
 - `tests/test_eskf_fusion.py`: **14 Passed / 0 Failed**.
 - `tests/test_phase1_navigation_core.py`: **19 Passed / 0 Failed**.
-- Overall regression test suite: **39 Passed / 0 Failed** (100% pass rate).
+- `tests/test_phase2_alignment_initialization.py`: **20 Passed / 0 Failed**.
+- Overall regression test suite: **59 Passed / 0 Failed** (100% pass rate).
 
-### Files Modified in Phase 1
-- `idr_pipeline/eskf_fusion.py` (added `update_gnss_velocity`, corrected attitude Jacobian signs in `update_ai_velocity` and `update_nhc`).
-- `tests/test_phase1_navigation_core.py` (NEW: 19 mathematical & physical invariant unit tests).
-- `docs/PHASE_1_NAVIGATION_CORE_REPORT.md` (NEW).
+### Files Modified in Phase 2
+- `idr_pipeline/alignment_engine.py` (Multi-mode state machine, stationary start protection, gyro bias estimation, AlignmentQuality diagnostics, SO(3) SVD re-orthogonalization).
+- `tests/test_phase2_alignment_initialization.py` (NEW: 20 dedicated unit tests).
+- `docs/PHASE_2_ALIGNMENT_INITIALIZATION_REPORT.md` (NEW).
 - `docs/PROJECT_MASTER_TRACKER.md` (Updated).
 - `docs/CHANGELOG.md` (Updated).
+- `docs/KNOWN_FAILURES.md` (Updated: KF-02 resolved).
+- `docs/DECISIONS.md` (Updated: ADR-008 recorded).
 - `docs/REQUIREMENTS_TRACEABILITY_MATRIX.md` (Updated).
 - `docs/PS_COMPLIANCE_MATRIX.md` (Updated).
 
 ---
 
 ## 3. Next Actions
-1. **Standby for Phase 2 Authorization**: Implement Multi-Mode In-Vehicle Alignment Engine (handling stationary starts, delayed PCA surge, and `AlignmentQuality` metrics).
+1. **Standby for Phase 3 Authorization**: Implement Heading Observability & Heading Aiding (`HeadingMeasurementManager`, Magnetometer anomaly gating, GNSS Course-Over-Ground aiding).

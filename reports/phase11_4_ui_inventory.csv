@@ -1,0 +1,16 @@
+component,package_class,type,role,state_contract,test_coverage
+ThemeAndColors,org.isro.idr.theme.IdrColors / IdrNavigationTheme,Compose Theme,Dark-first aerospace/automotive visual theme,MaterialTheme / ColorScheme,test_phase11_4_ui_layer
+NavigationUiState,org.isro.idr.ui.state.NavigationUiState,Data Model,Immutable state snapshot for Jetpack Compose,StateFlow<NavigationUiState>,NavigationViewModelTest / test_phase11_4_ui_layer
+NavigationViewModel,org.isro.idr.ui.viewmodel.NavigationViewModel,ViewModel,Decoupled ~10 Hz UI throttler & trajectory accumulator,Consumes NavigationTelemetry / GnssSample,NavigationViewModelTest / test_phase11_4_ui_layer
+TopStatusBanner,org.isro.idr.ui.components.TopStatusBanner,Composable,Live Navigation Mode FSM & Outage Duration Timer,NavigationMode & outageSec,test_phase11_4_ui_layer
+TelemetryPanel,org.isro.idr.ui.components.TelemetryPanel,Composable,Speed (km/h) Azimuth (deg) Attitude & Local ENU,NavigationTelemetry & GeoCoordinates anchor,test_phase11_4_ui_layer
+NavicStatusBadge,org.isro.idr.ui.components.NavicStatusBadge,Composable,ISRO / NavIC Constellation Monitor (IRNSS sats),navicInView & navicUsed,test_phase11_4_ui_layer
+SystemHealthBar,org.isro.idr.ui.components.SystemHealthBar,Composable,Subsystem status chips (IMU GNSS NAV MAP NAVIC JNI),SystemHealthState,test_phase11_4_ui_layer
+TrajectoryToggleControls,org.isro.idr.ui.components.TrajectoryToggleControls,Composable,Dual layer toggle (BOTH / IDR / GNSS / OFF) & clear,TrajectoryDisplayMode,NavigationViewModelTest / test_phase11_4_ui_layer
+TacticalGridMapCanvas,org.isro.idr.ui.map.TacticalGridMapCanvas,Composable,Offline local ENU metric canvas & live vehicle marker,Local ENU coords & azimuth heading,TacticalMapProjectionTest / test_phase11_4_ui_layer
+MapContainerView,org.isro.idr.ui.map.MapLibreView,Composable,Modular map container (MapLibre offline / Tactical fallback),MapDataState,test_phase11_4_ui_layer
+MainNavigationScreen,org.isro.idr.ui.screens.MainNavigationScreen,Composable,Responsive landscape / portrait navigation dashboard,NavigationUiState,test_phase11_4_ui_layer
+DiagnosticsScreen,org.isro.idr.ui.screens.DiagnosticsScreen,Composable,Engineering rates jitter queue occupancy & native status,IngestionHealthSnapshot,test_phase11_4_ui_layer
+MapDataScreen,org.isro.idr.ui.screens.MapDataScreen,Composable,Offline OSM package status & roadmap placeholder,MapDataState,test_phase11_4_ui_layer
+SettingsScreen,org.isro.idr.ui.screens.SettingsScreen,Composable,Hardware / geodetic anchor / vehicle model configuration,NavigationUiState,test_phase11_4_ui_layer
+MainActivity,org.isro.idr.MainActivity,Activity,Lifecycle orchestration & permissions management,Android Lifecycle,Manual & Instrumented

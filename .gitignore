@@ -21,3 +21,13 @@ synchronised_iovnbd_data/
 IO-VNBD-ACTUAL/
 *.zip
 
+# Build directories and compiled artifacts
+build/
+*/build/
+*.o
+*.a
+*.dylib
+*.so
+*.dylib.*
+
+

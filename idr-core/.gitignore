@@ -1,0 +1,7 @@
+build/
+*.o
+*.a
+*.dylib
+*.so
+test_math_so3
+test_math_golden_parity

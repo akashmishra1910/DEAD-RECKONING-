@@ -137,16 +137,40 @@ class TestPhase11_5OsmPipeline(unittest.TestCase):
         self.assertEqual(oneway, 1)
         self.assertTrue(flags & 0x04)
 
-        # bridge & layer
+        # bridge without layer tag -> default layer +1
+        ok, _, _, layer, flags, _ = filter_osm_way({"highway": "primary", "bridge": "yes"})
+        self.assertTrue(ok)
+        self.assertEqual(layer, 1)
+        self.assertTrue(flags & 0x01)
+
+        # bridge with explicit layer=2 -> layer 2 (explicit layer takes precedence)
         ok, _, _, layer, flags, _ = filter_osm_way({"highway": "primary", "bridge": "yes", "layer": "2"})
         self.assertTrue(ok)
         self.assertEqual(layer, 2)
         self.assertTrue(flags & 0x01)
 
-        # tunnel
+        # bridge with explicit layer=0 -> layer 0 (explicit layer takes precedence over bridge default)
+        ok, _, _, layer, flags, _ = filter_osm_way({"highway": "primary", "bridge": "yes", "layer": "0"})
+        self.assertTrue(ok)
+        self.assertEqual(layer, 0)
+        self.assertTrue(flags & 0x01)
+
+        # tunnel without layer tag -> default layer -1
         ok, _, _, layer, flags, _ = filter_osm_way({"highway": "primary", "tunnel": "yes"})
         self.assertTrue(ok)
         self.assertEqual(layer, -1)
+        self.assertTrue(flags & 0x02)
+
+        # tunnel with explicit layer=-3 -> layer -3 (explicit layer takes precedence)
+        ok, _, _, layer, flags, _ = filter_osm_way({"highway": "primary", "tunnel": "yes", "layer": "-3"})
+        self.assertTrue(ok)
+        self.assertEqual(layer, -3)
+        self.assertTrue(flags & 0x02)
+
+        # tunnel with explicit layer=0 -> layer 0 (explicit layer takes precedence over tunnel default)
+        ok, _, _, layer, flags, _ = filter_osm_way({"highway": "primary", "tunnel": "yes", "layer": "0"})
+        self.assertTrue(ok)
+        self.assertEqual(layer, 0)
         self.assertTrue(flags & 0x02)
 
     def test_03_graph_topology_and_junction_splitting(self):
@@ -278,6 +302,47 @@ class TestPhase11_5OsmPipeline(unittest.TestCase):
         self.assertAlmostEqual(proj_lat, 25.0, places=5)
         self.assertAlmostEqual(proj_lon, 81.005, places=5)
         self.assertAlmostEqual(heading, 90.0, delta=0.5)
+
+    def test_09_multi_fixture_bitwise_determinism(self):
+        """Verify determinism across multiple distinct map fixtures."""
+        fixtures = [
+            os.path.join("data", "maps", "sample_prayagraj_corridor.osm"),
+            os.path.join("data", "maps", "dense_metro_sim.osm"),
+            os.path.join("data", "maps", "regional_network_sim.osm")
+        ]
+        for fixture_path in fixtures:
+            if not os.path.exists(fixture_path):
+                continue
+            dataset = parse_osm_xml(fixture_path)
+            graph = build_road_network_graph(dataset)
+            index = build_spatial_index(graph.edges, graph.bounds)
+
+            bin_a = serialize_idrmap(graph, index, source_metadata={"source": "det_test"})
+            bin_b = serialize_idrmap(graph, index, source_metadata={"source": "det_test"})
+
+            self.assertEqual(bin_a, bin_b)
+            self.assertEqual(hashlib.sha256(bin_a).hexdigest(), hashlib.sha256(bin_b).hexdigest())
+
+    def test_10_binary_format_struct_layouts_and_endianness(self):
+        """Verify .idrmap struct sizes, little-endian packing, and alignment constants."""
+        # Fixed header: 128 bytes
+        self.assertEqual(struct.calcsize("<8sHHIddddIIIIIHHIIIIIIIIIIIIQ"), 128)
+        self.assertEqual(HEADER_SIZE, 128)
+
+        # Node record: 28 bytes (<Iqdd)
+        self.assertEqual(struct.calcsize("<Iqdd"), 28)
+
+        # Edge record: 40 bytes (<IqIIIHBbbBBBIf)
+        self.assertEqual(struct.calcsize("<IqIIIHBbbBBBIf"), 40)
+
+        # Geometry point record: 16 bytes (<dd)
+        self.assertEqual(struct.calcsize("<dd"), 16)
+
+        # Spatial cell record: 6 bytes (<IH)
+        self.assertEqual(struct.calcsize("<IH"), 6)
+
+        # Spatial entry record: 4 bytes (<I)
+        self.assertEqual(struct.calcsize("<I"), 4)
 
 
 if __name__ == "__main__":

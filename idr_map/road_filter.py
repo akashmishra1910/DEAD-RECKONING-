@@ -92,11 +92,15 @@ def filter_osm_way(tags: Dict[str, str]) -> Tuple[bool, Optional[int], int, int,
         oneway_dir = 1  # Motorways are oneway by default unless specified
 
     # Vertical Layer & 3D Info
-    layer_str = tags.get("layer", "0").strip()
-    try:
-        layer = int(layer_str)
-        layer = max(-5, min(5, layer))
-    except ValueError:
+    has_explicit_layer = "layer" in tags
+    if has_explicit_layer:
+        try:
+            layer = int(tags["layer"].strip())
+            layer = max(-5, min(5, layer))
+        except ValueError:
+            layer = 0
+            has_explicit_layer = False
+    else:
         layer = 0
 
     # Flags bitmask
@@ -104,13 +108,13 @@ def filter_osm_way(tags: Dict[str, str]) -> Tuple[bool, Optional[int], int, int,
     bridge_tag = tags.get("bridge", "").strip().lower()
     if bridge_tag in ("yes", "viaduct", "aqueduct", "cantilever", "suspension"):
         flags |= 0x01
-        if layer == 0:
+        if not has_explicit_layer:
             layer = 1  # Default bridge layer to +1 if unspecified
 
     tunnel_tag = tags.get("tunnel", "").strip().lower()
     if tunnel_tag in ("yes", "building_passage", "culvert"):
         flags |= 0x02
-        if layer == 0:
+        if not has_explicit_layer:
             layer = -1  # Default tunnel layer to -1 if unspecified
 
     if junction_tag in ("roundabout", "circular"):

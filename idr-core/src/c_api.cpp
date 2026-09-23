@@ -1,5 +1,6 @@
 #include "idr/c_api.h"
 #include "idr/navigation_engine.hpp"
+#include "idr/idrmap_reader.hpp"
 #include <cmath>
 #include <cstddef>
 #include <cstring>
@@ -352,6 +353,154 @@ void idr_engine_add_osm_edge(
             speed_limit
         );
     }
+}
+
+/* ============================================================================
+ * IdrMapReader C API Implementations (Phase 11.6)
+ * ============================================================================
+ */
+struct idr_map_reader_s {
+    IdrMapReader reader;
+};
+
+idr_map_reader_t* idr_map_reader_create(void) {
+    try {
+        return new idr_map_reader_t();
+    } catch (...) {
+        return nullptr;
+    }
+}
+
+void idr_map_reader_destroy(idr_map_reader_t* reader) {
+    if (reader) {
+        delete reader;
+    }
+}
+
+idr_status_t idr_map_reader_open_file(idr_map_reader_t* reader, const char* path) {
+    if (!reader || !path) {
+        return IDR_STATUS_INVALID_ARGUMENT;
+    }
+    IdrMapStatus status = reader->reader.open_file(path);
+    switch (status) {
+        case IdrMapStatus::OK: return IDR_STATUS_OK;
+        case IdrMapStatus::ERR_FILE_NOT_FOUND: return IDR_STATUS_UNAVAILABLE;
+        case IdrMapStatus::ERR_MMAP_FAILED: return IDR_STATUS_INIT_FAILURE;
+        case IdrMapStatus::ERR_BUFFER_TOO_SMALL: return IDR_STATUS_BUFFER_ERROR;
+        case IdrMapStatus::ERR_INVALID_MAGIC:
+        case IdrMapStatus::ERR_UNSUPPORTED_VERSION:
+        case IdrMapStatus::ERR_HEADER_CRC_MISMATCH:
+        case IdrMapStatus::ERR_PAYLOAD_CRC_MISMATCH:
+        case IdrMapStatus::ERR_INVALID_BOUNDS:
+        case IdrMapStatus::ERR_TABLE_OFFSET_OUT_OF_BOUNDS:
+        case IdrMapStatus::ERR_INTEGER_OVERFLOW:
+            return IDR_STATUS_INVALID_ARGUMENT;
+        default:
+            return IDR_STATUS_INTERNAL_ERROR;
+    }
+}
+
+idr_status_t idr_map_reader_open_buffer(idr_map_reader_t* reader, const uint8_t* data, size_t size) {
+    if (!reader || !data || size < sizeof(IdrMapHeader)) {
+        return IDR_STATUS_INVALID_ARGUMENT;
+    }
+    IdrMapStatus status = reader->reader.open_buffer(data, size, false);
+    return (status == IdrMapStatus::OK) ? IDR_STATUS_OK : IDR_STATUS_INVALID_ARGUMENT;
+}
+
+void idr_map_reader_close(idr_map_reader_t* reader) {
+    if (reader) {
+        reader->reader.close();
+    }
+}
+
+int32_t idr_map_reader_is_open(idr_map_reader_t* reader) {
+    return (reader && reader->reader.is_open()) ? 1 : 0;
+}
+
+uint32_t idr_map_reader_edge_count(idr_map_reader_t* reader) {
+    return reader ? reader->reader.edge_count() : 0;
+}
+
+uint32_t idr_map_reader_node_count(idr_map_reader_t* reader) {
+    return reader ? reader->reader.node_count() : 0;
+}
+
+idr_status_t idr_map_reader_get_bounds(idr_map_reader_t* reader, double* min_lat, double* min_lon, double* max_lat, double* max_lon) {
+    if (!reader || !reader->reader.is_open() || !min_lat || !min_lon || !max_lat || !max_lon) {
+        return IDR_STATUS_INVALID_ARGUMENT;
+    }
+    reader->reader.get_bounds(*min_lat, *min_lon, *max_lat, *max_lon);
+    return IDR_STATUS_OK;
+}
+
+size_t idr_map_reader_query_nearest(
+    idr_map_reader_t* reader,
+    double lat,
+    double lon,
+    double max_radius_m,
+    size_t k,
+    idr_road_candidate_c_t* out_candidates,
+    size_t max_out
+) {
+    if (!reader || !reader->reader.is_open() || !out_candidates || max_out == 0 || k == 0) {
+        return 0;
+    }
+
+    // Local stack candidate buffer
+    constexpr size_t MAX_STACK_CANDS = 32;
+    IdrRoadCandidate stack_cands[MAX_STACK_CANDS];
+    size_t target_k = std::min(k, max_out);
+    size_t fetch_k = std::min(target_k, MAX_STACK_CANDS);
+
+    size_t found = reader->reader.query_nearest_roads(lat, lon, max_radius_m, fetch_k, stack_cands, MAX_STACK_CANDS);
+    size_t write_count = std::min(found, target_k);
+
+    for (size_t i = 0; i < write_count; ++i) {
+        out_candidates[i].edge_id = stack_cands[i].edge_id;
+        out_candidates[i].osm_way_id = stack_cands[i].osm_way_id;
+        out_candidates[i].distance_m = stack_cands[i].distance_m;
+        out_candidates[i].proj_lat = stack_cands[i].proj_lat;
+        out_candidates[i].proj_lon = stack_cands[i].proj_lon;
+        out_candidates[i].segment_heading_deg = stack_cands[i].segment_heading_deg;
+        out_candidates[i].road_class = stack_cands[i].road_class;
+        out_candidates[i].oneway = stack_cands[i].oneway;
+        out_candidates[i].layer = stack_cands[i].layer;
+        out_candidates[i].flags = stack_cands[i].flags;
+        out_candidates[i].maxspeed_kmh = stack_cands[i].maxspeed_kmh;
+        out_candidates[i].length_m = stack_cands[i].length_m;
+        out_candidates[i].name = stack_cands[i].name;
+    }
+    return write_count;
+}
+
+size_t idr_map_reader_query_radius(
+    idr_map_reader_t* reader,
+    double lat,
+    double lon,
+    double radius_m,
+    uint32_t* out_edge_ids,
+    size_t max_out
+) {
+    if (!reader || !reader->reader.is_open() || !out_edge_ids || max_out == 0) {
+        return 0;
+    }
+    return reader->reader.query_roads_in_radius(lat, lon, radius_m, out_edge_ids, max_out);
+}
+
+size_t idr_map_reader_query_bbox(
+    idr_map_reader_t* reader,
+    double min_lat,
+    double min_lon,
+    double max_lat,
+    double max_lon,
+    uint32_t* out_edge_ids,
+    size_t max_out
+) {
+    if (!reader || !reader->reader.is_open() || !out_edge_ids || max_out == 0) {
+        return 0;
+    }
+    return reader->reader.query_roads_in_bbox(min_lat, min_lon, max_lat, max_lon, out_edge_ids, max_out);
 }
 
 } // extern "C"

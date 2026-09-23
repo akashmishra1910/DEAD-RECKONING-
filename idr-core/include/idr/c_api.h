@@ -315,6 +315,42 @@ void idr_engine_add_osm_edge(
     const double* polyline_xyz
 );
 
+/* ============================================================================
+ * IdrMapReader C API (Phase 11.6)
+ * ============================================================================
+ */
+typedef struct idr_map_reader_s idr_map_reader_t;
+
+typedef struct idr_road_candidate_c_s {
+    uint32_t edge_id;
+    int64_t  osm_way_id;
+    double   distance_m;
+    double   proj_lat;
+    double   proj_lon;
+    double   segment_heading_deg;
+    uint8_t  road_class;
+    int8_t   oneway;
+    int8_t   layer;
+    uint8_t  flags;
+    uint8_t  maxspeed_kmh;
+    uint8_t  _pad[3];
+    float    length_m;
+    const char* name;
+} idr_road_candidate_c_t;
+
+idr_map_reader_t* idr_map_reader_create(void);
+void idr_map_reader_destroy(idr_map_reader_t* reader);
+idr_status_t idr_map_reader_open_file(idr_map_reader_t* reader, const char* path);
+idr_status_t idr_map_reader_open_buffer(idr_map_reader_t* reader, const uint8_t* data, size_t size);
+void idr_map_reader_close(idr_map_reader_t* reader);
+int32_t idr_map_reader_is_open(idr_map_reader_t* reader);
+uint32_t idr_map_reader_edge_count(idr_map_reader_t* reader);
+uint32_t idr_map_reader_node_count(idr_map_reader_t* reader);
+idr_status_t idr_map_reader_get_bounds(idr_map_reader_t* reader, double* min_lat, double* min_lon, double* max_lat, double* max_lon);
+size_t idr_map_reader_query_nearest(idr_map_reader_t* reader, double lat, double lon, double max_radius_m, size_t k, idr_road_candidate_c_t* out_candidates, size_t max_out);
+size_t idr_map_reader_query_radius(idr_map_reader_t* reader, double lat, double lon, double radius_m, uint32_t* out_edge_ids, size_t max_out);
+size_t idr_map_reader_query_bbox(idr_map_reader_t* reader, double min_lat, double min_lon, double max_lat, double max_lon, uint32_t* out_edge_ids, size_t max_out);
+
 #ifdef __cplusplus
 }
 #endif

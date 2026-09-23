@@ -27,6 +27,7 @@ set(IDR_CORE_SOURCES
     ${IDR_CORE_DIR}/src/longitudinal_sync.cpp
     ${IDR_CORE_DIR}/src/navigation_engine.cpp
     ${IDR_CORE_DIR}/src/c_api.cpp
+    ${IDR_CORE_DIR}/src/idrmap_reader.cpp
 )
 
 # Build shared JNI library

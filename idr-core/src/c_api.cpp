@@ -503,4 +503,130 @@ size_t idr_map_reader_query_bbox(
     return reader->reader.query_roads_in_bbox(min_lat, min_lon, max_lat, max_lon, out_edge_ids, max_out);
 }
 
+/* ============================================================================
+ * Causal 3D HMM Map Matcher C API (Phase 11.7)
+ * ============================================================================
+ */
+struct idr_map_matcher_s {
+    idr::Causal3DMapMatcher matcher;
+};
+
+idr_map_matcher_t* idr_map_matcher_create_default(void) {
+    try {
+        auto* wrapper = new idr_map_matcher_s{idr::Causal3DMapMatcher{}};
+        return wrapper;
+    } catch (...) {
+        return nullptr;
+    }
+}
+
+idr_map_matcher_t* idr_map_matcher_create_with_reader(
+    const idr_map_reader_t* reader,
+    double lat0,
+    double lon0,
+    double alt0,
+    double sigma_d,
+    double sigma_h,
+    double sigma_psi,
+    double beta,
+    double elevation_barrier
+) {
+    try {
+        const idr::IdrMapReader* cpp_reader = reader ? &reader->reader : nullptr;
+        auto* wrapper = new idr_map_matcher_s{
+            idr::Causal3DMapMatcher{
+                cpp_reader, lat0, lon0, alt0,
+                sigma_d, sigma_h, sigma_psi, beta, elevation_barrier
+            }
+        };
+        return wrapper;
+    } catch (...) {
+        return nullptr;
+    }
+}
+
+void idr_map_matcher_destroy(idr_map_matcher_t* matcher) {
+    if (matcher) {
+        delete matcher;
+    }
+}
+
+void idr_map_matcher_reset(idr_map_matcher_t* matcher) {
+    if (matcher) {
+        matcher->matcher.reset();
+    }
+}
+
+idr_status_t idr_map_matcher_process_step(
+    idr_map_matcher_t* matcher,
+    const idr_vec3_t* pos_dr,
+    double heading_rad,
+    double baro_alt,
+    double speed_dr,
+    double dt,
+    int32_t use_3d,
+    idr_map_match_result_c_t* out_result
+) {
+    if (!matcher || !pos_dr || !out_result) {
+        return IDR_STATUS_INVALID_ARGUMENT;
+    }
+    try {
+        idr::Vector3 p(pos_dr->x, pos_dr->y, pos_dr->z);
+        auto res = matcher->matcher.process_step(p, heading_rad, baro_alt, speed_dr, dt, use_3d != 0);
+
+        out_result->edge_id = res.edge_id;
+        out_result->layer = res.layer;
+        out_result->snapped_pos_x = res.snapped_pos.x;
+        out_result->snapped_pos_y = res.snapped_pos.y;
+        out_result->snapped_pos_z = res.snapped_pos.z;
+        out_result->d_2d_m = res.d_2d;
+        out_result->delta_h_m = res.delta_h;
+        out_result->road_heading_deg = res.road_heading * idr::RAD_TO_DEG;
+        out_result->road_tangent_x = res.road_tangent_2d.x;
+        out_result->road_tangent_y = res.road_tangent_2d.y;
+        out_result->confidence = static_cast<int32_t>(res.confidence);
+        out_result->log_posterior = res.log_posterior;
+        out_result->score_margin = res.score_margin;
+        out_result->is_ambiguous = res.is_ambiguous ? 1 : 0;
+        out_result->is_valid = res.is_valid ? 1 : 0;
+        out_result->candidate_count = static_cast<uint32_t>(res.candidate_count);
+        out_result->hypothesis_count = static_cast<uint32_t>(res.hypothesis_count);
+        out_result->edge_name = res.edge_name;
+        out_result->layer_label = res.layer_label;
+
+        return IDR_STATUS_OK;
+    } catch (...) {
+        return IDR_STATUS_INTERNAL_ERROR;
+    }
+}
+
+size_t idr_map_matcher_get_hypotheses(
+    idr_map_matcher_t* matcher,
+    idr_map_hypothesis_c_t* out_hypotheses,
+    size_t max_hypotheses
+) {
+    if (!matcher || !out_hypotheses || max_hypotheses == 0) {
+        return 0;
+    }
+    idr::IdrMapHypothesis cpp_hyps[idr::Causal3DMapMatcher::MAX_HYPOTHESES];
+    size_t count = matcher->matcher.get_active_hypotheses(cpp_hyps, std::min(max_hypotheses, idr::Causal3DMapMatcher::MAX_HYPOTHESES));
+    for (size_t i = 0; i < count; ++i) {
+        out_hypotheses[i].edge_id = cpp_hyps[i].edge_id;
+        out_hypotheses[i].layer = cpp_hyps[i].layer;
+        out_hypotheses[i].road_class = cpp_hyps[i].road_class;
+        out_hypotheses[i].flags = cpp_hyps[i].flags;
+        out_hypotheses[i]._pad = 0;
+        out_hypotheses[i].log_prob = cpp_hyps[i].log_prob;
+        out_hypotheses[i].along_track_m = cpp_hyps[i].along_track_m;
+        out_hypotheses[i].d_2d_m = cpp_hyps[i].d_2d;
+        out_hypotheses[i].delta_h_m = cpp_hyps[i].delta_h;
+        out_hypotheses[i].road_heading_deg = cpp_hyps[i].road_heading_deg;
+        out_hypotheses[i].snapped_x = cpp_hyps[i].snapped_pos.x;
+        out_hypotheses[i].snapped_y = cpp_hyps[i].snapped_pos.y;
+        out_hypotheses[i].snapped_z = cpp_hyps[i].snapped_pos.z;
+        out_hypotheses[i].consecutive_matches = cpp_hyps[i].consecutive_matches;
+    }
+    return count;
+}
+
 } // extern "C"

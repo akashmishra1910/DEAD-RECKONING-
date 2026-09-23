@@ -351,6 +351,85 @@ size_t idr_map_reader_query_nearest(idr_map_reader_t* reader, double lat, double
 size_t idr_map_reader_query_radius(idr_map_reader_t* reader, double lat, double lon, double radius_m, uint32_t* out_edge_ids, size_t max_out);
 size_t idr_map_reader_query_bbox(idr_map_reader_t* reader, double min_lat, double min_lon, double max_lat, double max_lon, uint32_t* out_edge_ids, size_t max_out);
 
+/* ============================================================================
+ * Causal 3D HMM Map Matcher C API (Phase 11.7)
+ * ============================================================================
+ */
+typedef struct idr_map_matcher_s idr_map_matcher_t;
+
+typedef struct idr_map_match_result_c_s {
+    int32_t edge_id;
+    int32_t layer;
+    double  snapped_pos_x;
+    double  snapped_pos_y;
+    double  snapped_pos_z;
+    double  d_2d_m;
+    double  delta_h_m;
+    double  road_heading_deg;
+    double  road_tangent_x;
+    double  road_tangent_y;
+    int32_t confidence;      /**< 0=HIGH, 1=MEDIUM, 2=LOW, 3=INVALID */
+    double  log_posterior;
+    double  score_margin;
+    int32_t is_ambiguous;
+    int32_t is_valid;
+    uint32_t candidate_count;
+    uint32_t hypothesis_count;
+    const char* edge_name;
+    const char* layer_label;
+} idr_map_match_result_c_t;
+
+typedef struct idr_map_hypothesis_c_s {
+    uint32_t edge_id;
+    int8_t   layer;
+    uint8_t  road_class;
+    uint8_t  flags;
+    uint8_t  _pad;
+    double   log_prob;
+    double   along_track_m;
+    double   d_2d_m;
+    double   delta_h_m;
+    double   road_heading_deg;
+    double   snapped_x;
+    double   snapped_y;
+    double   snapped_z;
+    int32_t  consecutive_matches;
+} idr_map_hypothesis_c_t;
+
+idr_map_matcher_t* idr_map_matcher_create_default(void);
+
+idr_map_matcher_t* idr_map_matcher_create_with_reader(
+    const idr_map_reader_t* reader,
+    double lat0,
+    double lon0,
+    double alt0,
+    double sigma_d,
+    double sigma_h,
+    double sigma_psi,
+    double beta,
+    double elevation_barrier
+);
+
+void idr_map_matcher_destroy(idr_map_matcher_t* matcher);
+void idr_map_matcher_reset(idr_map_matcher_t* matcher);
+
+idr_status_t idr_map_matcher_process_step(
+    idr_map_matcher_t* matcher,
+    const idr_vec3_t* pos_dr,
+    double heading_rad,
+    double baro_alt,
+    double speed_dr,
+    double dt,
+    int32_t use_3d,
+    idr_map_match_result_c_t* out_result
+);
+
+size_t idr_map_matcher_get_hypotheses(
+    idr_map_matcher_t* matcher,
+    idr_map_hypothesis_c_t* out_hypotheses,
+    size_t max_hypotheses
+);
+
 #ifdef __cplusplus
 }
 #endif

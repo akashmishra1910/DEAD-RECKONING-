@@ -123,19 +123,28 @@ void SpatialGridIndex::insert_edge(const OSMEdge& edge) {
 }
 
 std::unordered_set<int> SpatialGridIndex::query_radius(double x, double y, double radius) const {
+    std::vector<int> ids;
+    query_radius(x, y, radius, ids);
+    return std::unordered_set<int>(ids.begin(), ids.end());
+}
+
+void SpatialGridIndex::query_radius(double x, double y, double radius, std::vector<int>& out_ids) const {
+    out_ids.clear();
     auto [k_xmin, k_ymin] = coord_to_key(x - radius, y - radius);
     auto [k_xmax, k_ymax] = coord_to_key(x + radius, y + radius);
 
-    std::unordered_set<int> candidate_ids;
     for (int kx = k_xmin; kx <= k_xmax; ++kx) {
         for (int ky = k_ymin; ky <= k_ymax; ++ky) {
             auto it = grid_.find({kx, ky});
             if (it != grid_.end()) {
-                candidate_ids.insert(it->second.begin(), it->second.end());
+                for (int id : it->second) {
+                    if (std::find(out_ids.begin(), out_ids.end(), id) == out_ids.end()) {
+                        out_ids.push_back(id);
+                    }
+                }
             }
         }
     }
-    return candidate_ids;
 }
 
 OfflineOSMGraph::OfflineOSMGraph(double origin_lat, double origin_lon, double origin_alt)
@@ -197,22 +206,32 @@ OSMEdge OfflineOSMGraph::add_edge(
 }
 
 std::vector<const OSMEdge*> OfflineOSMGraph::get_candidate_edges(const Vector3& pos_enu, double search_radius) const {
-    auto c_ids = spatial_index_.query_radius(pos_enu.x, pos_enu.y, search_radius);
-    if (c_ids.empty()) {
-        std::vector<const OSMEdge*> res;
-        res.reserve(edges_.size());
-        for (const auto& kv : edges_) res.push_back(&kv.second);
-        return res;
-    }
     std::vector<const OSMEdge*> res;
-    res.reserve(c_ids.size());
-    for (int eid : c_ids) {
+    std::vector<int> scratch_ids;
+    get_candidate_edges(pos_enu, search_radius, res, scratch_ids);
+    return res;
+}
+
+void OfflineOSMGraph::get_candidate_edges(
+    const Vector3& pos_enu,
+    double search_radius,
+    std::vector<const OSMEdge*>& out_candidates,
+    std::vector<int>& scratch_ids
+) const {
+    out_candidates.clear();
+    spatial_index_.query_radius(pos_enu.x, pos_enu.y, search_radius, scratch_ids);
+    if (scratch_ids.empty()) {
+        for (const auto& kv : edges_) {
+            out_candidates.push_back(&kv.second);
+        }
+        return;
+    }
+    for (int eid : scratch_ids) {
         auto it = edges_.find(eid);
         if (it != edges_.end()) {
-            res.push_back(&it->second);
+            out_candidates.push_back(&it->second);
         }
     }
-    return res;
 }
 
 std::tuple<double, double, Vector3, Vector3, double> OfflineOSMGraph::project_point_to_edge(

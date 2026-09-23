@@ -39,3 +39,6 @@ add_test(NAME test_navigation_engine COMMAND test_navigation_engine)
 add_executable(test_c_api test_c_api.cpp)
 target_link_libraries(test_c_api PRIVATE idr_core)
 add_test(NAME test_c_api COMMAND test_c_api)
+
+add_executable(benchmark_tactical_100k benchmark_tactical_100k.cpp)
+target_link_libraries(benchmark_tactical_100k PRIVATE idr_core)

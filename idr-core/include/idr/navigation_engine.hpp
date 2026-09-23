@@ -10,7 +10,6 @@
 #include "idr/map_matcher_3d.hpp"
 #include "idr/speed_calibrator.hpp"
 #include "idr/longitudinal_sync.hpp"
-#include <string>
 #include <vector>
 #include <optional>
 #include <memory>
@@ -20,7 +19,7 @@ namespace idr {
 
 
 struct SupervisorDiagnostics {
-    std::string last_transition_reason = "Initialization";
+    const char* last_transition_reason = "Initialization";
     double time_in_current_mode_s = 0.0;
     double gnss_pos_innovation_gamma = 0.0;
     double gnss_vel_innovation_gamma = 0.0;
@@ -30,7 +29,7 @@ struct SupervisorDiagnostics {
     double ai_vel_weight = 0.0;
     double gnss_vel_weight = 0.0;
     bool map_constraints_active = false;
-    std::string map_confidence = "INVALID";
+    const char* map_confidence = "INVALID";
     double p_trace = 0.0;
     double speed_scale_est = 1.0;
     double speed_bias_est_mps = 0.0;
@@ -135,7 +134,7 @@ private:
 
     NavigationMode mode_ = NavigationMode::INITIALIZING;
     double mode_entry_time_ = 0.0;
-    std::string last_transition_reason_ = "System Init";
+    const char* last_transition_reason_ = "System Init";
 
     int consecutive_valid_gnss_ = 0;
     int consecutive_outage_epochs_ = 0;

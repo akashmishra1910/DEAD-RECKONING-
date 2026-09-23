@@ -4,7 +4,6 @@
 #include "idr/eskf.hpp"
 #include "idr/osm_graph.hpp"
 #include "idr/map_matcher_3d.hpp"
-#include <string>
 #include <vector>
 
 namespace idr {
@@ -15,7 +14,7 @@ struct LongitudinalConstraintResult {
     double chi2_val = 0.0;
     double road_turn_s = 0.0;
     double estimated_s = 0.0;
-    std::string confidence = "NONE";
+    const char* confidence = "NONE";
 };
 
 class CausalLongitudinalMapSynchronizer {
@@ -41,7 +40,14 @@ private:
     double r_along_;
     double chi2_threshold_;
     double last_turn_time_ = -999.0;
-    std::vector<std::pair<double, double>> yaw_rate_history_;
+    std::array<std::pair<double, double>, 32> yaw_rate_history_{};
+    size_t yaw_rate_count_ = 0;
+    size_t yaw_rate_head_ = 0;
+
+    // Scratch buffers for polyline curvature calculations
+    std::vector<double> seg_azimuths_scratch_;
+    std::vector<double> seg_lens_scratch_;
+    std::vector<double> turn_angles_scratch_;
 };
 
 } // namespace idr

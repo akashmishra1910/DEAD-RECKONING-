@@ -241,7 +241,7 @@ NavigationTelemetry SeamlessGNSSDeficitEngine::process_step(
     double ai_weight = 0.0;
     double gnss_weight = 0.0;
     bool map_active = false;
-    std::string map_conf_str = "INVALID";
+    const char* map_conf_str = "INVALID";
     bool long_applied = false;
     double long_innov = 0.0;
 

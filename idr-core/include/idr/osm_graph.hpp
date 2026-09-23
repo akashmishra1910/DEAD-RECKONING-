@@ -63,6 +63,7 @@ public:
 
     void insert_edge(const OSMEdge& edge);
     std::unordered_set<int> query_radius(double x, double y, double radius) const;
+    void query_radius(double x, double y, double radius, std::vector<int>& out_ids) const;
 
 private:
     std::pair<int, int> coord_to_key(double x, double y) const {
@@ -101,6 +102,7 @@ public:
     );
 
     std::vector<const OSMEdge*> get_candidate_edges(const Vector3& pos_enu, double search_radius = 50.0) const;
+    void get_candidate_edges(const Vector3& pos_enu, double search_radius, std::vector<const OSMEdge*>& out_candidates, std::vector<int>& scratch_ids) const;
 
     std::tuple<double, double, Vector3, Vector3, double> project_point_to_edge(
         const Vector3& pos_enu,
@@ -123,6 +125,16 @@ public:
         origin_lat_ = lat;
         origin_lon_ = lon;
         origin_alt_ = alt;
+    }
+
+    // Pre-populate dist_cache_ for all edge pairs to eliminate per-cycle heap
+    // allocation from cache-miss insertions during the tactical loop.
+    void warm_cache() const {
+        for (const auto& [id_a, _a] : edges_) {
+            for (const auto& [id_b, _b] : edges_) {
+                get_topological_distance(id_a, id_b);
+            }
+        }
     }
 
     const std::unordered_map<int, OSMEdge>& get_edges() const { return edges_; }

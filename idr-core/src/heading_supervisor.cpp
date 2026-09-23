@@ -1,7 +1,5 @@
 #include "idr/heading_supervisor.hpp"
 #include <algorithm>
-#include <sstream>
-#include <iomanip>
 
 namespace idr {
 
@@ -31,7 +29,7 @@ void MagneticDisturbanceDetector::reset() {
     last_time_s_ = std::nullopt;
 }
 
-std::tuple<HeadingQuality, double, double, double, std::string> MagneticDisturbanceDetector::evaluate_measurement(
+std::tuple<HeadingQuality, double, double, double, const char*> MagneticDisturbanceDetector::evaluate_measurement(
     const Vector3& mag_raw_p,
     double time_s,
     const Matrix3x3& R_p2b,
@@ -45,9 +43,7 @@ std::tuple<HeadingQuality, double, double, double, std::string> MagneticDisturba
     double norm_cal = mag_cal_p.norm();
 
     if (norm_cal < min_field_ || norm_cal > max_field_) {
-        std::ostringstream oss;
-        oss << "MAGNITUDE_OUT_OF_BOUNDS_" << std::fixed << std::setprecision(1) << norm_cal << "uT";
-        return {HeadingQuality::INVALID, 0.0, 1.0, norm_cal, oss.str()};
+        return {HeadingQuality::INVALID, 0.0, 1.0, norm_cal, "MAGNITUDE_OUT_OF_BOUNDS"};
     }
 
     double dt = last_time_s_.has_value() ? (time_s - *last_time_s_) : 0.1;
@@ -56,9 +52,7 @@ std::tuple<HeadingQuality, double, double, double, std::string> MagneticDisturba
         if (gradient > max_grad_) {
             last_mag_vec_ = mag_cal_p;
             last_time_s_ = time_s;
-            std::ostringstream oss;
-            oss << "EXCESSIVE_GRADIENT_" << std::fixed << std::setprecision(1) << gradient << "uT/s";
-            return {HeadingQuality::DISTURBED, 0.0, 1.0, norm_cal, oss.str()};
+            return {HeadingQuality::DISTURBED, 0.0, 1.0, norm_cal, "EXCESSIVE_GRADIENT"};
         }
     }
 
@@ -67,9 +61,7 @@ std::tuple<HeadingQuality, double, double, double, std::string> MagneticDisturba
 
     double mag_delta = std::abs(norm_cal - ref_field_);
     if (mag_delta > mag_tol_) {
-        std::ostringstream oss;
-        oss << "MAGNITUDE_ANOMALY_DELTA_" << std::fixed << std::setprecision(1) << mag_delta << "uT";
-        return {HeadingQuality::DISTURBED, 0.0, 1.0, norm_cal, oss.str()};
+        return {HeadingQuality::DISTURBED, 0.0, 1.0, norm_cal, "MAGNITUDE_ANOMALY"};
     }
 
     Vector3 mag_b = R_p2b * mag_cal_p;
@@ -113,7 +105,7 @@ GNSSCourseDeriver::GNSSCourseDeriver(
     base_vel_noise_(base_velocity_noise_mps)
 {}
 
-std::tuple<HeadingQuality, double, double, double, std::string> GNSSCourseDeriver::derive_course(
+std::tuple<HeadingQuality, double, double, double, const char*> GNSSCourseDeriver::derive_course(
     const Vector3& vel_enu,
     double current_yaw_rate,
     bool is_forward
@@ -127,9 +119,7 @@ std::tuple<HeadingQuality, double, double, double, std::string> GNSSCourseDerive
     double speed_horiz = std::sqrt(ve * ve + vn * vn);
 
     if (speed_horiz < min_speed_) {
-        std::ostringstream oss;
-        oss << "REJECTED_LOW_SPEED_" << std::fixed << std::setprecision(2) << speed_horiz << "m/s_BELOW_" << min_speed_ << "m/s";
-        return {HeadingQuality::INVALID, 0.0, 1.0, speed_horiz, oss.str()};
+        return {HeadingQuality::INVALID, 0.0, 1.0, speed_horiz, "REJECTED_LOW_SPEED"};
     }
 
     double course_rad = std::atan2(ve, vn);
@@ -141,9 +131,7 @@ std::tuple<HeadingQuality, double, double, double, std::string> GNSSCourseDerive
     double sigma_psi = std::clamp(base_vel_noise_ / speed_horiz, 1.0 * DEG_TO_RAD, 15.0 * DEG_TO_RAD);
 
     if (std::abs(current_yaw_rate) > max_yaw_rate_) {
-        std::ostringstream oss;
-        oss << "HIGH_YAW_RATE_DYNAMICS_" << std::fixed << std::setprecision(2) << std::abs(current_yaw_rate) << "rad/s";
-        return {HeadingQuality::WEAK, course_rad, sigma_psi * 2.5, speed_horiz, oss.str()};
+        return {HeadingQuality::WEAK, course_rad, sigma_psi * 2.5, speed_horiz, "HIGH_YAW_RATE_DYNAMICS"};
     }
 
     HeadingQuality quality = (speed_horiz > 8.0) ? HeadingQuality::HIGH_ACCURACY : HeadingQuality::NOMINAL;
@@ -163,6 +151,7 @@ HeadingSupervisor::HeadingSupervisor(
     gnss_deriver_(min_gnss_speed_mps)
 {
     reset();
+    candidates_scratch_.reserve(4); // at most 2 sources (GNSS + mag); 4 ensures no realloc
 }
 
 void HeadingSupervisor::reset() {
@@ -173,7 +162,6 @@ void HeadingSupervisor::reset() {
     outage_duration_s_ = 0.0;
     reacquisition_count_ = 0;
     last_candidate_heading_rad_ = std::nullopt;
-    rejection_history_.clear();
 }
 
 HeadingSupervisorTelemetry HeadingSupervisor::process_step(
@@ -186,7 +174,7 @@ HeadingSupervisorTelemetry HeadingSupervisor::process_step(
     double current_yaw_rate,
     bool is_forward
 ) {
-    std::vector<HeadingMeasurement> candidates;
+    candidates_scratch_.clear();
     double mag_field_norm = 0.0;
     bool mag_is_disturbed = false;
 
@@ -203,7 +191,7 @@ HeadingSupervisorTelemetry HeadingSupervisor::process_step(
             m.quality = g_qual;
             m.raw_magnitude = g_spd;
             m.rejection_reason = g_reason;
-            candidates.push_back(m);
+            candidates_scratch_.push_back(m);
         }
     }
 
@@ -223,30 +211,30 @@ HeadingSupervisorTelemetry HeadingSupervisor::process_step(
             m.quality = m_qual;
             m.raw_magnitude = m_norm;
             m.rejection_reason = m_reason;
-            candidates.push_back(m);
+            candidates_scratch_.push_back(m);
         }
     }
 
     // Arbitration: HIGH_ACCURACY > NOMINAL > WEAK, then smallest std_rad
     std::optional<HeadingMeasurement> selected = std::nullopt;
-    if (!candidates.empty()) {
+    if (!candidates_scratch_.empty()) {
         auto quality_rank = [](HeadingQuality q) {
             if (q == HeadingQuality::HIGH_ACCURACY) return 0;
             if (q == HeadingQuality::NOMINAL) return 1;
             if (q == HeadingQuality::WEAK) return 2;
             return 99;
         };
-        std::sort(candidates.begin(), candidates.end(), [&](const HeadingMeasurement& a, const HeadingMeasurement& b) {
+        std::sort(candidates_scratch_.begin(), candidates_scratch_.end(), [&](const HeadingMeasurement& a, const HeadingMeasurement& b) {
             int ra = quality_rank(a.quality);
             int rb = quality_rank(b.quality);
             if (ra != rb) return ra < rb;
             return a.std_rad < b.std_rad;
         });
-        selected = candidates[0];
+        selected = candidates_scratch_[0];
     }
 
     bool is_updated = false;
-    std::string rejection_reason = "NO_VALID_HEADING_SOURCE";
+    const char* rejection_reason = "NO_VALID_HEADING_SOURCE";
     HeadingSourceType selected_source = HeadingSourceType::GYRO_INTEGRATION;
     HeadingQuality selected_quality = HeadingQuality::INVALID;
     std::optional<double> meas_hdg_deg = std::nullopt;
@@ -300,11 +288,7 @@ HeadingSupervisorTelemetry HeadingSupervisor::process_step(
                 rejection_reason = "ACCEPTED_REACQUISITION_CONFIRMED";
             } else {
                 total_rejections_++;
-                std::ostringstream oss;
-                oss << "REJECTED_CHI2_GATE_EXCEEDED_GAMMA_" << std::fixed << std::setprecision(2) << gamma
-                    << "_GT_" << chi2_gate_ << "_PENDING_CONFIRMATION_" << reacquisition_count_;
-                rejection_reason = oss.str();
-                rejection_history_.push_back(rejection_reason);
+                rejection_reason = "REJECTED_CHI2_GATE_EXCEEDED_PENDING_CONFIRMATION";
                 selected->is_accepted = false;
             }
         }
@@ -334,7 +318,7 @@ HeadingSupervisorTelemetry HeadingSupervisor::process_step(
     telem.outage_duration_s = outage_duration_s_;
     telem.total_updates_count = total_updates_;
     telem.total_rejections_count = total_rejections_;
-    telem.gnss_course_available = (!candidates.empty() && candidates[0].source == HeadingSourceType::GNSS_COURSE);
+    telem.gnss_course_available = (!candidates_scratch_.empty() && candidates_scratch_[0].source == HeadingSourceType::GNSS_COURSE);
     telem.mag_available = mag_raw_p.has_value();
     telem.mag_field_magnitude_uT = mag_field_norm;
     telem.mag_disturbed = mag_is_disturbed;

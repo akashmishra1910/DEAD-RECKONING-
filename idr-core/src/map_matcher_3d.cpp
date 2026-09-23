@@ -19,6 +19,14 @@ Causal3DMapMatcher::Causal3DMapMatcher(
     elevation_barrier_(elevation_barrier)
 {
     reset();
+    // Pre-allocate scratch vectors to eliminate per-cycle heap allocation
+    candidates_scratch_.reserve(64);
+    scored_scratch_.reserve(64);
+    new_hypotheses_scratch_.reserve(64);
+    scratch_edge_ids_.reserve(64);
+    active_hypotheses_.reserve(32);
+    // Pre-populate topological distance cache for all edge pairs
+    graph_.warm_cache();
 }
 
 void Causal3DMapMatcher::reset() {
@@ -63,14 +71,14 @@ MapMatchResult Causal3DMapMatcher::process_step(
     Vector3 obs_pt(pos_dr.x, pos_dr.y, baro_alt);
 
     double search_radius = std::max(35.0, 3.0 * sigma_d_);
-    auto candidates = graph_.get_candidate_edges(obs_pt, search_radius);
-    if (candidates.empty()) {
+    graph_.get_candidate_edges(obs_pt, search_radius, candidates_scratch_, scratch_edge_ids_);
+    if (candidates_scratch_.empty()) {
         for (const auto& kv : graph_.get_edges()) {
-            candidates.push_back(&kv.second);
+            candidates_scratch_.push_back(&kv.second);
         }
     }
 
-    if (candidates.empty()) {
+    if (candidates_scratch_.empty()) {
         MapMatchResult res;
         res.edge_id = -1;
         res.edge_name = "Unknown";
@@ -95,21 +103,10 @@ MapMatchResult Causal3DMapMatcher::process_step(
         dr_dist = speed_dr * dt;
     }
 
-    struct CandidateScore {
-        const OSMEdge* edge;
-        double score;
-        double d_2d;
-        double delta_h;
-        double d_psi;
-        Vector3 snapped;
-        Vector3 tangent;
-        double azimuth;
-    };
+    scored_scratch_.clear();
+    new_hypotheses_scratch_.clear();
 
-    std::vector<CandidateScore> scored_candidates;
-    std::unordered_map<int, double> new_hypotheses;
-
-    for (const auto* edge : candidates) {
+    for (const auto* edge : candidates_scratch_) {
         auto [d2d, dh, snapped, tangent, az] = graph_.project_point_to_edge(obs_pt, *edge);
 
         double dpsi = std::abs(wrap_pi(heading_dr - az));
@@ -137,28 +134,27 @@ MapMatchResult Causal3DMapMatcher::process_step(
             total_score = log_emission;
         }
 
-        new_hypotheses[edge->id] = total_score;
-        scored_candidates.push_back({edge, total_score, d2d, dh, dpsi, snapped, tangent, az});
+        new_hypotheses_scratch_.push_back({edge->id, total_score});
+        scored_scratch_.push_back({edge, total_score, d2d, dh, dpsi, snapped, tangent, az});
     }
 
-    std::sort(scored_candidates.begin(), scored_candidates.end(), [](const CandidateScore& a, const CandidateScore& b) {
+    std::sort(scored_scratch_.begin(), scored_scratch_.end(), [](const CandidateScore& a, const CandidateScore& b) {
         return a.score > b.score;
     });
 
-    const auto& best = scored_candidates[0];
+    const auto& best = scored_scratch_[0];
 
     // Prune hypotheses for next step (keep top 6)
-    std::vector<std::pair<int, double>> sorted_hyp(new_hypotheses.begin(), new_hypotheses.end());
-    std::sort(sorted_hyp.begin(), sorted_hyp.end(), [](const auto& a, const auto& b) {
+    std::sort(new_hypotheses_scratch_.begin(), new_hypotheses_scratch_.end(), [](const auto& a, const auto& b) {
         return a.second > b.second;
     });
-    if (sorted_hyp.size() > 6) {
-        sorted_hyp.resize(6);
+    if (new_hypotheses_scratch_.size() > 6) {
+        new_hypotheses_scratch_.resize(6);
     }
-    double max_s = sorted_hyp[0].second;
+    double max_s = new_hypotheses_scratch_[0].second;
     active_hypotheses_.clear();
-    for (const auto& [eid, s] : sorted_hyp) {
-        active_hypotheses_[eid] = s - max_s;
+    for (const auto& [eid, s] : new_hypotheses_scratch_) {
+        active_hypotheses_.push_back({eid, s - max_s});
     }
     prev_pos_dr_ = pos_dr;
 
@@ -183,7 +179,7 @@ MapMatchResult Causal3DMapMatcher::process_step(
     }
 
     int layer = best_edge->layer;
-    std::string layer_label;
+    const char* layer_label;
     if (best_edge->road_type == "flyover" || layer >= 1) {
         layer_label = "Flyover";
     } else if (best_edge->is_tunnel || layer <= -1 || best_edge->road_type == "underpass") {
@@ -201,8 +197,8 @@ MapMatchResult Causal3DMapMatcher::process_step(
 
     MapMatchResult res;
     res.edge_id = best_edge->id;
-    res.edge_name = best_edge->name;
-    res.road_type = best_edge->road_type;
+    res.edge_name = best_edge->name.c_str();    // stable: OSMEdge in unordered_map never moved
+    res.road_type = best_edge->road_type.c_str(); // stable: same reason
     res.layer = layer;
     res.layer_label = layer_label;
     res.snapped_pos = best.snapped;

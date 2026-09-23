@@ -2,7 +2,6 @@
 
 #include "idr/types.hpp"
 #include "idr/math_utils.hpp"
-#include <string>
 #include <vector>
 #include <optional>
 #include <cmath>
@@ -35,7 +34,7 @@ struct AlignmentQuality {
     double gravity_confidence = 0.0;
     double forward_axis_confidence = 0.0;
     double heading_confidence = 0.0;
-    std::string motion_state = "UNKNOWN";
+    const char* motion_state = "UNKNOWN";
     bool alignment_valid = false;
     double det_residual = 0.0;
     double orthogonality_residual = 0.0;

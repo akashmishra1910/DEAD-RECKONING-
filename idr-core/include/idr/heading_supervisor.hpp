@@ -3,7 +3,6 @@
 #include "idr/types.hpp"
 #include "idr/math_utils.hpp"
 #include "idr/eskf.hpp"
-#include <string>
 #include <vector>
 #include <optional>
 #include <cmath>
@@ -60,7 +59,7 @@ struct HeadingMeasurement {
     std::optional<double> innovation_variance = std::nullopt;
     std::optional<double> chi2_normalized = std::nullopt;
     bool is_accepted = false;
-    std::string rejection_reason;
+    const char* rejection_reason = nullptr;
 };
 
 struct HeadingSupervisorTelemetry {
@@ -72,7 +71,7 @@ struct HeadingSupervisorTelemetry {
     std::optional<double> innovation_deg = std::nullopt;
     std::optional<double> chi2_normalized = std::nullopt;
     bool is_updated = false;
-    std::string rejection_reason;
+    const char* rejection_reason = "NO_VALID_HEADING_SOURCE";
     double outage_duration_s = 0.0;
     int total_updates_count = 0;
     int total_rejections_count = 0;
@@ -99,7 +98,7 @@ public:
 
     void reset();
 
-    std::tuple<HeadingQuality, double, double, double, std::string> evaluate_measurement(
+    std::tuple<HeadingQuality, double, double, double, const char*> evaluate_measurement(
         const Vector3& mag_raw_p,
         double time_s,
         const Matrix3x3& R_p2b,
@@ -128,7 +127,7 @@ public:
         double base_velocity_noise_mps = 0.15
     );
 
-    std::tuple<HeadingQuality, double, double, double, std::string> derive_course(
+    std::tuple<HeadingQuality, double, double, double, const char*> derive_course(
         const Vector3& vel_enu,
         double current_yaw_rate = 0.0,
         bool is_forward = true
@@ -181,7 +180,7 @@ private:
     double outage_duration_s_ = 0.0;
     int reacquisition_count_ = 0;
     std::optional<double> last_candidate_heading_rad_ = std::nullopt;
-    std::vector<std::string> rejection_history_;
+    std::vector<HeadingMeasurement> candidates_scratch_;
 };
 
 } // namespace idr

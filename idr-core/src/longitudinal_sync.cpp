@@ -11,7 +11,12 @@ CausalLongitudinalMapSynchronizer::CausalLongitudinalMapSynchronizer(
 ) : min_yaw_rate_(min_yaw_rate_rads),
     r_along_(r_along_m2),
     chi2_threshold_(chi2_threshold)
-{}
+{
+    // Pre-allocate scratch vectors: OSM road polylines rarely have >32 segments
+    seg_azimuths_scratch_.reserve(64);
+    seg_lens_scratch_.reserve(64);
+    turn_angles_scratch_.reserve(64);
+}
 
 LongitudinalConstraintResult CausalLongitudinalMapSynchronizer::process_step(
     double time_s,
@@ -22,9 +27,10 @@ LongitudinalConstraintResult CausalLongitudinalMapSynchronizer::process_step(
     const OSMEdge* edge,
     const OfflineOSMGraph* graph
 ) {
-    yaw_rate_history_.push_back({time_s, yaw_rate_z});
-    if (yaw_rate_history_.size() > 30) {
-        yaw_rate_history_.erase(yaw_rate_history_.begin());
+    yaw_rate_history_[yaw_rate_head_] = {time_s, yaw_rate_z};
+    yaw_rate_head_ = (yaw_rate_head_ + 1) % 32;
+    if (yaw_rate_count_ < 30) {
+        yaw_rate_count_++;
     }
 
     if (!match_result.is_valid || (match_result.confidence != MapMatchConfidence::HIGH && match_result.confidence != MapMatchConfidence::MEDIUM)) {
@@ -53,29 +59,29 @@ LongitudinalConstraintResult CausalLongitudinalMapSynchronizer::process_step(
     }
 
     size_t num_segs = poly.size() - 1;
-    std::vector<double> seg_azimuths(num_segs);
-    std::vector<double> seg_lens(num_segs);
+    seg_azimuths_scratch_.resize(num_segs);
+    seg_lens_scratch_.resize(num_segs);
     for (size_t i = 0; i < num_segs; ++i) {
         double dx = poly[i + 1].x - poly[i].x;
         double dy = poly[i + 1].y - poly[i].y;
-        seg_lens[i] = std::hypot(dx, dy);
-        seg_azimuths[i] = std::atan2(dx, dy);
+        seg_lens_scratch_[i] = std::hypot(dx, dy);
+        seg_azimuths_scratch_[i] = std::atan2(dx, dy);
     }
 
-    std::vector<double> turn_angles(num_segs - 1);
+    turn_angles_scratch_.resize(num_segs - 1);
     double max_turn_deg = 0.0;
     size_t max_turn_idx = 0;
     for (size_t i = 0; i < num_segs - 1; ++i) {
-        double d_az = std::abs(wrap_pi(seg_azimuths[i + 1] - seg_azimuths[i]));
+        double d_az = std::abs(wrap_pi(seg_azimuths_scratch_[i + 1] - seg_azimuths_scratch_[i]));
         double deg = d_az * RAD_TO_DEG;
-        turn_angles[i] = deg;
+        turn_angles_scratch_[i] = deg;
         if (deg > max_turn_deg) {
             max_turn_deg = deg;
             max_turn_idx = i;
         }
     }
 
-    if (turn_angles.empty()) {
+    if (turn_angles_scratch_.empty()) {
         return {false, 0.0, 0.0, 0.0, 0.0, "NO_TURNS"};
     }
 
@@ -85,7 +91,7 @@ LongitudinalConstraintResult CausalLongitudinalMapSynchronizer::process_step(
 
     double vertex_s = 0.0;
     for (size_t i = 0; i <= max_turn_idx; ++i) {
-        vertex_s += seg_lens[i];
+        vertex_s += seg_lens_scratch_[i];
     }
 
     Vector3 p_curr = eskf.get_position();

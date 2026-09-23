@@ -2,7 +2,6 @@
 
 #include "idr/types.hpp"
 #include "idr/osm_graph.hpp"
-#include <string>
 #include <vector>
 #include <unordered_map>
 #include <optional>
@@ -29,10 +28,10 @@ inline const char* map_match_confidence_to_string(MapMatchConfidence c) {
 
 struct MapMatchResult {
     int edge_id = -1;
-    std::string edge_name;
-    std::string road_type;
+    const char* edge_name = "";
+    const char* road_type = "";
     int layer = 0;
-    std::string layer_label;
+    const char* layer_label = "Ground";
     Vector3 snapped_pos{0.0, 0.0, 0.0};
     double d_2d = 999.0;
     double delta_h = 999.0;
@@ -75,6 +74,17 @@ public:
     const OfflineOSMGraph& get_graph() const { return graph_; }
     OfflineOSMGraph& get_graph() { return graph_; }
 
+    struct CandidateScore {
+        const OSMEdge* edge = nullptr;
+        double score = 0.0;
+        double d_2d = 0.0;
+        double delta_h = 0.0;
+        double d_psi = 0.0;
+        Vector3 snapped{0.0, 0.0, 0.0};
+        Vector3 tangent{0.0, 1.0, 0.0};
+        double azimuth = 0.0;
+    };
+
 private:
     OfflineOSMGraph graph_;
     double sigma_d_;
@@ -83,10 +93,16 @@ private:
     double beta_;
     double elevation_barrier_;
 
-    std::unordered_map<int, double> active_hypotheses_;
+    std::vector<std::pair<int, double>> active_hypotheses_;
     std::optional<Vector3> prev_pos_dr_ = std::nullopt;
     std::optional<int> last_matched_edge_id_ = std::nullopt;
     int consecutive_valid_steps_ = 0;
+
+    // Scratch buffers (reused across cycles to guarantee zero heap allocations)
+    mutable std::vector<int> scratch_edge_ids_;
+    std::vector<const OSMEdge*> candidates_scratch_;
+    std::vector<CandidateScore> scored_scratch_;
+    std::vector<std::pair<int, double>> new_hypotheses_scratch_;
 };
 
 } // namespace idr

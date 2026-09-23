@@ -11,8 +11,9 @@
 #include "idr/speed_calibrator.hpp"
 #include "idr/longitudinal_sync.hpp"
 #include <vector>
-#include <optional>
 #include <memory>
+
+
 
 namespace idr {
 
@@ -59,6 +60,20 @@ struct NavigationTelemetry {
     std::array<double, 15> covariance_diag{};
     std::optional<HeadingSupervisorTelemetry> heading_telemetry = std::nullopt;
     SupervisorDiagnostics diagnostics;
+
+    // Explicit Separation of Raw DR and Map-Matched Presentation State (Phase 11.8)
+    Vector3 raw_dr_pos_enu{0.0, 0.0, 0.0};
+    Vector3 map_matched_pos_enu{0.0, 0.0, 0.0};
+    int32_t selected_edge_id = -1;
+    int32_t selected_layer = 0;
+    const char* selected_edge_name = "Unknown";
+    const char* selected_layer_label = "Ground";
+    MapMatchConfidence map_confidence = MapMatchConfidence::INVALID;
+    bool map_ambiguous = false;
+    uint32_t candidate_count = 0;
+    uint32_t hypothesis_count = 0;
+    double score_margin = 0.0;
+    bool map_available = false;
 };
 
 class SeamlessGNSSDeficitEngine {
@@ -101,6 +116,12 @@ public:
         return nullptr;
     }
 
+    bool load_idrmap(const char* path, double lat0, double lon0, double alt0);
+    bool set_idrmap_reader(const IdrMapReader* reader, double lat0, double lon0, double alt0);
+    void reset();
+    const std::optional<MapMatchResult>& get_last_map_match() const { return last_match_result_; }
+    Causal3DMapMatcher* get_map_matcher() { return map_matcher_.get(); }
+
 private:
     std::tuple<bool, bool, double, double> evaluate_gnss_outage_causal(
         double time_s,
@@ -125,6 +146,7 @@ private:
 
     bool enable_map_matching_;
     std::unique_ptr<Causal3DMapMatcher> map_matcher_;
+    std::unique_ptr<IdrMapReader> owned_idrmap_reader_;
 
     bool enable_speed_calibration_;
     std::unique_ptr<OnlineSpeedScaleBiasCalibrator> speed_calibrator_;
@@ -148,5 +170,6 @@ private:
     Vector3 last_pos_{0.0, 0.0, 0.0};
     std::optional<MapMatchResult> last_match_result_ = std::nullopt;
 };
+
 
 } // namespace idr

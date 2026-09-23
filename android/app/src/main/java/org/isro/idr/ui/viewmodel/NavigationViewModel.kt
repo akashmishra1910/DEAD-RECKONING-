@@ -46,6 +46,7 @@ class NavigationViewModel(
     // Bounded mutable lists for trajectories (synced on copy)
     private val idrPoints = ArrayDeque<TrajectoryPoint>(maxTrajectoryPoints)
     private val gnssPoints = ArrayDeque<TrajectoryPoint>(maxTrajectoryPoints)
+    private val mapAidedPoints = ArrayDeque<TrajectoryPoint>(maxTrajectoryPoints)
 
     init {
         synchronizer?.setTelemetryListener(this)
@@ -83,6 +84,31 @@ class NavigationViewModel(
             }
         }
 
+        // Accumulate Map-Aided trajectory point if confidence is valid
+        if (telemetry.isMapConfidenceValid) {
+            val mapX = telemetry.mapMatchedPosEnu.x
+            val mapY = telemetry.mapMatchedPosEnu.y
+            val mapZ = telemetry.mapMatchedPosEnu.z
+            synchronized(mapAidedPoints) {
+                val last = mapAidedPoints.lastOrNull()
+                if (last == null || distanceSq(last.enuX, last.enuY, mapX, mapY) > 0.25) {
+                    if (mapAidedPoints.size >= maxTrajectoryPoints) {
+                        mapAidedPoints.removeFirst()
+                    }
+                    mapAidedPoints.addLast(
+                        TrajectoryPoint(
+                            enuX = mapX,
+                            enuY = mapY,
+                            enuZ = mapZ,
+                            timestampSec = currentSec,
+                            isGnss = false,
+                            isMapAided = true
+                        )
+                    )
+                }
+            }
+        }
+
         // Check if we should update UI state (throttled to ~10 Hz)
         if (nowNanos - lastUiUpdateTimestampNanos < minUiUpdateIntervalNanos) {
             return
@@ -90,8 +116,7 @@ class NavigationViewModel(
         lastUiUpdateTimestampNanos = nowNanos
 
         // Determine DR state and outage duration
-        val isDr = telemetry.mode == NavigationMode.DR_NAV || 
-                   telemetry.mode == NavigationMode.MAP_AIDED_DR ||
+        val isDr = telemetry.mode.isDeadReckoning ||
                    telemetry.mode == NavigationMode.TRANSITION_TO_DR
         
         val outageDuration = if (isDr) {
@@ -111,17 +136,30 @@ class NavigationViewModel(
             current.copy(
                 telemetry = telemetry,
                 navigationMode = telemetry.mode,
-                nativeStatus = NativeStatus.fromCode(telemetry.status),
+                nativeStatus = NativeStatus.SUCCESS,
                 outageDurationSec = outageDuration,
                 isDrActive = isDr,
                 isGnssOutage = isDr || (current.gnssStatus.ageSeconds > 1.5),
                 health = health,
                 idrTrajectory = synchronized(idrPoints) { idrPoints.toList() },
                 gnssTrajectory = synchronized(gnssPoints) { gnssPoints.toList() },
+                mapAidedTrajectory = synchronized(mapAidedPoints) { mapAidedPoints.toList() },
+                mapMatchedPositionEnu = if (telemetry.isMapConfidenceValid) telemetry.mapMatchedPosEnu else null,
+                mapConfidence = when (telemetry.mapConfidence) {
+                    0 -> "HIGH"
+                    1 -> "MEDIUM"
+                    2 -> "LOW"
+                    else -> "INVALID"
+                },
+                isMapAmbiguous = telemetry.isMapAmbiguous,
+                candidateCount = telemetry.candidateCount,
+                hypothesisCount = telemetry.hypothesisCount,
+                scoreMargin = telemetry.scoreMargin,
                 enuAnchor = gnssManager?.getAnchorCoordinate()
             )
         }
     }
+
 
     override fun onGnssSample(sample: GnssSample) {
         if (sample.isValid) {

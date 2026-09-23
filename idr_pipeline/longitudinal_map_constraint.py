@@ -68,6 +68,12 @@ class CausalLongitudinalMapSynchronizer:
         self.yaw_rate_history: List[Tuple[float, float]] = [] # [(time, yaw_rate)]
         self.turn_detected = False
 
+    def reset(self):
+        """Resets the synchronizer history and turn state."""
+        self.last_turn_time = -999.0
+        self.yaw_rate_history.clear()
+        self.turn_detected = False
+
     def process_step(
         self,
         time_s: float,

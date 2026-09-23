@@ -178,34 +178,47 @@ Java_org_isro_idr_engine_NativeNavigationEngine_nativeDestroy(
  */
 
 static inline void serialize_telemetry_to_flat_array(
-    const idr_telemetry_t& telem,
-    jdouble* dst
+    const idr_telemetry_offline_nav_t& telem,
+    jdouble* dst,
+    jsize len
 ) {
-    dst[0]  = static_cast<jdouble>(telem.mode);
-    dst[1]  = static_cast<jdouble>(telem.in_outage);
-    dst[2]  = telem.time_s;
-    dst[3]  = telem.pos_enu.x;
-    dst[4]  = telem.pos_enu.y;
-    dst[5]  = telem.pos_enu.z;
-    dst[6]  = telem.vel_enu.x;
-    dst[7]  = telem.vel_enu.y;
-    dst[8]  = telem.vel_enu.z;
-    dst[9]  = telem.speed_kmh;
-    dst[10] = telem.heading_deg;
-    dst[11] = telem.pitch_deg;
-    dst[12] = telem.roll_deg;
-    dst[13] = telem.accel_bias.x;
-    dst[14] = telem.accel_bias.y;
-    dst[15] = telem.accel_bias.z;
+    dst[0]  = static_cast<jdouble>(telem.base.mode);
+    dst[1]  = static_cast<jdouble>(telem.base.in_outage);
+    dst[2]  = telem.base.time_s;
+    dst[3]  = telem.base.pos_enu.x;
+    dst[4]  = telem.base.pos_enu.y;
+    dst[5]  = telem.base.pos_enu.z;
+    dst[6]  = telem.base.vel_enu.x;
+    dst[7]  = telem.base.vel_enu.y;
+    dst[8]  = telem.base.vel_enu.z;
+    dst[9]  = telem.base.speed_kmh;
+    dst[10] = telem.base.heading_deg;
+    dst[11] = telem.base.pitch_deg;
+    dst[12] = telem.base.roll_deg;
+    dst[13] = telem.base.accel_bias.x;
+    dst[14] = telem.base.accel_bias.y;
+    dst[15] = telem.base.accel_bias.z;
     dst[16] = telem.gyro_bias.x;
     dst[17] = telem.gyro_bias.y;
     dst[18] = telem.gyro_bias.z;
-    dst[19] = telem.outage_duration_s;
-    dst[20] = telem.outage_dist_traveled_m;
-    dst[21] = static_cast<jdouble>(telem.gnss_valid);
-    dst[22] = static_cast<jdouble>(telem.is_pothole_active);
-    dst[23] = static_cast<jdouble>(telem.is_idling);
-    dst[24] = telem.p_trace;
+    dst[19] = telem.base.outage_duration_s;
+    dst[20] = telem.base.outage_dist_traveled_m;
+    dst[21] = static_cast<jdouble>(telem.base.gnss_valid);
+    dst[22] = static_cast<jdouble>(telem.base.is_pothole_active);
+    dst[23] = static_cast<jdouble>(telem.base.is_idling);
+    dst[24] = telem.base.p_trace;
+    if (len >= 35) {
+        dst[25] = telem.map_matched_pos_enu.x;
+        dst[26] = telem.map_matched_pos_enu.y;
+        dst[27] = telem.map_matched_pos_enu.z;
+        dst[28] = static_cast<jdouble>(telem.selected_edge_id);
+        dst[29] = static_cast<jdouble>(telem.selected_layer);
+        dst[30] = static_cast<jdouble>(telem.map_confidence);
+        dst[31] = static_cast<jdouble>(telem.is_map_ambiguous);
+        dst[32] = static_cast<jdouble>(telem.candidate_count);
+        dst[33] = static_cast<jdouble>(telem.hypothesis_count);
+        dst[34] = telem.score_margin;
+    }
 }
 
 JNIEXPORT jint JNICALL
@@ -237,17 +250,19 @@ Java_org_isro_idr_engine_NativeNavigationEngine_nativeProcessStep(
     idr_vec3_t w_p{gx, gy, gz};
     idr_vec3_t g_pos{gnssPosX, gnssPosY, gnssPosZ};
     idr_vec3_t g_vel{gnssVelX, gnssVelY, gnssVelZ};
-    idr_telemetry_t telem{};
+    idr_vec3_t dummy_mag{0.0, 0.0, 0.0};
+    idr_telemetry_offline_nav_t telem{};
 
-    int32_t rc = idr_engine_process_step(
+    int32_t rc = idr_engine_process_step_offline_nav(
         h, timeS, a_p, w_p, baroAlt,
-        gnssValid, g_pos, g_vel, aiSpeed, &telem
+        gnssValid, g_pos, g_vel, aiSpeed,
+        0, dummy_mag, 1, &telem
     );
 
     if (rc == IDR_STATUS_OK) {
         jdouble* elements = env->GetDoubleArrayElements(outTelemBuffer, nullptr);
         if (elements) {
-            serialize_telemetry_to_flat_array(telem, elements);
+            serialize_telemetry_to_flat_array(telem, elements, buf_len);
             env->ReleaseDoubleArrayElements(outTelemBuffer, elements, 0);
         } else {
             return IDR_STATUS_INTERNAL_ERROR;
@@ -290,9 +305,9 @@ Java_org_isro_idr_engine_NativeNavigationEngine_nativeProcessStepExt(
     idr_vec3_t g_pos{gnssPosX, gnssPosY, gnssPosZ};
     idr_vec3_t g_vel{gnssVelX, gnssVelY, gnssVelZ};
     idr_vec3_t m_p{magX, magY, magZ};
-    idr_telemetry_t telem{};
+    idr_telemetry_offline_nav_t telem{};
 
-    int32_t rc = idr_engine_process_step_ext(
+    int32_t rc = idr_engine_process_step_offline_nav(
         h, timeS, a_p, w_p, baroAlt,
         gnssValid, g_pos, g_vel, aiSpeed,
         magValid, m_p, enableRoadConstraints, &telem
@@ -301,7 +316,7 @@ Java_org_isro_idr_engine_NativeNavigationEngine_nativeProcessStepExt(
     if (rc == IDR_STATUS_OK) {
         jdouble* elements = env->GetDoubleArrayElements(outTelemBuffer, nullptr);
         if (elements) {
-            serialize_telemetry_to_flat_array(telem, elements);
+            serialize_telemetry_to_flat_array(telem, elements, buf_len);
             env->ReleaseDoubleArrayElements(outTelemBuffer, elements, 0);
         } else {
             return IDR_STATUS_INTERNAL_ERROR;
@@ -309,6 +324,42 @@ Java_org_isro_idr_engine_NativeNavigationEngine_nativeProcessStepExt(
     }
 
     return rc;
+}
+
+JNIEXPORT jint JNICALL
+Java_org_isro_idr_engine_NativeNavigationEngine_nativeLoadIdrmap(
+    JNIEnv* env,
+    jobject /*thiz*/,
+    jlong handle,
+    jstring pathStr,
+    jdouble lat0,
+    jdouble lon0,
+    jdouble alt0
+) {
+    if (handle == 0 || pathStr == nullptr) {
+        return IDR_STATUS_INVALID_ARGUMENT;
+    }
+    const char* path = env->GetStringUTFChars(pathStr, nullptr);
+    if (!path) {
+        return IDR_STATUS_INVALID_ARGUMENT;
+    }
+    idr_engine_handle_t h = reinterpret_cast<idr_engine_handle_t>(handle);
+    idr_status_t rc = idr_engine_load_idrmap(h, path, lat0, lon0, alt0);
+    env->ReleaseStringUTFChars(pathStr, path);
+    return rc;
+}
+
+JNIEXPORT jint JNICALL
+Java_org_isro_idr_engine_NativeNavigationEngine_nativeReset(
+    JNIEnv* /*env*/,
+    jobject /*thiz*/,
+    jlong handle
+) {
+    if (handle == 0) {
+        return IDR_STATUS_INVALID_ARGUMENT;
+    }
+    idr_engine_handle_t h = reinterpret_cast<idr_engine_handle_t>(handle);
+    return idr_engine_reset(h);
 }
 
 /* Direct ByteBuffer zero-copy process step */

@@ -506,3 +506,67 @@ class OfflineOSMGraph:
                 edge_id += 1
 
         return graph
+
+    @classmethod
+    def from_idrmap(
+        cls,
+        reader: Any,
+        origin_lat: float = 52.77,
+        origin_lon: float = -1.21,
+        origin_alt: float = 0.0
+    ) -> "OfflineOSMGraph":
+        """
+        Constructs an OfflineOSMGraph by reading directly from an IdrmapReader.
+        Converts all edge geometries to local ENU coordinates using (origin_lat, origin_lon, origin_alt).
+        """
+        from idr_map.road_filter import ID_TO_ROAD_CLASS
+        graph = cls(origin_lat=origin_lat, origin_lon=origin_lon, origin_alt=origin_alt)
+
+        edge_count = reader.header.edge_count
+        for eid in range(edge_count):
+            edge_fields = reader.get_edge_raw(eid)
+            (
+                edge_id, osm_way_id, start_node, end_node,
+                g_start, g_count, road_class_id, oneway,
+                layer, flags, maxspeed, _reserved, name_off, length_m
+            ) = edge_fields
+
+            geom_wgs = reader.get_edge_geometry(eid)
+            if len(geom_wgs) < 2:
+                continue
+
+            poly_enu_list = []
+            for lat, lon in geom_wgs:
+                alt = 8.5 if layer > 0 else 0.0
+                enu = wgs84_to_enu(lat, lon, alt, origin_lat, origin_lon, origin_alt)
+                poly_enu_list.append(enu)
+
+            poly_enu = np.array(poly_enu_list, dtype=float)
+
+            if start_node not in graph.nodes:
+                graph.add_node(start_node, geom_wgs[0][0], geom_wgs[0][1], 0.0, enu_pos=poly_enu[0].copy())
+            if end_node not in graph.nodes:
+                graph.add_node(end_node, geom_wgs[-1][0], geom_wgs[-1][1], 0.0, enu_pos=poly_enu[-1].copy())
+
+            edge_name = reader.get_string(name_off)
+            road_type = ID_TO_ROAD_CLASS.get(road_class_id, "primary")
+            is_bridge = bool(flags & 1)
+            is_tunnel = bool(flags & 2)
+
+            graph.add_edge(
+                edge_id=edge_id,
+                source_id=start_node,
+                target_id=end_node,
+                name=edge_name if edge_name else f"Road_{edge_id}",
+                road_type=road_type,
+                polyline_enu=poly_enu,
+                layer=layer,
+                is_bridge=is_bridge,
+                is_tunnel=is_tunnel,
+                oneway=bool(oneway),
+                width=3.5,
+                speed_limit=float(maxspeed) if maxspeed > 0 else 16.67
+            )
+
+        return graph
+

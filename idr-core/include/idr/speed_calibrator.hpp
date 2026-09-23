@@ -38,8 +38,10 @@ public:
 
     double correct_speed(double raw_ai_speed) const;
     CalibratorState get_state() const;
+    void reset();
 
 private:
+
     double forgetting_factor_;
     int min_samples_;
     double scale_min_;

@@ -86,6 +86,15 @@ class OnlineSpeedScaleBiasCalibrator:
         self.is_frozen = False
         self.last_time = 0.0
 
+    def reset(self):
+        """Resets the calibrator state."""
+        self.theta = np.array([1.0, 0.0], dtype=float)
+        self.P = np.diag([0.04, 0.25]).astype(float)
+        self.sample_count = 0
+        self.frozen_theta = None
+        self.is_frozen = False
+        self.last_time = 0.0
+
     def update_gnss_aiding(
         self,
         time_s: float,

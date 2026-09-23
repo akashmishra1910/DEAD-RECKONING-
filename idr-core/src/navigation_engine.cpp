@@ -31,7 +31,7 @@ SeamlessGNSSDeficitEngine::SeamlessGNSSDeficitEngine(
         heading_supervisor_ = std::make_unique<HeadingSupervisor>(6.635);
     }
     if (enable_map_matching_) {
-        OfflineOSMGraph g = osm_graph.has_value() ? *osm_graph : OfflineOSMGraph::build_synthetic_3d_corridor();
+        OfflineOSMGraph g = static_cast<bool>(osm_graph) ? *osm_graph : OfflineOSMGraph::build_synthetic_3d_corridor();
         map_matcher_ = std::make_unique<Causal3DMapMatcher>(g, 5.0, 1.8, 0.30, 5.0, 4.0);
     }
     if (enable_speed_calibration_) {
@@ -41,7 +41,7 @@ SeamlessGNSSDeficitEngine::SeamlessGNSSDeficitEngine(
         longitudinal_synchronizer_ = std::make_unique<CausalLongitudinalMapSynchronizer>();
     }
 
-    if (init_pos.has_value()) {
+    if (static_cast<bool>(init_pos)) {
         last_pos_ = *init_pos;
     }
 }
@@ -52,7 +52,7 @@ std::tuple<bool, bool, double, double> SeamlessGNSSDeficitEngine::evaluate_gnss_
     const std::optional<Vector3>& gnss_vel,
     bool gnss_valid
 ) {
-    if (!gnss_valid || !gnss_pos.has_value()) {
+    if (!gnss_valid || !static_cast<bool>(gnss_pos)) {
         return {true, false, 999.0, 999.0};
     }
 
@@ -87,7 +87,7 @@ std::tuple<bool, bool, double, double> SeamlessGNSSDeficitEngine::evaluate_gnss_
 
     // Velocity Innovation Gate
     double gamma_vel = 0.0;
-    if (gnss_vel.has_value()) {
+    if (static_cast<bool>(gnss_vel)) {
         Vector3 dz_vel = *gnss_vel - eskf_.get_velocity();
         Matrix3x3 S_vel;
         for (int r = 0; r < 3; ++r) {
@@ -104,9 +104,10 @@ std::tuple<bool, bool, double, double> SeamlessGNSSDeficitEngine::evaluate_gnss_
     }
 
     bool is_severe_pos_jump = (gamma_pos > 40.0);
-    bool is_severe_vel_jump = (gnss_vel.has_value() && gamma_vel > 25.0);
+    bool is_severe_vel_jump = (static_cast<bool>(gnss_vel) && gamma_vel > 25.0);
     bool is_mild_pos_jump = (gamma_pos > 20.0);
-    bool is_mild_vel_jump = (gnss_vel.has_value() && gamma_vel > 12.0);
+    bool is_mild_vel_jump = (static_cast<bool>(gnss_vel) && gamma_vel > 12.0);
+
 
     if (is_severe_pos_jump && is_severe_vel_jump) {
         return {true, false, gamma_pos, gamma_vel};
@@ -207,8 +208,8 @@ NavigationTelemetry SeamlessGNSSDeficitEngine::process_step(
     const std::optional<Vector3>& mag_raw_p,
     bool enable_road_constraints
 ) {
-    bool is_stationary = (ai_speed.has_value() && *ai_speed < 0.2) ||
-                         (gnss_valid && gnss_pos.has_value() && eskf_.get_velocity().norm() < 0.2);
+    bool is_stationary = (static_cast<bool>(ai_speed) && *ai_speed < 0.2) ||
+                         (gnss_valid && static_cast<bool>(gnss_pos) && eskf_.get_velocity().norm() < 0.2);
 
     alignment_engine_.process_sample(accel_raw_p, gyro_raw_p, is_stationary);
     Vector3 accel_b = alignment_engine_.transform_phone_to_vehicle(accel_raw_p);
@@ -228,10 +229,14 @@ NavigationTelemetry SeamlessGNSSDeficitEngine::process_step(
         );
     }
 
-    auto [is_outage, is_degraded, gamma_pos, gamma_vel] = evaluate_gnss_outage_causal(time_s, gnss_pos, gnss_vel, gnss_valid);
+    bool is_outage = false;
+    bool is_degraded = false;
+    double gamma_pos = 0.0;
+    double gamma_vel = 0.0;
+    std::tie(is_outage, is_degraded, gamma_pos, gamma_vel) = evaluate_gnss_outage_causal(time_s, gnss_pos, gnss_vel, gnss_valid);
     update_supervisor_state_machine(time_s, is_outage, is_degraded);
 
-    if (!is_outage && gnss_pos.has_value()) {
+    if (!is_outage && static_cast<bool>(gnss_pos)) {
         last_gnss_time_ = time_s;
     }
 
@@ -246,15 +251,15 @@ NavigationTelemetry SeamlessGNSSDeficitEngine::process_step(
     double long_innov = 0.0;
 
     if (mode_ == NavigationMode::GNSS_AIDED) {
-        if (gnss_pos.has_value()) {
+        if (static_cast<bool>(gnss_pos)) {
             eskf_.update_gnss(*gnss_pos, 2.5);
         }
-        if (gnss_vel.has_value()) {
+        if (static_cast<bool>(gnss_vel)) {
             eskf_.update_gnss_velocity(*gnss_vel, 0.20);
             gnss_weight = 1.0;
         }
-        if (speed_calibrator_ && ai_speed.has_value()) {
-            double g_spd = gnss_vel.has_value() ? std::hypot(gnss_vel->x, gnss_vel->y) : 0.0;
+        if (speed_calibrator_ && static_cast<bool>(ai_speed)) {
+            double g_spd = static_cast<bool>(gnss_vel) ? std::hypot(gnss_vel->x, gnss_vel->y) : 0.0;
             speed_calibrator_->update_gnss_aiding(time_s, *ai_speed, g_spd, gnss_valid);
         }
         eskf_.update_nhc(0.08, 0.08);
@@ -262,29 +267,29 @@ NavigationTelemetry SeamlessGNSSDeficitEngine::process_step(
             eskf_.update_zupt(0.01);
         }
     } else if (mode_ == NavigationMode::GNSS_DEGRADED) {
-        if (gnss_pos.has_value() && gamma_pos <= chi2_pos_threshold_) {
+        if (static_cast<bool>(gnss_pos) && gamma_pos <= chi2_pos_threshold_) {
             eskf_.update_gnss(*gnss_pos, 6.0);
         }
-        if (gnss_vel.has_value() && gamma_vel <= chi2_vel_threshold_) {
+        if (static_cast<bool>(gnss_vel) && gamma_vel <= chi2_vel_threshold_) {
             eskf_.update_gnss_velocity(*gnss_vel, 0.8);
             gnss_weight = 0.4;
-            if (speed_calibrator_ && ai_speed.has_value()) {
+            if (speed_calibrator_ && static_cast<bool>(ai_speed)) {
                 double g_spd = std::hypot(gnss_vel->x, gnss_vel->y);
                 speed_calibrator_->update_gnss_aiding(time_s, *ai_speed, g_spd, gnss_valid);
             }
         }
-        if (ai_speed.has_value()) {
+        if (static_cast<bool>(ai_speed)) {
             double cal_speed = speed_calibrator_ ? speed_calibrator_->correct_speed(*ai_speed) : *ai_speed;
             double eff_speed = vib_state.is_engine_idling ? 0.0 : cal_speed;
             eskf_.update_ai_velocity(eff_speed, 0.50);
             ai_weight = 0.60;
         }
         eskf_.update_nhc(0.06, 0.06);
-        if (vib_state.is_engine_idling || (ai_speed.has_value() && *ai_speed < 0.2)) {
+        if (vib_state.is_engine_idling || (static_cast<bool>(ai_speed) && *ai_speed < 0.2)) {
             eskf_.update_zupt(0.01);
         }
     } else if (mode_ == NavigationMode::TRANSITION_TO_DR || mode_ == NavigationMode::DR_ONLY) {
-        if (ai_speed.has_value()) {
+        if (static_cast<bool>(ai_speed)) {
             double cal_speed = speed_calibrator_ ? speed_calibrator_->correct_speed(*ai_speed) : *ai_speed;
             double eff_speed = vib_state.is_engine_idling ? 0.0 : cal_speed;
             double turn_rate = std::abs(clean_gyro_b.z);
@@ -294,7 +299,7 @@ NavigationTelemetry SeamlessGNSSDeficitEngine::process_step(
             ai_weight = 1.0;
         }
         eskf_.update_nhc(0.05, 0.05);
-        if (vib_state.is_engine_idling || (ai_speed.has_value() && *ai_speed < 0.2)) {
+        if (vib_state.is_engine_idling || (static_cast<bool>(ai_speed) && *ai_speed < 0.2)) {
             eskf_.update_zupt(0.01);
         }
         if (enable_map_matching_ && map_matcher_ && enable_road_constraints) {
@@ -328,10 +333,10 @@ NavigationTelemetry SeamlessGNSSDeficitEngine::process_step(
         bool is_fix_accepted = (gamma_pos <= chi2_pos_threshold_);
         if (is_fix_accepted) {
             reacquisition_epochs_++;
-            if (gnss_pos.has_value()) {
+            if (static_cast<bool>(gnss_pos)) {
                 eskf_.update_gnss(*gnss_pos, 5.0);
             }
-            if (gnss_vel.has_value() && gamma_vel <= chi2_vel_threshold_) {
+            if (static_cast<bool>(gnss_vel) && gamma_vel <= chi2_vel_threshold_) {
                 eskf_.update_gnss_velocity(*gnss_vel, 0.6);
                 gnss_weight = 0.5;
             }
@@ -342,7 +347,7 @@ NavigationTelemetry SeamlessGNSSDeficitEngine::process_step(
         } else {
             reacquisition_epochs_ = 0;
             last_transition_reason_ = "Multipath Spike Rejected in Recovery";
-            if (ai_speed.has_value()) {
+            if (static_cast<bool>(ai_speed)) {
                 double cal_speed = speed_calibrator_ ? speed_calibrator_->correct_speed(*ai_speed) : *ai_speed;
                 double eff_speed = vib_state.is_engine_idling ? 0.0 : cal_speed;
                 eskf_.update_ai_velocity(eff_speed, 0.45);
@@ -350,14 +355,14 @@ NavigationTelemetry SeamlessGNSSDeficitEngine::process_step(
             }
         }
         eskf_.update_nhc(0.05, 0.05);
-        if (vib_state.is_engine_idling || (ai_speed.has_value() && *ai_speed < 0.2)) {
+        if (vib_state.is_engine_idling || (static_cast<bool>(ai_speed) && *ai_speed < 0.2)) {
             eskf_.update_zupt(0.01);
         }
     } else if (mode_ == NavigationMode::GNSS_REACQUIRED) {
-        if (gnss_pos.has_value() && gamma_pos <= chi2_pos_threshold_) {
+        if (static_cast<bool>(gnss_pos) && gamma_pos <= chi2_pos_threshold_) {
             eskf_.update_gnss(*gnss_pos, 3.0);
         }
-        if (gnss_vel.has_value() && gamma_vel <= chi2_vel_threshold_) {
+        if (static_cast<bool>(gnss_vel) && gamma_vel <= chi2_vel_threshold_) {
             eskf_.update_gnss_velocity(*gnss_vel, 0.3);
             gnss_weight = 0.9;
         }
@@ -424,7 +429,85 @@ NavigationTelemetry SeamlessGNSSDeficitEngine::process_step(
     telem.heading_telemetry = heading_telem;
     telem.diagnostics = diag;
 
+    // Explicit Separation of Raw DR and Map-Matched Presentation State (Phase 11.8)
+    telem.raw_dr_pos_enu = eskf_.get_position();
+    telem.map_available = (enable_map_matching_ && map_matcher_ != nullptr);
+    if (static_cast<bool>(last_match_result_) && last_match_result_->is_valid) {
+
+        telem.map_matched_pos_enu = last_match_result_->snapped_pos;
+        telem.selected_edge_id = last_match_result_->edge_id;
+        telem.selected_layer = last_match_result_->layer;
+        telem.selected_edge_name = last_match_result_->edge_name;
+        telem.selected_layer_label = last_match_result_->layer_label;
+        telem.map_confidence = last_match_result_->confidence;
+        telem.map_ambiguous = last_match_result_->is_ambiguous;
+        telem.candidate_count = last_match_result_->candidate_count;
+        telem.hypothesis_count = last_match_result_->hypothesis_count;
+        telem.score_margin = last_match_result_->score_margin;
+    } else {
+        telem.map_matched_pos_enu = eskf_.get_position();
+        telem.selected_edge_id = -1;
+        telem.selected_layer = 0;
+        telem.selected_edge_name = "Unknown";
+        telem.selected_layer_label = "Ground";
+        telem.map_confidence = MapMatchConfidence::INVALID;
+        telem.map_ambiguous = false;
+        telem.candidate_count = 0;
+        telem.hypothesis_count = 0;
+        telem.score_margin = 0.0;
+    }
+
     return telem;
+}
+
+bool SeamlessGNSSDeficitEngine::load_idrmap(const char* path, double lat0, double lon0, double alt0) {
+    if (!path) return false;
+    owned_idrmap_reader_ = std::make_unique<IdrMapReader>();
+    if (owned_idrmap_reader_->open_file(path) != IdrMapStatus::OK) {
+        owned_idrmap_reader_.reset();
+        return false;
+    }
+    map_matcher_ = std::make_unique<Causal3DMapMatcher>(
+        owned_idrmap_reader_.get(), lat0, lon0, alt0
+    );
+    enable_map_matching_ = true;
+    last_match_result_ = std::nullopt;
+    return true;
+}
+
+
+bool SeamlessGNSSDeficitEngine::set_idrmap_reader(const IdrMapReader* reader, double lat0, double lon0, double alt0) {
+    if (!reader || !reader->is_open()) return false;
+    owned_idrmap_reader_.reset();
+    map_matcher_ = std::make_unique<Causal3DMapMatcher>(
+        reader, lat0, lon0, alt0
+    );
+    enable_map_matching_ = true;
+    last_match_result_ = std::nullopt;
+    return true;
+}
+
+void SeamlessGNSSDeficitEngine::reset() {
+    eskf_.reset();
+    alignment_engine_.reset();
+    vibration_filter_.reset();
+    if (heading_supervisor_) heading_supervisor_->reset();
+    if (map_matcher_) map_matcher_->reset();
+    if (speed_calibrator_) speed_calibrator_->reset();
+    if (longitudinal_synchronizer_) longitudinal_synchronizer_->reset();
+
+    mode_ = NavigationMode::INITIALIZING;
+    mode_entry_time_ = 0.0;
+    last_transition_reason_ = "Engine Reset";
+    consecutive_valid_gnss_ = 0;
+    consecutive_outage_epochs_ = 0;
+    reacquisition_epochs_ = 0;
+    last_gnss_time_ = -1.0;
+    outage_start_time_ = 0.0;
+    outage_distance_traveled_ = 0.0;
+    total_distance_traveled_ = 0.0;
+    last_pos_ = Vector3(0.0, 0.0, 0.0);
+    last_match_result_ = std::nullopt;
 }
 
 } // namespace idr

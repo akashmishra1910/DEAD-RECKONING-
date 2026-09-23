@@ -10,6 +10,8 @@ enum class TrajectoryDisplayMode {
     BOTH,
     IDR_ONLY,
     GNSS_ONLY,
+    MAP_AIDED,
+    ALL,
     OFF
 }
 
@@ -61,7 +63,8 @@ data class TrajectoryPoint(
     val enuY: Double,
     val enuZ: Double = 0.0,
     val timestampSec: Double = 0.0,
-    val isGnss: Boolean = false
+    val isGnss: Boolean = false,
+    val isMapAided: Boolean = false
 )
 
 data class NavigationUiState(
@@ -76,6 +79,15 @@ data class NavigationUiState(
     val trajectoryMode: TrajectoryDisplayMode = TrajectoryDisplayMode.BOTH,
     val idrTrajectory: List<TrajectoryPoint> = emptyList(),
     val gnssTrajectory: List<TrajectoryPoint> = emptyList(),
+    val mapAidedTrajectory: List<TrajectoryPoint> = emptyList(),
+    val mapMatchedPositionEnu: org.isro.idr.engine.Vector3D? = null,
+    val selectedRoadName: String = "Unknown",
+    val selectedRoadLayer: String = "Ground",
+    val mapConfidence: String = "INVALID",
+    val isMapAmbiguous: Boolean = false,
+    val candidateCount: Int = 0,
+    val hypothesisCount: Int = 0,
+    val scoreMargin: Double = 0.0,
     val health: SystemHealthState = SystemHealthState(),
     val diagnostics: IngestionHealthSnapshot? = null,
     val selectedScreen: ScreenTab = ScreenTab.NAVIGATION,
@@ -83,3 +95,4 @@ data class NavigationUiState(
     val isRunning: Boolean = false,
     val errorMessage: String? = null
 )
+

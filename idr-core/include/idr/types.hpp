@@ -5,8 +5,41 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <algorithm>
+
+#if defined(__has_include)
+  #if __has_include(<optional>) && __cplusplus >= 201703L
+    #include <optional>
+  #else
+    #include <experimental/optional>
+    namespace std {
+        using experimental::optional;
+        using experimental::nullopt;
+        using experimental::nullopt_t;
+        using experimental::make_optional;
+    }
+  #endif
+#else
+  #include <experimental/optional>
+  namespace std {
+      using experimental::optional;
+      using experimental::nullopt;
+      using experimental::nullopt_t;
+      using experimental::make_optional;
+  }
+#endif
+
+#if __cplusplus < 201703L
+namespace std {
+    template<class T>
+    constexpr const T& clamp(const T& v, const T& lo, const T& hi) {
+        return (v < lo) ? lo : (hi < v) ? hi : v;
+    }
+}
+#endif
 
 namespace idr {
+
 
 // ============================================================================
 // Fixed-Size Stack Allocation Linear Algebra Primitives (Zero Heap Allocation)

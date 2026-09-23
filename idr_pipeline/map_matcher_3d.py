@@ -160,16 +160,22 @@ class Causal3DMapMatcher:
     def __init__(
         self,
         graph: Optional[OfflineOSMGraph] = None,
+        idrmap_reader: Optional[Any] = None,
+        lat0: float = 52.77,
+        lon0: float = -1.21,
+        alt0: float = 0.0,
         sigma_d: float = 5.0,        # 2D distance noise std (m)
         sigma_h: float = 1.8,        # 3D elevation noise std (m)
         sigma_psi: float = 0.30,     # Heading noise std (rad ~17 deg)
         beta: float = 5.0,           # Transition parameter (m)
         elevation_barrier: float = 4.0  # Threshold |dh| > 4m triggers hard penalty
     ):
-        if graph is None:
-            self.graph = OfflineOSMGraph.build_synthetic_3d_corridor()
-        else:
+        if graph is not None:
             self.graph = graph
+        elif idrmap_reader is not None:
+            self.graph = OfflineOSMGraph.from_idrmap(idrmap_reader, origin_lat=lat0, origin_lon=lon0, origin_alt=alt0)
+        else:
+            self.graph = OfflineOSMGraph.build_synthetic_3d_corridor()
 
         self.sigma_d = sigma_d
         self.sigma_h = sigma_h

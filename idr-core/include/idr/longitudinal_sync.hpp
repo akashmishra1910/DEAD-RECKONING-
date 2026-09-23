@@ -35,7 +35,14 @@ public:
         const OfflineOSMGraph* graph = nullptr
     );
 
+    void reset() {
+        last_turn_time_ = -999.0;
+        yaw_rate_count_ = 0;
+        yaw_rate_head_ = 0;
+    }
+
 private:
+
     double min_yaw_rate_;
     double r_along_;
     double chi2_threshold_;

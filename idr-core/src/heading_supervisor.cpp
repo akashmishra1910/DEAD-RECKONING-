@@ -46,8 +46,8 @@ std::tuple<HeadingQuality, double, double, double, const char*> MagneticDisturba
         return {HeadingQuality::INVALID, 0.0, 1.0, norm_cal, "MAGNITUDE_OUT_OF_BOUNDS"};
     }
 
-    double dt = last_time_s_.has_value() ? (time_s - *last_time_s_) : 0.1;
-    if (dt > 0.0 && last_mag_vec_.has_value()) {
+    double dt = static_cast<bool>(last_time_s_) ? (time_s - *last_time_s_) : 0.1;
+    if (dt > 0.0 && static_cast<bool>(last_mag_vec_)) {
         double gradient = (mag_cal_p - *last_mag_vec_).norm() / dt;
         if (gradient > max_grad_) {
             last_mag_vec_ = mag_cal_p;
@@ -55,6 +55,7 @@ std::tuple<HeadingQuality, double, double, double, const char*> MagneticDisturba
             return {HeadingQuality::DISTURBED, 0.0, 1.0, norm_cal, "EXCESSIVE_GRADIENT"};
         }
     }
+
 
     last_mag_vec_ = mag_cal_p;
     last_time_s_ = time_s;
@@ -178,10 +179,16 @@ HeadingSupervisorTelemetry HeadingSupervisor::process_step(
     double mag_field_norm = 0.0;
     bool mag_is_disturbed = false;
 
-    if (enable_gnss_ && gnss_valid && gnss_vel.has_value()) {
-        auto [g_qual, g_course, g_std, g_spd, g_reason] = gnss_deriver_.derive_course(
+    if (enable_gnss_ && gnss_valid && static_cast<bool>(gnss_vel)) {
+        auto g_res = gnss_deriver_.derive_course(
             *gnss_vel, current_yaw_rate, is_forward
         );
+        HeadingQuality g_qual = std::get<0>(g_res);
+        double g_course = std::get<1>(g_res);
+        double g_std = std::get<2>(g_res);
+        double g_spd = std::get<3>(g_res);
+        const char* g_reason = std::get<4>(g_res);
+
         if (g_qual == HeadingQuality::NOMINAL || g_qual == HeadingQuality::HIGH_ACCURACY || g_qual == HeadingQuality::WEAK) {
             HeadingMeasurement m;
             m.source = HeadingSourceType::GNSS_COURSE;
@@ -195,10 +202,16 @@ HeadingSupervisorTelemetry HeadingSupervisor::process_step(
         }
     }
 
-    if (enable_mag_ && mag_raw_p.has_value()) {
-        auto [m_qual, m_hdg, m_std, m_norm, m_reason] = mag_detector_.evaluate_measurement(
+    if (enable_mag_ && static_cast<bool>(mag_raw_p)) {
+        auto m_res = mag_detector_.evaluate_measurement(
             *mag_raw_p, time_s, R_p2b, eskf.get_rotation_matrix()
         );
+        HeadingQuality m_qual = std::get<0>(m_res);
+        double m_hdg = std::get<1>(m_res);
+        double m_std = std::get<2>(m_res);
+        double m_norm = std::get<3>(m_res);
+        const char* m_reason = std::get<4>(m_res);
+
         mag_field_norm = m_norm;
         mag_is_disturbed = (m_qual == HeadingQuality::DISTURBED);
 
@@ -214,6 +227,7 @@ HeadingSupervisorTelemetry HeadingSupervisor::process_step(
             candidates_scratch_.push_back(m);
         }
     }
+
 
     // Arbitration: HIGH_ACCURACY > NOMINAL > WEAK, then smallest std_rad
     std::optional<HeadingMeasurement> selected = std::nullopt;
@@ -241,7 +255,7 @@ HeadingSupervisorTelemetry HeadingSupervisor::process_step(
     std::optional<double> innov_deg = std::nullopt;
     std::optional<double> gamma_val = std::nullopt;
 
-    if (selected.has_value()) {
+    if (static_cast<bool>(selected)) {
         selected_source = selected->source;
         selected_quality = selected->quality;
         meas_hdg_deg = selected->heading_deg;
@@ -269,7 +283,7 @@ HeadingSupervisorTelemetry HeadingSupervisor::process_step(
             reacquisition_count_ = 0;
             rejection_reason = "ACCEPTED_AND_UPDATED";
         } else {
-            if (last_candidate_heading_rad_.has_value() &&
+            if (static_cast<bool>(last_candidate_heading_rad_) &&
                 std::abs(wrap_pi(selected->heading_rad - *last_candidate_heading_rad_)) < (15.0 * DEG_TO_RAD)) {
                 reacquisition_count_++;
             } else {
@@ -319,7 +333,8 @@ HeadingSupervisorTelemetry HeadingSupervisor::process_step(
     telem.total_updates_count = total_updates_;
     telem.total_rejections_count = total_rejections_;
     telem.gnss_course_available = (!candidates_scratch_.empty() && candidates_scratch_[0].source == HeadingSourceType::GNSS_COURSE);
-    telem.mag_available = mag_raw_p.has_value();
+    telem.mag_available = static_cast<bool>(mag_raw_p);
+
     telem.mag_field_magnitude_uT = mag_field_norm;
     telem.mag_disturbed = mag_is_disturbed;
     telem.gyro_bias_z_deg_s = gyro_bias_z_deg_s;

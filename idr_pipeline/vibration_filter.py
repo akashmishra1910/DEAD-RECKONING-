@@ -177,6 +177,13 @@ class VibrationPotholeFilter:
         self.pothole_count = 0
         self._pothole_cooldown = 0
 
+    def reset(self):
+        """Resets filter buffers and counters."""
+        self._accel_buffer.clear()
+        self._gyro_buffer.clear()
+        self.pothole_count = 0
+        self._pothole_cooldown = 0
+
     def apply_butterworth(self, data: np.ndarray) -> np.ndarray:
         """Applies configured Butterworth pre-filter per-axis with zero phase shift."""
         return apply_butterworth_prefilter(

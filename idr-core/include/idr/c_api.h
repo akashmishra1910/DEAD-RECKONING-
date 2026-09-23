@@ -111,6 +111,27 @@ typedef struct {
     double p_trace;                  /**< Trace of 15x15 error covariance matrix Tr(P) */
 } idr_telemetry_t;
 
+/**
+ * @brief Extended Offline Navigation Telemetry Output (Phase 11.8).
+ * Explicitly separates raw DR / filter state from map-matched presentation state.
+ */
+typedef struct {
+    idr_telemetry_t base;            /**< Base navigation telemetry */
+    idr_vec3_t raw_dr_pos_enu;       /**< Raw unfiltered DR ENU position (m) */
+    idr_vec3_t map_matched_pos_enu;  /**< Road-snapped presentation position (m) */
+    int32_t selected_edge_id;        /**< Matched road edge ID (-1 if none) */
+    int32_t selected_layer;          /**< Road layer (0=Ground, 1=Flyover, -1=Tunnel) */
+    int32_t map_confidence;          /**< 0=HIGH, 1=MEDIUM, 2=LOW, 3=INVALID */
+    int32_t is_map_ambiguous;        /**< 1 if geometric candidate ambiguity detected */
+    uint32_t candidate_count;        /**< Number of road candidates queried */
+    uint32_t hypothesis_count;       /**< Number of active Viterbi hypotheses */
+    double score_margin;             /**< Posterior score margin between top 2 candidates */
+    int32_t map_available;           /**< 1 if offline map reader/graph is active */
+    int32_t _reserved;               /**< Padding */
+    const char* selected_edge_name;  /**< Matched road name */
+    const char* selected_layer_label;/**< Matched layer label ("Ground", "Flyover", etc.) */
+} idr_telemetry_offline_nav_t;
+
 #pragma pack(pop)
 
 /**
@@ -250,6 +271,55 @@ int32_t idr_engine_process_step_ext(
     int32_t enable_road_constraints,
     idr_telemetry_t* out_telem
 );
+
+/**
+ * @brief Offline navigation process step returning extended telemetry with raw vs map-matched separation.
+ */
+int32_t idr_engine_process_step_offline_nav(
+    idr_engine_handle_t handle,
+    double time_s,
+    idr_vec3_t accel_phone,
+    idr_vec3_t gyro_phone,
+    double baro_alt,
+    int32_t gnss_valid,
+    idr_vec3_t gnss_pos,
+    idr_vec3_t gnss_vel,
+    double ai_speed,
+    int32_t mag_valid,
+    idr_vec3_t mag_phone,
+    int32_t enable_road_constraints,
+    idr_telemetry_offline_nav_t* out_telem
+);
+
+/**
+ * @brief Loads a compiled .idrmap v1.0 binary file into the navigation engine.
+ */
+idr_status_t idr_engine_load_idrmap(
+    idr_engine_handle_t handle,
+    const char* path,
+    double lat0,
+    double lon0,
+    double alt0
+);
+
+typedef struct idr_map_reader_s idr_map_reader_t;
+
+/**
+ * @brief Attaches a pre-opened IdrMapReader to the navigation engine.
+ */
+idr_status_t idr_engine_set_map_reader(
+    idr_engine_handle_t handle,
+    const idr_map_reader_t* reader,
+    double lat0,
+    double lon0,
+    double alt0
+);
+
+
+/**
+ * @brief Resets the navigation engine state back to INITIALIZING.
+ */
+idr_status_t idr_engine_reset(idr_engine_handle_t handle);
 
 /* ============================================================================
  * Offline OpenStreetMap Road Graph API

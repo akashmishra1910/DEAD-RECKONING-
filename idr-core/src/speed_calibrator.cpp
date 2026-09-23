@@ -114,4 +114,18 @@ CalibratorState OnlineSpeedScaleBiasCalibrator::get_state() const {
     return st;
 }
 
+void OnlineSpeedScaleBiasCalibrator::reset() {
+    theta_scale_ = 1.0;
+    theta_bias_ = 0.0;
+    P00_ = 0.01;
+    P11_ = 0.25;
+    P01_ = 0.0;
+    sample_count_ = 0;
+    last_time_ = 0.0;
+    is_frozen_ = false;
+    frozen_scale_ = 1.0;
+    frozen_bias_ = 0.0;
+}
+
 } // namespace idr
+

@@ -90,7 +90,7 @@ class SupervisorDiagnostics:
 class NavigationTelemetry:
     mode: NavigationMode
     time_s: float
-    pos_enu: np.ndarray        # [East, North, Up] meters
+    pos_enu: np.ndarray        # [East, North, Up] meters (Filter state / Raw DR)
     vel_enu: np.ndarray        # [vx, vy, vz] m/s
     speed_kmh: float           # km/h
     heading_deg: float         # yaw heading in degrees [0, 360)
@@ -108,6 +108,20 @@ class NavigationTelemetry:
     covariance_diag: np.ndarray # (15,) diagonal of P matrix
     heading_telemetry: Optional[HeadingSupervisorTelemetry] = None
     diagnostics: Optional[SupervisorDiagnostics] = None
+
+    # Explicit Separation of Raw DR and Map-Matched Presentation State (Phase 11.8)
+    raw_dr_pos_enu: np.ndarray = field(default_factory=lambda: np.zeros(3))
+    map_matched_pos_enu: np.ndarray = field(default_factory=lambda: np.zeros(3))
+    selected_edge_id: int = -1
+    selected_layer: int = 0
+    selected_edge_name: str = "Unknown"
+    selected_layer_label: str = "Ground"
+    map_confidence: MapMatchConfidence = MapMatchConfidence.INVALID
+    map_ambiguous: bool = False
+    candidate_count: int = 0
+    hypothesis_count: int = 0
+    score_margin: float = 0.0
+    map_available: bool = False
 
 
 class SeamlessGNSSDeficitEngine:
@@ -135,6 +149,9 @@ class SeamlessGNSSDeficitEngine:
         self.chi2_pos_threshold = chi2_pos_threshold
         self.chi2_vel_threshold = chi2_vel_threshold
         self.min_reacquisition_dwell = min_reacquisition_dwell_epochs
+        self.init_pos = init_pos
+        self.init_vel = init_vel
+        self.init_euler = init_euler
 
         # Sub-modules
         self.alignment_engine = InVehicleAlignmentEngine()
@@ -144,6 +161,7 @@ class SeamlessGNSSDeficitEngine:
             init_vel=init_vel,
             init_euler=init_euler
         )
+
 
         self.enable_heading_supervisor = enable_heading_supervisor
         self.heading_supervisor = HeadingSupervisor(chi2_gate=6.635) if enable_heading_supervisor else None
@@ -576,6 +594,33 @@ class SeamlessGNSSDeficitEngine:
             longitudinal_innovation_m=long_innov
         )
 
+        # Map-matched presentation state fields
+        raw_dr_pos = self.eskf.p.copy()
+
+        map_avail = (self.enable_map_matching and self.map_matcher is not None)
+        if self.last_match_result is not None and self.last_match_result.is_valid:
+            map_matched_pos = self.last_match_result.snapped_pos.copy() if hasattr(self.last_match_result.snapped_pos, 'copy') else np.array(self.last_match_result.snapped_pos)
+            sel_edge_id = self.last_match_result.edge_id
+            sel_layer = self.last_match_result.layer
+            sel_edge_name = self.last_match_result.edge_name
+            sel_layer_label = self.last_match_result.layer_label
+            map_conf = self.last_match_result.confidence
+            map_ambig = self.last_match_result.is_ambiguous
+            cand_cnt = self.last_match_result.candidate_count
+            hyp_cnt = self.last_match_result.hypothesis_count
+            sc_margin = self.last_match_result.score_margin
+        else:
+            map_matched_pos = raw_dr_pos.copy()
+            sel_edge_id = -1
+            sel_layer = 0
+            sel_edge_name = "Unknown"
+            sel_layer_label = "Ground"
+            map_conf = MapMatchConfidence.INVALID
+            map_ambig = False
+            cand_cnt = 0
+            hyp_cnt = 0
+            sc_margin = 0.0
+
         return NavigationTelemetry(
             mode=self.mode,
             time_s=time_s,
@@ -596,5 +641,71 @@ class SeamlessGNSSDeficitEngine:
             is_idling=vib_state.is_engine_idling,
             covariance_diag=np.diag(self.eskf.P).copy(),
             heading_telemetry=heading_telem,
-            diagnostics=diag
+            diagnostics=diag,
+            raw_dr_pos_enu=raw_dr_pos,
+            map_matched_pos_enu=map_matched_pos,
+            selected_edge_id=sel_edge_id,
+            selected_layer=sel_layer,
+            selected_edge_name=sel_edge_name,
+            selected_layer_label=sel_layer_label,
+            map_confidence=map_conf,
+            map_ambiguous=map_ambig,
+            candidate_count=cand_cnt,
+            hypothesis_count=hyp_cnt,
+            score_margin=sc_margin,
+            map_available=map_avail
         )
+
+    def load_idrmap(self, path: str, lat0: float, lon0: float, alt0: float) -> bool:
+        """Loads a compiled .idrmap v1.0 binary file into the map matcher."""
+        try:
+            from idr_map.idrmap_reader import IdrmapReader
+            reader = IdrmapReader.from_file(path)
+            self.map_matcher = Causal3DMapMatcher(idrmap_reader=reader, lat0=lat0, lon0=lon0, alt0=alt0)
+            self.enable_map_matching = True
+            self.last_match_result = None
+            return True
+        except Exception:
+            return False
+
+    def set_idrmap_reader(self, reader: Any, lat0: float, lon0: float, alt0: float) -> bool:
+        """Attaches an open IdrmapReader instance to the map matcher."""
+        if reader is None:
+            return False
+        self.map_matcher = Causal3DMapMatcher(idrmap_reader=reader, lat0=lat0, lon0=lon0, alt0=alt0)
+        self.enable_map_matching = True
+        self.last_match_result = None
+        return True
+
+    def reset(self):
+        """Resets engine state back to INITIALIZING."""
+        self.eskf = ErrorStateKalmanFilter(
+            init_pos=self.init_pos,
+            init_vel=self.init_vel,
+            init_euler=self.init_euler
+        )
+        self.alignment_engine.reset()
+        self.vibration_filter.reset()
+        if self.heading_supervisor is not None:
+            self.heading_supervisor.reset()
+        if self.map_matcher is not None:
+            self.map_matcher.reset()
+        if self.speed_calibrator is not None:
+            self.speed_calibrator.reset()
+        if self.longitudinal_synchronizer is not None:
+            self.longitudinal_synchronizer.reset()
+
+        self.mode = NavigationMode.INITIALIZING
+        self.mode_entry_time = 0.0
+        self.last_transition_reason = "Engine Reset"
+        self.consecutive_valid_gnss = 0
+        self.consecutive_outage_epochs = 0
+        self.reacquisition_epochs = 0
+        self.last_gnss_time = -1.0
+        self.outage_start_time = 0.0
+        self.outage_distance_traveled = 0.0
+        self.total_distance_traveled = 0.0
+        p_init = np.zeros(3) if self.init_pos is None else self.init_pos.copy()
+        self.last_pos = p_init.copy()
+        self.last_match_result = None
+

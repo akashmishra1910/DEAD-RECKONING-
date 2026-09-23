@@ -2,10 +2,10 @@
 
 #include "idr/types.hpp"
 #include "idr/math_utils.hpp"
-#include <optional>
 #include <tuple>
 #include <cmath>
 #include <array>
+
 
 namespace idr {
 
@@ -55,8 +55,10 @@ public:
     void set_accel_bias(const Vector3& ba) { ba_ = ba; }
     void set_gyro_bias(const Vector3& bg) { bg_ = bg; }
     void set_covariance(const Matrix15x15& P) { P_ = P; }
+    void reset() { *this = ErrorStateKalmanFilter(); }
 
 private:
+
     // Core Kalman update with dynamic dimension M in {1, 2, 3}
     template <std::size_t M>
     std::pair<bool, double> apply_kalman_update(

@@ -95,8 +95,9 @@ AlignmentState InVehicleAlignmentEngine::process_sample(
                 perform_leveling();
             }
         } else {
-            quality_.motion_state = (gnss_speed.has_value() && *gnss_speed < 2.0) ? "QUASI_STATIC" : "UNKNOWN";
+            quality_.motion_state = (static_cast<bool>(gnss_speed) && *gnss_speed < 2.0) ? "QUASI_STATIC" : "UNKNOWN";
         }
+
         return state_;
     }
 

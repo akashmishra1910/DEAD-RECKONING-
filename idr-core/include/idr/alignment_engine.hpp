@@ -3,9 +3,9 @@
 #include "idr/types.hpp"
 #include "idr/math_utils.hpp"
 #include <vector>
-#include <optional>
 #include <cmath>
 #include <algorithm>
+
 
 namespace idr {
 

@@ -15,7 +15,7 @@ using namespace idr;
 static_assert(sizeof(idr_vec3_t) == 24, "ABI error: idr_vec3_t must be exactly 24 bytes");
 static_assert(alignof(idr_vec3_t) == 8, "ABI error: idr_vec3_t must have 8-byte alignment");
 
-static_assert(sizeof(idr_telemetry_t) == 160, "ABI error: idr_telemetry_t must be exactly 160 bytes");
+static_assert(sizeof(idr_telemetry_t) == 184, "ABI error: idr_telemetry_t must be exactly 184 bytes");
 static_assert(alignof(idr_telemetry_t) == 8, "ABI error: idr_telemetry_t must have 8-byte alignment");
 
 static_assert(offsetof(idr_telemetry_t, mode) == 0, "ABI offset mismatch: mode");
@@ -31,6 +31,11 @@ static_assert(offsetof(idr_telemetry_t, accel_bias) == 96, "ABI offset mismatch:
 static_assert(offsetof(idr_telemetry_t, gyro_bias) == 120, "ABI offset mismatch: gyro_bias");
 static_assert(offsetof(idr_telemetry_t, outage_duration_s) == 144, "ABI offset mismatch: outage_duration_s");
 static_assert(offsetof(idr_telemetry_t, outage_dist_traveled_m) == 152, "ABI offset mismatch: outage_dist_traveled_m");
+static_assert(offsetof(idr_telemetry_t, gnss_valid) == 160, "ABI offset mismatch: gnss_valid");
+static_assert(offsetof(idr_telemetry_t, is_pothole_active) == 164, "ABI offset mismatch: is_pothole_active");
+static_assert(offsetof(idr_telemetry_t, is_idling) == 168, "ABI offset mismatch: is_idling");
+static_assert(offsetof(idr_telemetry_t, p_trace) == 176, "ABI offset mismatch: p_trace");
+
 
 /* ============================================================================
  * Helper Validation Functions
@@ -278,6 +283,160 @@ int32_t idr_engine_process_step(
     );
 }
 
+int32_t idr_engine_process_step_offline_nav(
+    idr_engine_handle_t handle,
+    double time_s,
+    idr_vec3_t accel_phone,
+    idr_vec3_t gyro_phone,
+    double baro_alt,
+    int32_t gnss_valid,
+    idr_vec3_t gnss_pos,
+    idr_vec3_t gnss_vel,
+    double ai_speed,
+    int32_t mag_valid,
+    idr_vec3_t mag_phone,
+    int32_t enable_road_constraints,
+    idr_telemetry_offline_nav_t* out_telem
+) {
+    if (!handle || !out_telem) {
+        return IDR_STATUS_INVALID_ARGUMENT;
+    }
+
+    if (!std::isfinite(time_s) || !std::isfinite(baro_alt) ||
+        !std::isfinite(accel_phone.x) || !std::isfinite(accel_phone.y) || !std::isfinite(accel_phone.z) ||
+        !std::isfinite(gyro_phone.x) || !std::isfinite(gyro_phone.y) || !std::isfinite(gyro_phone.z)) {
+        return IDR_STATUS_NUMERICAL_FAILURE;
+    }
+
+    try {
+        auto* engine = static_cast<SeamlessGNSSDeficitEngine*>(handle);
+
+        Vector3 acc(accel_phone.x, accel_phone.y, accel_phone.z);
+        Vector3 gyr(gyro_phone.x, gyro_phone.y, gyro_phone.z);
+
+        std::optional<Vector3> g_pos = std::nullopt;
+        if (gnss_valid && std::isfinite(gnss_pos.x) && std::isfinite(gnss_pos.y) && std::isfinite(gnss_pos.z)) {
+            g_pos = Vector3(gnss_pos.x, gnss_pos.y, gnss_pos.z);
+        }
+
+        std::optional<Vector3> g_vel = std::nullopt;
+        if (gnss_valid && std::isfinite(gnss_vel.x) && std::isfinite(gnss_vel.y) && std::isfinite(gnss_vel.z)) {
+            g_vel = Vector3(gnss_vel.x, gnss_vel.y, gnss_vel.z);
+        }
+
+        std::optional<double> v_ai = std::nullopt;
+        if (ai_speed >= 0.0 && std::isfinite(ai_speed)) {
+            v_ai = ai_speed;
+        }
+
+        std::optional<Vector3> mag = std::nullopt;
+        if (mag_valid && std::isfinite(mag_phone.x) && std::isfinite(mag_phone.y) && std::isfinite(mag_phone.z)) {
+            mag = Vector3(mag_phone.x, mag_phone.y, mag_phone.z);
+        }
+
+        NavigationTelemetry telem = engine->process_step(
+            time_s, acc, gyr, baro_alt,
+            g_pos, gnss_valid != 0, v_ai, g_vel, mag,
+            enable_road_constraints != 0
+        );
+
+        // Base telemetry
+        out_telem->base.mode = static_cast<int32_t>(telem.mode);
+        out_telem->base.in_outage = telem.in_outage ? 1 : 0;
+        out_telem->base.time_s = telem.time_s;
+        out_telem->base.pos_enu = {telem.pos_enu.x, telem.pos_enu.y, telem.pos_enu.z};
+        out_telem->base.vel_enu = {telem.vel_enu.x, telem.vel_enu.y, telem.vel_enu.z};
+        out_telem->base.speed_kmh = telem.speed_kmh;
+        out_telem->base.heading_deg = telem.heading_deg;
+        out_telem->base.pitch_deg = telem.pitch_deg;
+        out_telem->base.roll_deg = telem.roll_deg;
+        out_telem->base.accel_bias = {telem.accel_bias.x, telem.accel_bias.y, telem.accel_bias.z};
+        out_telem->base.gyro_bias = {telem.gyro_bias.x, telem.gyro_bias.y, telem.gyro_bias.z};
+        out_telem->base.outage_duration_s = telem.outage_duration_s;
+        out_telem->base.outage_dist_traveled_m = telem.outage_dist_traveled_m;
+        out_telem->base.gnss_valid = telem.gnss_valid ? 1 : 0;
+        out_telem->base.is_pothole_active = telem.is_pothole_active ? 1 : 0;
+        out_telem->base.is_idling = telem.is_idling ? 1 : 0;
+        out_telem->base.reserved = 0;
+        out_telem->base.p_trace = telem.diagnostics.p_trace;
+
+        // Extended Offline Nav Telemetry
+        out_telem->raw_dr_pos_enu = {telem.raw_dr_pos_enu.x, telem.raw_dr_pos_enu.y, telem.raw_dr_pos_enu.z};
+        out_telem->map_matched_pos_enu = {telem.map_matched_pos_enu.x, telem.map_matched_pos_enu.y, telem.map_matched_pos_enu.z};
+        out_telem->selected_edge_id = telem.selected_edge_id;
+        out_telem->selected_layer = telem.selected_layer;
+        out_telem->map_confidence = static_cast<int32_t>(telem.map_confidence);
+        out_telem->is_map_ambiguous = telem.map_ambiguous ? 1 : 0;
+        out_telem->candidate_count = telem.candidate_count;
+        out_telem->hypothesis_count = telem.hypothesis_count;
+        out_telem->score_margin = telem.score_margin;
+        out_telem->map_available = telem.map_available ? 1 : 0;
+        out_telem->_reserved = 0;
+        out_telem->selected_edge_name = telem.selected_edge_name;
+        out_telem->selected_layer_label = telem.selected_layer_label;
+
+        return IDR_STATUS_OK;
+    } catch (...) {
+        return IDR_STATUS_INTERNAL_ERROR;
+    }
+}
+
+idr_status_t idr_engine_load_idrmap(
+    idr_engine_handle_t handle,
+    const char* path,
+    double lat0,
+    double lon0,
+    double alt0
+) {
+    if (!handle || !path) {
+        return IDR_STATUS_INVALID_ARGUMENT;
+    }
+    try {
+        auto* engine = static_cast<SeamlessGNSSDeficitEngine*>(handle);
+        bool ok = engine->load_idrmap(path, lat0, lon0, alt0);
+        return ok ? IDR_STATUS_OK : IDR_STATUS_UNAVAILABLE;
+    } catch (...) {
+        return IDR_STATUS_INTERNAL_ERROR;
+    }
+}
+
+struct idr_map_reader_s {
+    IdrMapReader reader;
+};
+
+idr_status_t idr_engine_set_map_reader(
+    idr_engine_handle_t handle,
+    const idr_map_reader_t* reader,
+    double lat0,
+    double lon0,
+    double alt0
+) {
+
+    if (!handle || !reader) {
+        return IDR_STATUS_INVALID_ARGUMENT;
+    }
+    try {
+        auto* engine = static_cast<SeamlessGNSSDeficitEngine*>(handle);
+        bool ok = engine->set_idrmap_reader(&reader->reader, lat0, lon0, alt0);
+        return ok ? IDR_STATUS_OK : IDR_STATUS_INVALID_STATE;
+    } catch (...) {
+        return IDR_STATUS_INTERNAL_ERROR;
+    }
+}
+
+idr_status_t idr_engine_reset(idr_engine_handle_t handle) {
+    if (!handle) {
+        return IDR_STATUS_INVALID_ARGUMENT;
+    }
+    try {
+        auto* engine = static_cast<SeamlessGNSSDeficitEngine*>(handle);
+        engine->reset();
+        return IDR_STATUS_OK;
+    } catch (...) {
+        return IDR_STATUS_INTERNAL_ERROR;
+    }
+}
+
 void idr_engine_clear_osm_graph(idr_engine_handle_t handle) {
     if (!handle) return;
     auto* engine = static_cast<SeamlessGNSSDeficitEngine*>(handle);
@@ -359,11 +518,8 @@ void idr_engine_add_osm_edge(
  * IdrMapReader C API Implementations (Phase 11.6)
  * ============================================================================
  */
-struct idr_map_reader_s {
-    IdrMapReader reader;
-};
-
 idr_map_reader_t* idr_map_reader_create(void) {
+
     try {
         return new idr_map_reader_t();
     } catch (...) {

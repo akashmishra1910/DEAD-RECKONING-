@@ -15,12 +15,13 @@ ErrorStateKalmanFilter::ErrorStateKalmanFilter(
     double acc_bias_noise,
     double gyro_bias_noise
 ) {
-    if (init_pos.has_value()) p_ = *init_pos;
-    if (init_vel.has_value()) v_ = *init_vel;
-    if (init_ba.has_value()) ba_ = *init_ba;
-    if (init_bg.has_value()) bg_ = *init_bg;
+    if (static_cast<bool>(init_pos)) p_ = *init_pos;
+    if (static_cast<bool>(init_vel)) v_ = *init_vel;
+    if (static_cast<bool>(init_ba)) ba_ = *init_ba;
+    if (static_cast<bool>(init_bg)) bg_ = *init_bg;
 
-    if (init_euler.has_value()) {
+    if (static_cast<bool>(init_euler)) {
+
         roll_ = (*init_euler)[0];
         pitch_ = (*init_euler)[1];
         yaw_ = (*init_euler)[2];
@@ -60,10 +61,7 @@ ErrorStateKalmanFilter::ErrorStateKalmanFilter(
 
 void ErrorStateKalmanFilter::set_attitude(const Matrix3x3& R) {
     R_ = renormalize_so3(R);
-    auto [r, p, y] = rotation_matrix_to_euler(R_);
-    roll_ = r;
-    pitch_ = p;
-    yaw_ = y;
+    std::tie(roll_, pitch_, yaw_) = rotation_matrix_to_euler(R_);
 }
 
 void ErrorStateKalmanFilter::predict(const Vector3& accel_meas, const Vector3& gyro_meas, double dt) {
@@ -83,12 +81,10 @@ void ErrorStateKalmanFilter::predict(const Vector3& accel_meas, const Vector3& g
     R_ = R_ * rodrigues(dtheta_b);
     R_ = renormalize_so3(R_);
 
-    auto [r, p, y] = rotation_matrix_to_euler(R_);
-    roll_ = r;
-    pitch_ = p;
-    yaw_ = y;
+    std::tie(roll_, pitch_, yaw_) = rotation_matrix_to_euler(R_);
 
     // State transition matrix Phi = I + F * dt
+
     // F:
     // F[0:3, 3:6] = I
     // F[3:6, 6:9] = -skew_symmetric(f_n)
@@ -168,10 +164,10 @@ std::pair<bool, double> ErrorStateKalmanFilter::apply_kalman_update(
 
     // Invert S (M x M)
     std::array<std::array<double, M>, M> S_inv{};
-    if constexpr (M == 1) {
+    if (M == 1) {
         if (std::abs(S[0][0]) < 1e-12) return {false, 999.0};
         S_inv[0][0] = 1.0 / S[0][0];
-    } else if constexpr (M == 2) {
+    } else if (M == 2) {
         double det = S[0][0] * S[1][1] - S[0][1] * S[1][0];
         if (std::abs(det) < 1e-12) return {false, 999.0};
         double inv_det = 1.0 / det;
@@ -179,7 +175,8 @@ std::pair<bool, double> ErrorStateKalmanFilter::apply_kalman_update(
         S_inv[0][1] = -S[0][1] * inv_det;
         S_inv[1][0] = -S[1][0] * inv_det;
         S_inv[1][1] = S[0][0] * inv_det;
-    } else if constexpr (M == 3) {
+    } else if (M == 3) {
+
         Matrix3x3 s_mat(S[0][0], S[0][1], S[0][2],
                         S[1][0], S[1][1], S[1][2],
                         S[2][0], S[2][1], S[2][2]);
@@ -202,9 +199,10 @@ std::pair<bool, double> ErrorStateKalmanFilter::apply_kalman_update(
         gamma += dz[r] * tmp;
     }
 
-    if (chi2_gate.has_value() && gamma > *chi2_gate) {
+    if (static_cast<bool>(chi2_gate) && gamma > *chi2_gate) {
         return {false, gamma};
     }
+
 
     // Kalman gain K = P * H^T * S_inv  (15 x M)
     // First P * H^T (15 x M)
@@ -253,12 +251,10 @@ std::pair<bool, double> ErrorStateKalmanFilter::apply_kalman_update(
     Vector3 dtheta_n(dx[6], dx[7], dx[8]);
     R_ = rodrigues(dtheta_n) * R_;
     R_ = renormalize_so3(R_);
-    auto [r_ang, p_ang, y_ang] = rotation_matrix_to_euler(R_);
-    roll_ = r_ang;
-    pitch_ = p_ang;
-    yaw_ = y_ang;
+    std::tie(roll_, pitch_, yaw_) = rotation_matrix_to_euler(R_);
 
     // 3. Inject bias corrections
+
     ba_.x += dx[9];
     ba_.y += dx[10];
     ba_.z += dx[11];

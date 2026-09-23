@@ -1,8 +1,11 @@
 #pragma once
 
+#include "idr/types.hpp"
+
 #include <array>
 #include <cstdint>
 #include <cstddef>
+
 
 namespace idr {
 

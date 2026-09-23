@@ -47,7 +47,9 @@ int main() {
     assert(std::abs(eskf.get_covariance().trace() - 5.271264) < 1e-4);
 
     // Step 4: Heading update
-    auto [acc_hdg, gam_hdg] = eskf.update_heading(50.0 * DEG_TO_RAD, 0.05, 6.635);
+    auto res_hdg = eskf.update_heading(50.0 * DEG_TO_RAD, 0.05, 6.635);
+    bool acc_hdg = res_hdg.first;
+    double gam_hdg = res_hdg.second;
     assert(acc_hdg == false);
     assert(std::abs(gam_hdg - 23.136078) < 1e-3);
     std::cout << "  Heading gate correctly rejected outlier (gamma = " << gam_hdg << " > 6.635)" << std::endl;
@@ -59,16 +61,21 @@ int main() {
     std::cout << "  Altitude update passed." << std::endl;
 
     // Step 6: Road heading and road position
-    auto [acc_rh, gam_rh] = eskf.update_road_heading(52.0 * DEG_TO_RAD, 0.087, 9.0);
+    auto res_rh = eskf.update_road_heading(52.0 * DEG_TO_RAD, 0.087, 9.0);
+    bool acc_rh = res_rh.first;
+    double gam_rh = res_rh.second;
     assert(acc_rh == false); // gamma 10.25 > 9.0
 
     Vector3 snapped_pos(eskf.get_position().x + 0.5, eskf.get_position().y - 0.2, eskf.get_position().z);
     Vector3 tangent_2d(std::sin(52.0 * DEG_TO_RAD), std::cos(52.0 * DEG_TO_RAD), 0.0);
-    auto [acc_rp, gam_rp] = eskf.update_road_position(snapped_pos, tangent_2d, 1.75, 16.0);
+    auto res_rp = eskf.update_road_position(snapped_pos, tangent_2d, 1.75, 16.0);
+    bool acc_rp = res_rp.first;
+    double gam_rp = res_rp.second;
     assert(acc_rp == true);
     assert(std::abs(gam_rp - 0.050872) < 1e-4);
     assert(std::abs(eskf.get_position().x - 110.408906) < 1e-4);
     std::cout << "  Road constraints update passed." << std::endl;
+
 
     // Step 7: GNSS pos & vel
     eskf.update_gnss(eskf.get_position() + Vector3(0.2, -0.1, 0.05), 2.5);

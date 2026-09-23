@@ -3,7 +3,6 @@
 #include <array>
 #include <cstdint>
 #include <cstddef>
-#include <string_view>
 
 namespace idr {
 

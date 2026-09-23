@@ -5,7 +5,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
-#include <string_view>
 
 namespace idr {
 
@@ -356,7 +355,7 @@ enum class NavigationMode {
     GNSS_REACQUIRED = 6
 };
 
-inline std::string_view navigation_mode_to_string(NavigationMode mode) {
+inline const char* navigation_mode_to_string(NavigationMode mode) {
     switch (mode) {
         case NavigationMode::INITIALIZING: return "INITIALIZING";
         case NavigationMode::GNSS_AIDED: return "GNSS_AIDED";

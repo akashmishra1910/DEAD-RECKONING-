@@ -6,6 +6,33 @@ All notable changes, phase completions, and model evolutions will be documented 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to strict phase-gate change control.
 
+## [Phase 8] - End-to-End PS Benchmark Closure & Along-Track Drift Reduction — 2026-09-23
+
+### Added
+- Implemented `idr_pipeline/speed_scale_bias_calibrator.py`: Online recursive least squares (RLS) estimator for speed scale $\alpha$ and additive bias $\beta$ ($v_{\text{corr}} = \alpha \cdot v_{\text{ai}} + \beta$) trained during GNSS-aided motion, with freeze/unfreeze on outage entry/recovery.
+- Implemented `idr_pipeline/longitudinal_map_constraint.py`: Causal along-track ESKF corrections at road turns and geometry vertices using yaw-rate gating, edge-length gating, Chi-Square innovation gating ($\chi^2 \le 6.635$), and 4.0-second dwell time enforcement.
+- Integrated speed calibrator and longitudinal map synchronizer into `idr_pipeline/gnss_ins_fusion_engine.py` with full state-machine synchronization and extended `SupervisorDiagnostics`.
+- Created comprehensive forensic along-track error diagnostic script (`scripts/run_phase8_along_track_forensics.py`) breaking down 9 physical error components (A–I) across all 158 authentic IO-VNBD outages.
+- Created end-to-end benchmark closure suite (`scripts/evaluate_phase8_benchmark_closure.py`) evaluating the complete 158-outage catalog, B0–B7 ablation matrix, heading sensitivity analysis, anti-lookahead causality proof, and 200 Hz edge engine profiling.
+- Created dedicated test suite (`tests/test_phase8_along_track_and_benchmark.py`) with 16 comprehensive tests covering calibration, longitudinal constraints, causality, and benchmark invariants.
+- Generated Phase 8 reports:
+  - `reports/phase8_along_track_forensics.csv`
+  - `reports/phase8_error_budget_breakdown.csv`
+  - `reports/phase8_benchmark_closure_results.csv`
+  - `reports/phase8_ablation_b0_b7.csv`
+  - `reports/phase8_heading_sensitivity.csv`
+  - `reports/phase8_causality_verification.csv`
+  - `reports/phase8_edge_profiling.csv`
+- Published `docs/PHASE_8_BENCHMARK_CLOSURE_REPORT.md`.
+
+### Verified
+- Full regression suite passing: **155 / 155 PASSED (100% Pass Rate)**.
+- Error Budget Breakdown: Heading cross-projection error ($83.88\%$) and velocity scale/bias drift ($14.72\%$) proven as the two dominant error contributors across 158 authentic outages.
+- Anti-Lookahead Strict Causality: Confirmed $\Delta = 0.00000000\text{ m}$ divergence under future corruption.
+- 200 Hz Edge Engine Profiling: $5.52\text{ ms/cycle}$ step latency in uncompiled Python, $<0.03\text{ MB}$ peak RAM footprint.
+
+---
+
 ## [Phase 7] - Full GNSS/INS Supervisor, Seamless GNSS Deficit Engine & Closed-Loop Constraint Diagnostics — 2026-09-23
 
 ### Added

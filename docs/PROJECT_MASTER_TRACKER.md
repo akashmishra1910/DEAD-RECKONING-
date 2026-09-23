@@ -1,10 +1,10 @@
 # Project Master Tracker
 ## ISRO / SIH PS 26168: AI-ML Based Intelligent Dead Reckoning System
 
-**Current Phase:** PHASE 7 — FULL GNSS / INS SUPERVISOR, SEAMLESS GNSS DEFICIT ENGINE & CLOSED-LOOP CONSTRAINT DIAGNOSTICS (COMPLETED)  
-**Overall Status:** IN PROGRESS (Phase 7 Completed; 139/139 Tests Passing; Ready for Phase 8 Authorization)  
+**Current Phase:** PHASE 8 — END-TO-END PS BENCHMARK CLOSURE & ALONG-TRACK DRIFT REDUCTION (COMPLETED)  
+**Overall Status:** IN PROGRESS (Phase 8 Completed; 155/155 Tests Passing; Ready for Phase 9 Authorization)  
 **Last Updated:** 2026-09-23  
-**Active Git Commit:** `phase-07-gnss-ins-supervisor`  
+**Active Git Commit:** `phase-08-benchmark-closure`  
 **Execution Environment:** Windows (x86_64) | Python 3.11.0 | NumPy 2.4.6 | Scikit-Learn 1.9.1 | SciPy 1.17.1 | Joblib 1.4.2 | Java 25.0.2 | MinGW GCC 6.3.0  
 
 ---
@@ -21,19 +21,19 @@
 | **Phase 5** | Authentic Outage Benchmark & Drift Hardening | **COMPLETED** | **PASSED** | 158 authentic outages evaluated, 5-config ablation, 60s deep correlation ($r_{\text{cross}}=+0.7977$), adaptive R validated, 10/10 tests passed (108/108 total regression). |
 | **Phase 6** | 3D Offline OSM Map-Matching | **COMPLETED** | **PASSED** | Topological 3D graph, causal online HMM, $4\text{ m}$ elevation barrier, soft ESKF road heading/position constraints, 15/15 tests passed (123/123 total regression). |
 | **Phase 7** | Full GNSS / INS Supervisor | **COMPLETED** | **PASSED** | 6-state FSM supervisor, causal outage detection, seamless handover ($\Delta p < 0.05\text{ m}$), forensic along/cross error breakdown, 16/16 tests passed (139/139 total regression). |
-| **Phase 8** | Two-Wheeler Mode | NOT STARTED | PENDING | Roll-compensated NHC and lateral dynamics for motorcycles/scooters. |
-| **Phase 9** | Portable C++ Core (`idr-core`) | NOT STARTED | PENDING | C++17 standalone library with CMake, sample-rate agnostic, 200 Hz capable. |
-| **Phase 10** | GBDT Edge Deployment | NOT STARTED | PENDING | Transpiled branchless static C++ decision tables matching Python Top45 bit-for-bit. |
-| **Phase 11** | Android Application (`idr-android`) | NOT STARTED | PENDING | Kotlin foreground service, NDK JNI bridge, 100 Hz sensor buffer, 10 Hz UI. |
-| **Phase 12** | NavIC Integration | NOT STARTED | PENDING | Android `GnssMeasurement` constellation decoding (`CONSTELLATION_IRNSS`). |
-| **Phase 13** | Offline Mode | NOT STARTED | PENDING | Zero network calls, local MBTiles/OSM graph, standalone weights. |
-| **Phase 14** | Replay / Demonstration Mode | NOT STARTED | PENDING | Interactive simulation cockpit for real IO-VNBD logs with live sensor toggles. |
-| **Phase 15** | Performance Engineering | NOT STARTED | PENDING | Execution profiling: $<1\text{ ms}$ latency, $<2.5\text{ MB}$ RAM footprint verification. |
-| **Phase 16** | Complete Benchmark Matrix | NOT STARTED | PENDING | Reproducible multi-outage evaluation (10s, 30s, 60s, 120s) across all configs. |
-| **Phase 17** | Authentic IO-VNBD Validation | NOT STARTED | PENDING | 72-drive comprehensive naturalistic evaluation without synthetic leakage. |
-| **Phase 18** | PS Compliance Validation | NOT STARTED | PENDING | Evidence-based evaluation against all ISRO sponsor criteria. |
-| **Phase 19** | Final System Integration | NOT STARTED | PENDING | End-to-end integration tests spanning Python, C++, JNI, and Android. |
-| **Phase 20** | Final Demo Package & Delivery | NOT STARTED | PENDING | Final delivery package, APK, CLI binary, reproducibility docs, demo script. |
+| **Phase 8** | End-to-End PS Benchmark Closure & Along-Track Reduction | **COMPLETED** | **PASSED** | 9-component error budget, online RLS speed scale/bias calibrator, turn longitudinal constraint, B0–B7 ablation, 16/16 tests passed (155/155 total regression). |
+| **Phase 9** | Two-Wheeler Mode | NOT STARTED | PENDING | Roll-compensated NHC and lateral dynamics for motorcycles/scooters. |
+| **Phase 10** | Portable C++ Core (`idr-core`) | NOT STARTED | PENDING | C++17 standalone library with CMake, sample-rate agnostic, 200 Hz capable. |
+| **Phase 11** | GBDT Edge Deployment | NOT STARTED | PENDING | Transpiled branchless static C++ decision tables matching Python Top45 bit-for-bit. |
+| **Phase 12** | Android Application (`idr-android`) | NOT STARTED | PENDING | Kotlin foreground service, NDK JNI bridge, 100 Hz sensor buffer, 10 Hz UI. |
+| **Phase 13** | NavIC Integration | NOT STARTED | PENDING | Android `GnssMeasurement` constellation decoding (`CONSTELLATION_IRNSS`). |
+| **Phase 14** | Offline Mode | NOT STARTED | PENDING | Zero network calls, local MBTiles/OSM graph, standalone weights. |
+| **Phase 15** | Replay / Demonstration Mode | NOT STARTED | PENDING | Interactive simulation cockpit for real IO-VNBD logs with live sensor toggles. |
+| **Phase 16** | Performance Engineering | NOT STARTED | PENDING | Execution profiling: $<1\text{ ms}$ latency, $<2.5\text{ MB}$ RAM footprint verification. |
+| **Phase 17** | Complete Benchmark Matrix | NOT STARTED | PENDING | Reproducible multi-outage evaluation (10s, 30s, 60s, 120s) across all configs. |
+| **Phase 18** | Authentic IO-VNBD Validation | NOT STARTED | PENDING | 72-drive comprehensive naturalistic evaluation without synthetic leakage. |
+| **Phase 19** | PS Compliance Validation | NOT STARTED | PENDING | Evidence-based evaluation against all ISRO sponsor criteria. |
+| **Phase 20** | Final System Integration & Demo Package | NOT STARTED | PENDING | End-to-end integration tests spanning Python, C++, JNI, and Android. |
 
 ---
 
@@ -49,7 +49,8 @@
 - `tests/test_phase5_outage_benchmark.py`: **10 Passed / 0 Failed**.
 - `tests/test_phase6_map_matching.py`: **15 Passed / 0 Failed**.
 - `tests/test_phase7_gnss_ins_supervisor.py`: **16 Passed / 0 Failed**.
-- **Total Regression Suite:** **139 Passed / 0 Failed (100% Pass Rate)**.
+- `tests/test_phase8_along_track_and_benchmark.py`: **16 Passed / 0 Failed**.
+- **Total Regression Suite:** **155 Passed / 0 Failed (100% Pass Rate)**.
 
 ### Files Modified/Created in Phase 7
 - `idr_pipeline/gnss_ins_fusion_engine.py` (UPDATED: Full 6-state FSM supervisor, causal outage detection, seamless handover, dynamic velocity arbitration, reacquisition gating).

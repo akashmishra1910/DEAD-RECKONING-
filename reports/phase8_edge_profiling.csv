@@ -1,0 +1,2 @@
+frequency_hz,n_samples,total_time_s,latency_per_step_ms,peak_ram_mb,meets_latency_budget,meets_memory_budget
+200,2000,11.04489260003902,5.52244630001951,0.028882980346679688,False,True

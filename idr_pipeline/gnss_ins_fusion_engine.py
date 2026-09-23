@@ -47,6 +47,8 @@ from .vibration_filter import VibrationPotholeFilter, VibrationState
 from .heading_supervisor import HeadingSupervisor, HeadingSupervisorTelemetry
 from .offline_osm_graph import OfflineOSMGraph
 from .map_matcher_3d import Causal3DMapMatcher, MapMatchConfidence, MapMatchResult, apply_road_constraints_to_eskf
+from .speed_scale_bias_calibrator import OnlineSpeedScaleBiasCalibrator, CalibratorState
+from .longitudinal_map_constraint import CausalLongitudinalMapSynchronizer, LongitudinalConstraintResult
 
 
 class NavigationMode(str, Enum):
@@ -77,6 +79,11 @@ class SupervisorDiagnostics:
     map_constraints_active: bool = False
     map_confidence: str = "INVALID"
     p_trace: float = 0.0
+    speed_scale_est: float = 1.0
+    speed_bias_est_mps: float = 0.0
+    speed_calibrated: bool = False
+    longitudinal_constraint_applied: bool = False
+    longitudinal_innovation_m: float = 0.0
 
 
 @dataclass
@@ -120,7 +127,9 @@ class SeamlessGNSSDeficitEngine:
         enable_heading_supervisor: bool = True,
         enable_map_matching: bool = True,
         osm_graph: Optional[OfflineOSMGraph] = None,
-        min_reacquisition_dwell_epochs: int = 4
+        min_reacquisition_dwell_epochs: int = 4,
+        enable_speed_calibration: bool = True,
+        enable_longitudinal_map_constraint: bool = True
     ):
         self.dt = dt
         self.chi2_pos_threshold = chi2_pos_threshold
@@ -147,6 +156,12 @@ class SeamlessGNSSDeficitEngine:
         else:
             self.map_matcher = None
 
+        self.enable_speed_calibration = enable_speed_calibration
+        self.speed_calibrator = OnlineSpeedScaleBiasCalibrator() if enable_speed_calibration else None
+
+        self.enable_longitudinal_map_constraint = enable_longitudinal_map_constraint
+        self.longitudinal_synchronizer = CausalLongitudinalMapSynchronizer() if enable_longitudinal_map_constraint else None
+
         # Supervisor State Machine Variables
         self.mode = NavigationMode.INITIALIZING
         self.mode_entry_time = 0.0
@@ -163,6 +178,7 @@ class SeamlessGNSSDeficitEngine:
 
         p_init = np.zeros(3) if init_pos is None else init_pos.copy()
         self.last_pos = p_init.copy()
+        self.last_match_result: Optional[MapMatchResult] = None
 
     def _evaluate_gnss_outage_causal(
         self,
@@ -244,10 +260,14 @@ class SeamlessGNSSDeficitEngine:
             if not is_outage:
                 self.mode = NavigationMode.GNSS_AIDED
                 self.last_transition_reason = "Initial GNSS Lock Acquired"
+                if self.speed_calibrator is not None:
+                    self.speed_calibrator.unfreeze()
             else:
                 self.mode = NavigationMode.DR_ONLY
                 self.last_transition_reason = "Init in GNSS Outage"
                 self.outage_start_time = time_s
+                if self.speed_calibrator is not None:
+                    self.speed_calibrator.freeze_for_outage()
 
         elif self.mode == NavigationMode.GNSS_AIDED:
             if is_outage:
@@ -255,6 +275,8 @@ class SeamlessGNSSDeficitEngine:
                 self.last_transition_reason = "GNSS Loss-of-Lock Detected -> Pure DR Mode"
                 self.outage_start_time = time_s
                 self.outage_distance_traveled = 0.0
+                if self.speed_calibrator is not None:
+                    self.speed_calibrator.freeze_for_outage()
             elif is_degraded:
                 self.mode = NavigationMode.GNSS_DEGRADED
                 self.last_transition_reason = "GNSS Fix Accuracy Degraded"
@@ -265,9 +287,13 @@ class SeamlessGNSSDeficitEngine:
                 self.last_transition_reason = "Degraded GNSS Lost Completely -> Pure DR Mode"
                 self.outage_start_time = time_s
                 self.outage_distance_traveled = 0.0
+                if self.speed_calibrator is not None:
+                    self.speed_calibrator.freeze_for_outage()
             elif not is_degraded and self.consecutive_valid_gnss >= 3:
                 self.mode = NavigationMode.GNSS_AIDED
                 self.last_transition_reason = "Clean Line-of-Sight Restored"
+                if self.speed_calibrator is not None:
+                    self.speed_calibrator.unfreeze()
 
         elif self.mode in [NavigationMode.TRANSITION_TO_DR, NavigationMode.DR_ONLY]:
             if not is_outage:
@@ -282,6 +308,8 @@ class SeamlessGNSSDeficitEngine:
                 self.mode = NavigationMode.DR_ONLY
                 self.last_transition_reason = "GNSS Lost during Recovery -> Return to DR"
                 self.reacquisition_epochs = 0
+                if self.speed_calibrator is not None:
+                    self.speed_calibrator.freeze_for_outage()
             else:
                 # Mode will advance to GNSS_REACQUIRED upon consecutive accepted epochs
                 pass
@@ -291,9 +319,13 @@ class SeamlessGNSSDeficitEngine:
                 self.mode = NavigationMode.DR_ONLY
                 self.last_transition_reason = "Secondary Lock Failure -> Return to DR"
                 self.outage_start_time = time_s
+                if self.speed_calibrator is not None:
+                    self.speed_calibrator.freeze_for_outage()
             else:
                 self.mode = NavigationMode.GNSS_AIDED
                 self.last_transition_reason = "Full GNSS-Aided Authority Restored"
+                if self.speed_calibrator is not None:
+                    self.speed_calibrator.unfreeze()
 
         if self.mode != prev_mode:
             self.mode_entry_time = time_s
@@ -362,6 +394,8 @@ class SeamlessGNSSDeficitEngine:
         gnss_weight = 0.0
         map_active = False
         map_conf_str = "INVALID"
+        long_applied = False
+        long_innov = 0.0
 
         if self.mode == NavigationMode.GNSS_AIDED:
             # High-confidence GNSS available
@@ -370,6 +404,16 @@ class SeamlessGNSSDeficitEngine:
             if gnss_vel is not None:
                 self.eskf.update_gnss_velocity(gnss_vel, r_vel=0.20)
                 gnss_weight = 1.0
+
+            # Online speed scale and bias calibration during GNSS-aided motion
+            if self.speed_calibrator is not None and ai_speed is not None:
+                gnss_speed_2d = float(np.linalg.norm(gnss_vel[0:2])) if gnss_vel is not None else None
+                self.speed_calibrator.update_gnss_aiding(
+                    time_s=time_s,
+                    ai_speed=ai_speed,
+                    gnss_speed=gnss_speed_2d,
+                    gnss_valid=gnss_valid
+                )
 
             self.eskf.update_nhc(r_lat=0.08, r_vert=0.08)
             if vib_state.is_engine_idling:
@@ -382,9 +426,18 @@ class SeamlessGNSSDeficitEngine:
             if gnss_vel is not None and gamma_vel <= self.chi2_vel_threshold:
                 self.eskf.update_gnss_velocity(gnss_vel, r_vel=0.8)
                 gnss_weight = 0.4
+                if self.speed_calibrator is not None and ai_speed is not None:
+                    gnss_speed_2d = float(np.linalg.norm(gnss_vel[0:2]))
+                    self.speed_calibrator.update_gnss_aiding(
+                        time_s=time_s,
+                        ai_speed=ai_speed,
+                        gnss_speed=gnss_speed_2d,
+                        gnss_valid=gnss_valid
+                    )
 
             if ai_speed is not None:
-                eff_speed = 0.0 if vib_state.is_engine_idling else ai_speed
+                cal_speed = self.speed_calibrator.correct_speed(ai_speed) if self.speed_calibrator is not None else ai_speed
+                eff_speed = 0.0 if vib_state.is_engine_idling else cal_speed
                 self.eskf.update_ai_velocity(eff_speed, r_ai=0.50)
                 ai_weight = 0.60
 
@@ -395,7 +448,13 @@ class SeamlessGNSSDeficitEngine:
         elif self.mode in [NavigationMode.TRANSITION_TO_DR, NavigationMode.DR_ONLY]:
             # Pure Dead Reckoning Mode: zero GNSS ingestion
             if ai_speed is not None:
-                eff_speed = 0.0 if vib_state.is_engine_idling else ai_speed
+                # Apply causal speed calibration
+                if self.speed_calibrator is not None:
+                    calibrated_speed = self.speed_calibrator.correct_speed(ai_speed)
+                else:
+                    calibrated_speed = ai_speed
+
+                eff_speed = 0.0 if vib_state.is_engine_idling else calibrated_speed
                 # Adaptive noise based on turn rate and vibrations
                 turn_rate = abs(float(clean_gyro_b[2]))
                 vib_energy = float(np.linalg.norm(accel_b - clean_accel_b))
@@ -419,6 +478,7 @@ class SeamlessGNSSDeficitEngine:
                     use_3d=True
                 )
                 map_conf_str = match_res.confidence.value
+                self.last_match_result = match_res
                 apply_road_constraints_to_eskf(
                     eskf=self.eskf,
                     match_result=match_res,
@@ -428,6 +488,19 @@ class SeamlessGNSSDeficitEngine:
                     min_speed_threshold=2.0
                 )
                 map_active = True
+
+                # Longitudinal Turn / Curvature Synchronization
+                if self.enable_longitudinal_map_constraint and self.longitudinal_synchronizer is not None:
+                    long_res = self.longitudinal_synchronizer.process_step(
+                        time_s=time_s,
+                        eskf=self.eskf,
+                        match_result=match_res,
+                        yaw_rate_z=float(clean_gyro_b[2]),
+                        dt=self.dt,
+                        graph=self.map_matcher.graph
+                    )
+                    long_applied = long_res.applied
+                    long_innov = long_res.innovation_m
 
         elif self.mode == NavigationMode.TRANSITION_TO_GNSS:
             # Controlled Re-acquisition: gradual innovation blending with Chi-Square Gating
@@ -448,7 +521,8 @@ class SeamlessGNSSDeficitEngine:
                 self.last_transition_reason = "Multipath Spike Rejected in Recovery"
                 # Fallback to AI speed during rejected fix
                 if ai_speed is not None:
-                    eff_speed = 0.0 if vib_state.is_engine_idling else ai_speed
+                    cal_speed = self.speed_calibrator.correct_speed(ai_speed) if self.speed_calibrator is not None else ai_speed
+                    eff_speed = 0.0 if vib_state.is_engine_idling else cal_speed
                     self.eskf.update_ai_velocity(eff_speed, r_ai=0.45)
                     ai_weight = 0.5
 
@@ -481,6 +555,7 @@ class SeamlessGNSSDeficitEngine:
         pitch_deg = float(np.degrees(self.eskf.pitch))
         roll_deg = float(np.degrees(self.eskf.roll))
 
+        cal_state = self.speed_calibrator.get_state() if self.speed_calibrator is not None else CalibratorState()
         diag = SupervisorDiagnostics(
             last_transition_reason=self.last_transition_reason,
             time_in_current_mode_s=time_s - self.mode_entry_time,
@@ -493,7 +568,12 @@ class SeamlessGNSSDeficitEngine:
             gnss_vel_weight=gnss_weight,
             map_constraints_active=map_active,
             map_confidence=map_conf_str,
-            p_trace=float(np.trace(self.eskf.P))
+            p_trace=float(np.trace(self.eskf.P)),
+            speed_scale_est=cal_state.scale,
+            speed_bias_est_mps=cal_state.bias_mps,
+            speed_calibrated=cal_state.is_calibrated,
+            longitudinal_constraint_applied=long_applied,
+            longitudinal_innovation_m=long_innov
         )
 
         return NavigationTelemetry(

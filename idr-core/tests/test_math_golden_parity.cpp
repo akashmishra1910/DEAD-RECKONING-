@@ -4,6 +4,8 @@
 #include <cmath>
 #include <iostream>
 
+#include <algorithm>
+
 int main() {
     std::cout << "============================================================\n";
     std::cout << "GATE A: PYTHON <-> C++ MATHEMATICAL GOLDEN PARITY VERIFICATION\n";
@@ -32,11 +34,14 @@ int main() {
         }
 
         // 2. R -> Euler
-        auto [roll_rec, pitch_rec, yaw_rec] = idr::rotation_matrix_to_euler(R_cpp);
+        auto euler_rec_cpp = idr::rotation_matrix_to_euler(R_cpp);
+        double roll_rec = std::get<0>(euler_rec_cpp);
+        double pitch_rec = std::get<1>(euler_rec_cpp);
+        double yaw_rec = std::get<2>(euler_rec_cpp);
         double err_r = std::abs(roll_rec - g.euler_rec[0]);
         double err_p = std::abs(pitch_rec - g.euler_rec[1]);
         double err_y = std::abs(idr::wrap_pi(yaw_rec) - idr::wrap_pi(g.euler_rec[2]));
-        max_euler_err = std::max({max_euler_err, err_r, err_p, err_y});
+        max_euler_err = std::max(max_euler_err, std::max(err_r, std::max(err_p, err_y)));
         if (err_r > 1e-12 || err_p > 1e-12 || err_y > 1e-12) {
             std::cerr << "Mismatch in recovered Euler at vector " << i << "\n";
             return 1;

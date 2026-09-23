@@ -96,7 +96,10 @@ void test_euler_dcm_roundtrip() {
         double yaw = dist_yaw(rng);
 
         idr::Matrix3x3 R = idr::euler_to_rotation_matrix(roll, pitch, yaw);
-        auto [r_out, p_out, y_out] = idr::rotation_matrix_to_euler(R);
+        auto euler_out = idr::rotation_matrix_to_euler(R);
+        double r_out = std::get<0>(euler_out);
+        double p_out = std::get<1>(euler_out);
+        double y_out = std::get<2>(euler_out);
 
         assert_close(roll, r_out, 1e-12, "Roll roundtrip mismatch");
         assert_close(pitch, p_out, 1e-12, "Pitch roundtrip mismatch");

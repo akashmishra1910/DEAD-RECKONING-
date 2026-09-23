@@ -6,6 +6,9 @@
 
 namespace idr {
 
+constexpr size_t Causal3DMapMatcher::MAX_HYPOTHESES;
+constexpr size_t Causal3DMapMatcher::MAX_CANDIDATES;
+
 Causal3DMapMatcher::Causal3DMapMatcher(
     double sigma_d,
     double sigma_h,

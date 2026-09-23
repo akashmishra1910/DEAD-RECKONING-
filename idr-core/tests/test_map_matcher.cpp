@@ -11,7 +11,10 @@ int main() {
     // 1. Test WGS84 <-> ENU Conversion
     double lat0 = 52.77, lon0 = -1.21, alt0 = 50.0;
     Vector3 enu = wgs84_to_enu(52.771, -1.209, 58.5, lat0, lon0, alt0);
-    auto [lat_back, lon_back, alt_back] = enu_to_wgs84(enu, lat0, lon0, alt0);
+    auto wgs_back = enu_to_wgs84(enu, lat0, lon0, alt0);
+    double lat_back = std::get<0>(wgs_back);
+    double lon_back = std::get<1>(wgs_back);
+    double alt_back = std::get<2>(wgs_back);
 
     std::cout << "  ENU: [" << enu.x << ", " << enu.y << ", " << enu.z << "]" << std::endl;
     assert(std::abs(lat_back - 52.771) < 1e-7);
@@ -44,7 +47,7 @@ int main() {
     std::cout << "  Flyover match: edge_name=" << res_flyover.edge_name
               << " layer=" << res_flyover.layer_label
               << " conf=" << map_match_confidence_to_string(res_flyover.confidence) << std::endl;
-    assert(res_flyover.layer_label == "Flyover");
+    assert(std::string(res_flyover.layer_label) == "Flyover");
     assert(res_flyover.confidence == MapMatchConfidence::HIGH);
 
     std::cout << "[TEST] 3D OSM Graph & Map Matcher Tests PASSED!" << std::endl;

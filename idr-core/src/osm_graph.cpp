@@ -130,12 +130,16 @@ std::unordered_set<int> SpatialGridIndex::query_radius(double x, double y, doubl
 
 void SpatialGridIndex::query_radius(double x, double y, double radius, std::vector<int>& out_ids) const {
     out_ids.clear();
-    auto [k_xmin, k_ymin] = coord_to_key(x - radius, y - radius);
-    auto [k_xmax, k_ymax] = coord_to_key(x + radius, y + radius);
+    auto p_min = coord_to_key(x - radius, y - radius);
+    int k_xmin = p_min.first;
+    int k_ymin = p_min.second;
+    auto p_max = coord_to_key(x + radius, y + radius);
+    int k_xmax = p_max.first;
+    int k_ymax = p_max.second;
 
     for (int kx = k_xmin; kx <= k_xmax; ++kx) {
         for (int ky = k_ymin; ky <= k_ymax; ++ky) {
-            auto it = grid_.find({kx, ky});
+            auto it = grid_.find(std::make_pair(kx, ky));
             if (it != grid_.end()) {
                 for (int id : it->second) {
                     if (std::find(out_ids.begin(), out_ids.end(), id) == out_ids.end()) {
@@ -151,8 +155,8 @@ OfflineOSMGraph::OfflineOSMGraph(double origin_lat, double origin_lon, double or
     : origin_lat_(origin_lat), origin_lon_(origin_lon), origin_alt_(origin_alt), spatial_index_(60.0)
 {}
 
-OSMNode OfflineOSMGraph::add_node(int node_id, double lat, double lon, double alt, const std::optional<Vector3>& enu_pos) {
-    Vector3 pos = enu_pos.has_value() ? *enu_pos : wgs84_to_enu(lat, lon, alt, origin_lat_, origin_lon_, origin_alt_);
+OSMNode OfflineOSMGraph::add_node(int node_id, double lat, double lon, double alt, const Vector3& enu_pos, bool has_enu) {
+    Vector3 pos = has_enu ? enu_pos : (enu_pos.x != 0.0 || enu_pos.y != 0.0 || enu_pos.z != 0.0 ? enu_pos : wgs84_to_enu(lat, lon, alt, origin_lat_, origin_lon_, origin_alt_));
     OSMNode node{node_id, lat, lon, alt, pos};
     nodes_[node_id] = node;
     if (adjacency_.find(node_id) == adjacency_.end()) {
@@ -257,7 +261,8 @@ std::tuple<double, double, Vector3, Vector3, double> OfflineOSMGraph::project_po
         double diff_py = pos_enu.y - p1.y;
 
         double dot = diff_px * seg_dx + diff_py * seg_dy;
-        double u = std::clamp(dot / std::max(edge.seg_len_sq[i], 1e-8), 0.0, 1.0);
+        double ratio = dot / std::max(edge.seg_len_sq[i], 1e-8);
+        double u = std::max(0.0, std::min(1.0, ratio));
 
         double close_x = p1.x + u * seg_dx;
         double close_y = p1.y + u * seg_dy;
@@ -319,7 +324,8 @@ double OfflineOSMGraph::get_topological_distance(int edge_from_id, int edge_to_i
     double ans = std::numeric_limits<double>::infinity();
 
     while (!q.empty()) {
-        auto [curr_node, dist] = q.front();
+        int curr_node = q.front().first;
+        double dist = q.front().second;
         q.pop();
 
         if (curr_node == edge_to.source_id) {
@@ -333,7 +339,7 @@ double OfflineOSMGraph::get_topological_distance(int edge_from_id, int edge_to_i
         if (adj_it != adjacency_.end()) {
             for (int next_eid : adj_it->second) {
                 const auto& n_edge = edges_.at(next_eid);
-                q.push({n_edge.target_id, dist + n_edge.length});
+                q.push(std::make_pair(n_edge.target_id, dist + n_edge.length));
             }
         }
     }

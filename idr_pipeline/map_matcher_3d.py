@@ -57,6 +57,11 @@ class MapMatchResult:
     confidence: MapMatchConfidence
     log_posterior: float
     is_valid: bool
+    runner_up_log_posterior: float = -999.0
+    score_margin: float = 99.0
+    is_ambiguous: bool = False
+    candidate_count: int = 0
+    hypothesis_count: int = 0
 
 
 # Backward compatibility classes for existing legacy test suite
@@ -322,8 +327,13 @@ class Causal3DMapMatcher:
         dh = best["delta_h"]
         dpsi = best["d_psi"]
 
+        is_ambiguous = (len(scored_candidates) > 1 and score_margin < 1.5 and best["d_2d"] < 20.0 and scored_candidates[1]["d_2d"] < 20.0)
+
         if d2d < 5.0 and dpsi < math.radians(18.0) and (not use_3d or dh < 2.5):
-            confidence = MapMatchConfidence.HIGH
+            if is_ambiguous:
+                confidence = MapMatchConfidence.MEDIUM
+            else:
+                confidence = MapMatchConfidence.HIGH
             self.consecutive_valid_steps += 1
         elif d2d < 15.0 and dpsi < math.radians(35.0) and (not use_3d or dh < 4.0):
             confidence = MapMatchConfidence.MEDIUM
@@ -363,7 +373,12 @@ class Causal3DMapMatcher:
             road_tangent_2d=best["tangent"],
             confidence=confidence,
             log_posterior=best["score"],
-            is_valid=is_valid
+            is_valid=is_valid,
+            runner_up_log_posterior=runner_up_score,
+            score_margin=score_margin,
+            is_ambiguous=is_ambiguous,
+            candidate_count=len(scored_candidates),
+            hypothesis_count=len(self.active_hypotheses)
         )
 
 

@@ -10,6 +10,14 @@ namespace idr {
 
 #pragma pack(push, 1)
 
+// Feature flags for road edges in .idrmap
+static constexpr uint8_t IDR_FLAG_BRIDGE = 1;
+static constexpr uint8_t IDR_FLAG_TUNNEL = 2;
+static constexpr uint8_t IDR_FLAG_ONEWAY = 4;
+static constexpr uint8_t IDRMAP_FLAG_BRIDGE = 1;
+static constexpr uint8_t IDRMAP_FLAG_TUNNEL = 2;
+static constexpr uint8_t IDRMAP_FLAG_ONEWAY = 4;
+
 // Fixed 128-byte Header for .idrmap format (v1.0)
 struct IdrMapHeader {
     uint8_t  magic[8];              // b"IDRMAP\x01\x00"

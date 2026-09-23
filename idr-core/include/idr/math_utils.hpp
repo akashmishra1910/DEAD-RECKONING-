@@ -6,12 +6,12 @@
 namespace idr {
 
 // Mathematical constants
-inline constexpr double PI = 3.14159265358979323846;
-inline constexpr double TWO_PI = 6.28318530717958647692;
-inline constexpr double HALF_PI = 1.57079632679489661923;
-inline constexpr double DEG_TO_RAD = PI / 180.0;
-inline constexpr double RAD_TO_DEG = 180.0 / PI;
-inline constexpr double STANDARD_GRAVITY = 9.80665;
+static constexpr double PI = 3.14159265358979323846;
+static constexpr double TWO_PI = 6.28318530717958647692;
+static constexpr double HALF_PI = 1.57079632679489661923;
+static constexpr double DEG_TO_RAD = PI / 180.0;
+static constexpr double RAD_TO_DEG = 180.0 / PI;
+static constexpr double STANDARD_GRAVITY = 9.80665;
 
 // Angle wrapping to [-pi, +pi]
 double wrap_pi(double angle);

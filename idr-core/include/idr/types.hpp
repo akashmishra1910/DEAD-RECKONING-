@@ -135,7 +135,7 @@ struct Matrix3x3 {
                 c0.z, c1.z, c2.z};
     }
 
-    constexpr double& operator()(std::size_t r, std::size_t c) {
+    double& operator()(std::size_t r, std::size_t c) {
         return m[r * 3 + c];
     }
 
@@ -151,25 +151,25 @@ struct Matrix3x3 {
         return {m[r * 3 + 0], m[r * 3 + 1], m[r * 3 + 2]};
     }
 
-    constexpr Matrix3x3 transpose() const {
+    Matrix3x3 transpose() const {
         return {m[0], m[3], m[6],
                 m[1], m[4], m[7],
                 m[2], m[5], m[8]};
     }
 
-    constexpr Matrix3x3 operator+(const Matrix3x3& rhs) const {
+    Matrix3x3 operator+(const Matrix3x3& rhs) const {
         Matrix3x3 res;
         for (std::size_t i = 0; i < 9; ++i) res.m[i] = m[i] + rhs.m[i];
         return res;
     }
 
-    constexpr Matrix3x3 operator-(const Matrix3x3& rhs) const {
+    Matrix3x3 operator-(const Matrix3x3& rhs) const {
         Matrix3x3 res;
         for (std::size_t i = 0; i < 9; ++i) res.m[i] = m[i] - rhs.m[i];
         return res;
     }
 
-    constexpr Matrix3x3 operator*(double scalar) const {
+    Matrix3x3 operator*(double scalar) const {
         Matrix3x3 res;
         for (std::size_t i = 0; i < 9; ++i) res.m[i] = m[i] * scalar;
         return res;
@@ -183,7 +183,7 @@ struct Matrix3x3 {
         };
     }
 
-    constexpr Matrix3x3 operator*(const Matrix3x3& rhs) const {
+    Matrix3x3 operator*(const Matrix3x3& rhs) const {
         Matrix3x3 res;
         for (std::size_t r = 0; r < 3; ++r) {
             for (std::size_t c = 0; c < 3; ++c) {
@@ -212,11 +212,11 @@ struct Matrix3x3 {
     }
 };
 
-inline constexpr Matrix3x3 operator*(double scalar, const Matrix3x3& mat) {
+inline Matrix3x3 operator*(double scalar, const Matrix3x3& mat) {
     return mat * scalar;
 }
 
-inline constexpr Vector3 operator*(const Vector3& v, const Matrix3x3& mat) {
+inline Vector3 operator*(const Vector3& v, const Matrix3x3& mat) {
     return {
         v.x * mat(0, 0) + v.y * mat(1, 0) + v.z * mat(2, 0),
         v.x * mat(0, 1) + v.y * mat(1, 1) + v.z * mat(2, 1),
@@ -230,16 +230,16 @@ struct Vector15 {
 
     constexpr Vector15() = default;
 
-    constexpr double& operator[](std::size_t i) { return data[i]; }
+    double& operator[](std::size_t i) { return data[i]; }
     constexpr const double& operator[](std::size_t i) const { return data[i]; }
 
-    constexpr Vector15 operator+(const Vector15& rhs) const {
+    Vector15 operator+(const Vector15& rhs) const {
         Vector15 res;
         for (std::size_t i = 0; i < 15; ++i) res.data[i] = data[i] + rhs.data[i];
         return res;
     }
 
-    constexpr Vector15 operator-(const Vector15& rhs) const {
+    Vector15 operator-(const Vector15& rhs) const {
         Vector15 res;
         for (std::size_t i = 0; i < 15; ++i) res.data[i] = data[i] - rhs.data[i];
         return res;
@@ -252,17 +252,17 @@ struct Matrix15x15 {
 
     constexpr Matrix15x15() = default;
 
-    static constexpr Matrix15x15 identity() {
+    static Matrix15x15 identity() {
         Matrix15x15 res;
         for (std::size_t i = 0; i < 15; ++i) res(i, i) = 1.0;
         return res;
     }
 
-    static constexpr Matrix15x15 zero() {
+    static Matrix15x15 zero() {
         return Matrix15x15();
     }
 
-    constexpr double& operator()(std::size_t r, std::size_t c) {
+    double& operator()(std::size_t r, std::size_t c) {
         return data[r * 15 + c];
     }
 
@@ -270,7 +270,7 @@ struct Matrix15x15 {
         return data[r * 15 + c];
     }
 
-    constexpr Matrix15x15 transpose() const {
+    Matrix15x15 transpose() const {
         Matrix15x15 res;
         for (std::size_t r = 0; r < 15; ++r) {
             for (std::size_t c = 0; c < 15; ++c) {
@@ -280,25 +280,25 @@ struct Matrix15x15 {
         return res;
     }
 
-    constexpr Matrix15x15 operator+(const Matrix15x15& rhs) const {
+    Matrix15x15 operator+(const Matrix15x15& rhs) const {
         Matrix15x15 res;
         for (std::size_t i = 0; i < 225; ++i) res.data[i] = data[i] + rhs.data[i];
         return res;
     }
 
-    constexpr Matrix15x15 operator-(const Matrix15x15& rhs) const {
+    Matrix15x15 operator-(const Matrix15x15& rhs) const {
         Matrix15x15 res;
         for (std::size_t i = 0; i < 225; ++i) res.data[i] = data[i] - rhs.data[i];
         return res;
     }
 
-    constexpr Matrix15x15 operator*(double scalar) const {
+    Matrix15x15 operator*(double scalar) const {
         Matrix15x15 res;
         for (std::size_t i = 0; i < 225; ++i) res.data[i] = data[i] * scalar;
         return res;
     }
 
-    constexpr Vector15 operator*(const Vector15& v) const {
+    Vector15 operator*(const Vector15& v) const {
         Vector15 res;
         for (std::size_t r = 0; r < 15; ++r) {
             double sum = 0.0;
@@ -310,7 +310,7 @@ struct Matrix15x15 {
         return res;
     }
 
-    constexpr Matrix15x15 operator*(const Matrix15x15& rhs) const {
+    Matrix15x15 operator*(const Matrix15x15& rhs) const {
         Matrix15x15 res;
         for (std::size_t r = 0; r < 15; ++r) {
             for (std::size_t c = 0; c < 15; ++c) {

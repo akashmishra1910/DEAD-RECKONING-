@@ -13,11 +13,11 @@
 namespace idr {
 
 // Geodetic Constants
-inline constexpr double WGS84_A = 6378137.0;
-inline constexpr double WGS84_F = 1.0 / 298.257223563;
-inline constexpr double WGS84_E2 = 2.0 * WGS84_F - WGS84_F * WGS84_F;
-inline constexpr double WGS84_B = WGS84_A * (1.0 - WGS84_F);
-inline constexpr double WGS84_EP2 = (WGS84_A * WGS84_A - WGS84_B * WGS84_B) / (WGS84_B * WGS84_B);
+static constexpr double WGS84_A = 6378137.0;
+static constexpr double WGS84_F = 1.0 / 298.257223563;
+static constexpr double WGS84_E2 = 2.0 * WGS84_F - WGS84_F * WGS84_F;
+static constexpr double WGS84_B = WGS84_A * (1.0 - WGS84_F);
+static constexpr double WGS84_EP2 = (WGS84_A * WGS84_A - WGS84_B * WGS84_B) / (WGS84_B * WGS84_B);
 
 Vector3 wgs84_to_ecef(double lat_deg, double lon_deg, double alt_m);
 std::tuple<double, double, double> ecef_to_wgs84(double X, double Y, double Z);
@@ -63,18 +63,16 @@ public:
 
     void insert_edge(const OSMEdge& edge);
     std::unordered_set<int> query_radius(double x, double y, double radius) const;
-    void query_radius(double x, double y, double radius, std::vector<int>& out_ids) const;
+    void query_radius(double x, double y, double radius, std::vector<int>& out_edge_ids) const;
 
 private:
-    std::pair<int, int> coord_to_key(double x, double y) const {
-        return {static_cast<int>(std::floor(x / cell_size_)),
-                static_cast<int>(std::floor(y / cell_size_))};
-    }
-
     double cell_size_;
+    std::pair<int, int> coord_to_key(double x, double y) const {
+        return std::make_pair(static_cast<int>(std::floor(x / cell_size_)), static_cast<int>(std::floor(y / cell_size_)));
+    }
     struct KeyHash {
         std::size_t operator()(const std::pair<int, int>& k) const {
-            return std::hash<int>()(k.first) ^ (std::hash<int>()(k.second) << 16);
+            return (static_cast<std::size_t>(k.first) << 16) ^ static_cast<std::size_t>(k.second);
         }
     };
     std::unordered_map<std::pair<int, int>, std::unordered_set<int>, KeyHash> grid_;
@@ -84,7 +82,7 @@ class OfflineOSMGraph {
 public:
     explicit OfflineOSMGraph(double origin_lat = 52.77, double origin_lon = -1.21, double origin_alt = 0.0);
 
-    OSMNode add_node(int node_id, double lat, double lon, double alt = 0.0, const std::optional<Vector3>& enu_pos = std::nullopt);
+    OSMNode add_node(int node_id, double lat, double lon, double alt = 0.0, const Vector3& enu_pos = Vector3{0.0, 0.0, 0.0}, bool has_enu = false);
 
     OSMEdge add_edge(
         int edge_id,
@@ -130,9 +128,9 @@ public:
     // Pre-populate dist_cache_ for all edge pairs to eliminate per-cycle heap
     // allocation from cache-miss insertions during the tactical loop.
     void warm_cache() const {
-        for (const auto& [id_a, _a] : edges_) {
-            for (const auto& [id_b, _b] : edges_) {
-                get_topological_distance(id_a, id_b);
+        for (const auto& kv_a : edges_) {
+            for (const auto& kv_b : edges_) {
+                get_topological_distance(kv_a.first, kv_b.first);
             }
         }
     }
@@ -148,10 +146,9 @@ private:
     std::unordered_map<int, OSMEdge> edges_;
     std::unordered_map<int, std::vector<int>> adjacency_;
     SpatialGridIndex spatial_index_;
-
     struct PairHash {
-        std::size_t operator()(const std::pair<int, int>& p) const {
-            return std::hash<int>()(p.first) ^ (std::hash<int>()(p.second) << 16);
+        std::size_t operator()(const std::pair<int, int>& k) const {
+            return (static_cast<std::size_t>(k.first) << 16) ^ static_cast<std::size_t>(k.second);
         }
     };
     mutable std::unordered_map<std::pair<int, int>, double, PairHash> dist_cache_;

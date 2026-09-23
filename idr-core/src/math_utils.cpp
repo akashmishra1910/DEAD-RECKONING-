@@ -58,7 +58,8 @@ Matrix3x3 euler_to_rotation_matrix(double roll, double pitch, double yaw) {
 }
 
 std::tuple<double, double, double> rotation_matrix_to_euler(const Matrix3x3& R) {
-    double pitch = std::asin(std::clamp(R(2, 0), -1.0, 1.0));
+    double clamped_r20 = std::max(-1.0, std::min(1.0, R(2, 0)));
+    double pitch = std::asin(clamped_r20);
     double yaw = std::atan2(R(0, 0), R(1, 0));
     double roll = std::atan2(R(2, 1), R(2, 2));
     return {roll, pitch, yaw};

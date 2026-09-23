@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<osm version="0.6" generator="ISRO_IDR_OSM_SYNTHETIC_GENERATOR">
+  <bounds minlat="25.4300" minlon="81.8400" maxlat="25.4500" maxlon="81.8600"/>
+
+  <!-- Major Intersection 1: MG Marg & Sardar Patel Marg -->
+  <node id="101" lat="25.4350" lon="81.8450"/>
+  <node id="102" lat="25.4350" lon="81.8500"/>
+  <node id="103" lat="25.4350" lon="81.8550"/>
+
+  <!-- Cross Street 1 -->
+  <node id="201" lat="25.4300" lon="81.8500"/>
+  <node id="202" lat="25.4400" lon="81.8500"/>
+  <node id="203" lat="25.4450" lon="81.8500"/>
+
+  <!-- Flyover Layer (Layer +1, Bridge) crossing over MG Marg -->
+  <node id="301" lat="25.4320" lon="81.8480"/>
+  <node id="302" lat="25.4350" lon="81.8480"/>
+  <node id="303" lat="25.4380" lon="81.8480"/>
+
+  <!-- Tunnel Section (Layer -1, Tunnel) -->
+  <node id="401" lat="25.4400" lon="81.8420"/>
+  <node id="402" lat="25.4400" lon="81.8450"/>
+  <node id="403" lat="25.4400" lon="81.8480"/>
+
+  <!-- One-Way Street -->
+  <node id="501" lat="25.4420" lon="81.8520"/>
+  <node id="502" lat="25.4420" lon="81.8560"/>
+
+  <!-- Roundabout Nodes -->
+  <node id="601" lat="25.4450" lon="81.8500"/>
+  <node id="602" lat="25.4455" lon="81.8505"/>
+  <node id="603" lat="25.4450" lon="81.8510"/>
+  <node id="604" lat="25.4445" lon="81.8505"/>
+
+  <!-- Non-Drivable Footway (Must be filtered out) -->
+  <node id="701" lat="25.4360" lon="81.8460"/>
+  <node id="702" lat="25.4365" lon="81.8465"/>
+
+  <!-- Restricted Access Road (Must be filtered out) -->
+  <node id="801" lat="25.4370" lon="81.8520"/>
+  <node id="802" lat="25.4370" lon="81.8540"/>
+
+  <!-- WAY 1: MG Marg Primary Road -->
+  <way id="1001">
+    <nd ref="101"/>
+    <nd ref="102"/>
+    <nd ref="103"/>
+    <tag k="highway" v="primary"/>
+    <tag k="name" v="Mahatma Gandhi Marg"/>
+    <tag k="maxspeed" v="50"/>
+    <tag k="surface" v="asphalt"/>
+  </way>
+
+  <!-- WAY 2: Sardar Patel Marg Secondary Road -->
+  <way id="1002">
+    <nd ref="201"/>
+    <nd ref="102"/>
+    <nd ref="202"/>
+    <nd ref="203"/>
+    <tag k="highway" v="secondary"/>
+    <tag k="name" v="Sardar Patel Marg"/>
+    <tag k="maxspeed" v="40"/>
+  </way>
+
+  <!-- WAY 3: Civil Lines Elevated Flyover (Bridge, Layer +1) -->
+  <way id="1003">
+    <nd ref="301"/>
+    <nd ref="302"/>
+    <nd ref="303"/>
+    <tag k="highway" v="trunk"/>
+    <tag k="bridge" v="yes"/>
+    <tag k="layer" v="1"/>
+    <tag k="name" v="Civil Lines Flyover"/>
+    <tag k="maxspeed" v="60"/>
+  </way>
+
+  <!-- WAY 4: Underpass Tunnel (Tunnel, Layer -1) -->
+  <way id="1004">
+    <nd ref="401"/>
+    <nd ref="402"/>
+    <nd ref="403"/>
+    <tag k="highway" v="primary"/>
+    <tag k="tunnel" v="yes"/>
+    <tag k="layer" v="-1"/>
+    <tag k="name" v="Railway Underpass"/>
+    <tag k="maxspeed" v="30"/>
+  </way>
+
+  <!-- WAY 5: One-Way Residential Link -->
+  <way id="1005">
+    <nd ref="501"/>
+    <nd ref="502"/>
+    <tag k="highway" v="residential"/>
+    <tag k="oneway" v="yes"/>
+    <tag k="name" v="Kutchery Road One-Way"/>
+  </way>
+
+  <!-- WAY 6: Roundabout -->
+  <way id="1006">
+    <nd ref="601"/>
+    <nd ref="602"/>
+    <nd ref="603"/>
+    <nd ref="604"/>
+    <nd ref="601"/>
+    <tag k="highway" v="secondary"/>
+    <tag k="junction" v="roundabout"/>
+    <tag k="name" v="Civil Lines Chowk Roundabout"/>
+  </way>
+
+  <!-- WAY 7: Footway (Non-drivable, should be filtered) -->
+  <way id="1007">
+    <nd ref="701"/>
+    <nd ref="702"/>
+    <tag k="highway" v="footway"/>
+    <tag k="foot" v="yes"/>
+  </way>
+
+  <!-- WAY 8: Private Restricted Access Road (should be filtered) -->
+  <way id="1008">
+    <nd ref="801"/>
+    <nd ref="802"/>
+    <tag k="highway" v="service"/>
+    <tag k="access" v="private"/>
+    <tag k="name" v="Private Compound Drive"/>
+  </way>
+
+</osm>

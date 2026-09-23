@@ -129,4 +129,18 @@
      - In closed-loop mode, applying lateral updates injects subtle velocity cross-covariance perturbations into longitudinal velocity $\hat{\mathbf{v}}$, marginally increasing along-track error. Post-hoc geometric snapping avoids this by projecting the final filter state onto the road manifold without modifying strapdown states.
 - **Consequences:** Provides a production-grade, highly resilient supervisory core. Validated across 7 failure scenarios, 158 authentic outages, and 16 dedicated unit/integration tests (139/139 total regression suite passing).
 
+---
 
+### ADR-014: Online Recursive Speed Scale & Bias Calibration with Outage Freezing
+- **Status:** APPROVED & VERIFIED (Phase 8)
+- **Context:** Forward speed predictions from the frozen Top-45 GBDT exhibit drive-specific scale errors ($0.85–1.15$) and mechanical vibration biases ($\pm 1.5\text{ m/s}$).
+- **Decision:** Implement an online Recursive Least Squares (RLS) estimator ($v_{\text{corr}} = \alpha \cdot v_{\text{ai}} + \beta$) trained continuously against high-confidence GNSS Doppler velocity during `GNSS_AIDED` motion, and frozen upon entering dead reckoning (`mode != GNSS_AIDED`).
+- **Consequences:** Eliminates stationary vibration drift and corrects scale mismatch without temporal lookahead or future data leakage.
+
+---
+
+### ADR-015: Honest Reporting of PS <10% Positional Drift Compliance Status
+- **Status:** APPROVED & ENFORCED (Phase 8 Final Gate)
+- **Context:** Evaluated across 158 authentic naturalistic IO-VNBD outages on commodity smartphone MEMS IMUs without CAN bus, unassisted ESKF dead reckoning achieves median drift of $64.86\%$ (10s), $95.45\%$ (30s), $96.55\%$ (60s), and $71.46\%$ (120s) (Overall median $76.34\%$, pass rate $7.59\%$).
+- **Decision:** Explicitly report PS 26168 $<10\%$ drift requirement as `NOT DEMONSTRATED` on unconstrained commodity smartphone data. Do not hide underlying navigation-state error behind post-hoc geometric line-snapping or selected favorable corridors.
+- **Consequences:** Adheres strictly to ISRO evaluation standards; focuses future work on high-grade IMU integration (Phase 10 C++ core) and multi-sensor heading aiding.

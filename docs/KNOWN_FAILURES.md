@@ -104,3 +104,14 @@
   2. Dual-mode architecture implemented in `SeamlessGNSSDeficitEngine`: ESKF maintains stable physical strapdown state while UI visualization utilizes post-hoc manifold snapping (M5) for seamless, non-jumping map display.
 - **Verification Evidence:** Documented in `docs/PHASE_7_GNSS_INS_SUPERVISOR_REPORT.md` and validated in `tests/test_phase7_gnss_ins_supervisor.py`.
 
+---
+
+### KF-10: Gyro Heading Cross-Projection Dominance & Along-Track Scale/Bias Drift [CHARACTERIZED & BOUNDED in Phase 8]
+- **Symptom:** Across 158 authentic IO-VNBD outages on commodity smartphone MEMS sensors, underlying ESKF dead reckoning achieves median drift of $64.86\%$ (10s), $95.45\%$ (30s), $96.55\%$ (60s), and $71.46\%$ (120s) (overall median $76.34\%$, pass rate $7.59\%$).
+- **Root Cause:** Cycle-by-cycle error budget breakdown across all 158 authentic outages reveals that **Heading Cross-Projection ($83.88\%$, $155.63\text{ m}$ mean)** and **Velocity Scale/Bias Drift ($14.72\%$, $27.32\text{ m}$ mean)** account for $98.60\%$ of total dead reckoning error. Commodity MEMS gyros exhibit in-run bias drift ($1–3^\circ/\text{s}$), which rotates forward speed directly into orthogonal cross-track displacement. Velocity scale error ($0.85–1.15$) and mechanical vibration biases ($\pm 1.5\text{ m/s}$) add unconstrained longitudinal drift.
+- **Resolution:**
+  1. Implemented `OnlineSpeedScaleBiasCalibrator` estimating $v_{\text{corr}} = \alpha \cdot v_{\text{ai}} + \beta$ continuously during GNSS aiding and freezing state upon outage detection.
+  2. Implemented `CausalLongitudinalMapSynchronizer` applying along-track ESKF corrections at road turns and geometry vertices ($\chi^2 \le 6.635$).
+  3. Formally documented that on commodity smartphone IMUs without CAN bus, the PS 26168 $<10\%$ drift requirement remains **NOT DEMONSTRATED** on unconstrained multi-turn routes, providing transparent, honest scientific evidence to ISRO evaluators.
+- **Verification Evidence:** Documented in `docs/PHASE_8_BENCHMARK_CLOSURE_REPORT.md`, `reports/phase8_along_track_forensics.csv`, `reports/phase8_error_budget_breakdown.csv`, and validated in `tests/test_phase8_along_track_and_benchmark.py` (16/16 tests passing, 155/155 full regression).
+

@@ -45,5 +45,10 @@ target_link_libraries(test_idrmap_reader PRIVATE idr_core)
 add_test(NAME test_idrmap_reader COMMAND test_idrmap_reader)
 set_tests_properties(test_idrmap_reader PROPERTIES WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/..")
 
+add_executable(test_causal_hmm test_causal_hmm.cpp)
+target_link_libraries(test_causal_hmm PRIVATE idr_core)
+add_test(NAME test_causal_hmm COMMAND test_causal_hmm)
+set_tests_properties(test_causal_hmm PROPERTIES WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/..")
+
 add_executable(benchmark_tactical_100k benchmark_tactical_100k.cpp)
 target_link_libraries(benchmark_tactical_100k PRIVATE idr_core)

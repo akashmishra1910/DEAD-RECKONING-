@@ -40,5 +40,10 @@ add_executable(test_c_api test_c_api.cpp)
 target_link_libraries(test_c_api PRIVATE idr_core)
 add_test(NAME test_c_api COMMAND test_c_api)
 
+add_executable(test_idrmap_reader test_idrmap_reader.cpp)
+target_link_libraries(test_idrmap_reader PRIVATE idr_core)
+add_test(NAME test_idrmap_reader COMMAND test_idrmap_reader)
+set_tests_properties(test_idrmap_reader PROPERTIES WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/..")
+
 add_executable(benchmark_tactical_100k benchmark_tactical_100k.cpp)
 target_link_libraries(benchmark_tactical_100k PRIVATE idr_core)

@@ -1,0 +1,5 @@
+Candidate,Description,N,Median_Drift_pct,Mean_Drift_pct,Pass_Count_10pct,Pass_Rate_pct,Max_Drift_pct,Median_Along_m,Median_Cross_m,Straight_N,Straight_Median_Drift_pct,Straight_Pass_Count,Straight_Pass_Rate_pct,Curve_N,Curve_Median_Drift_pct,Curve_Pass_Count,Curve_Pass_Rate_pct
+C0,Classical Pure DR with HeadingSupervisor (Uncalibrated Mag Ingestion),158,76.34,74.45,12,7.59,196.28,44.41,64.44,12,48.36,2,16.67,146,77.96,10,6.85
+N0,"Neural Pure DR (Fixed NHC, Magnetic Disturbance Rejected)",158,34.43,47.7,28,17.72,162.53,13.94,30.27,12,25.61,3,25.0,146,35.14,25,17.12
+N7,Authoritative Production Model (Bounded Adaptive NHC + Causal Multi-Map),158,35.71,45.86,36,22.78,173.2,17.77,26.67,12,29.81,4,33.33,146,35.71,32,21.92
+N7_AttitudeOracle,Diagnostic Reference (N7 with Ground-Truth Attitude),158,6.55,10.08,103,65.19,63.94,2.95,5.19,12,16.05,4,33.33,146,6.33,99,67.81

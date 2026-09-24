@@ -1,0 +1,9 @@
+Candidate,Description,Median_Drift_pct,Mean_Drift_pct,Pass_Count_10pct,Pass_Rate_pct,Max_Drift_pct,Along_m,Cross_m,Delta_Med_vs_N7,Delta_Pass_vs_N7
+C0,Classical Pure DR (Uncalibrated Mag Ingestion),76.34,74.45,12,7.59,196.28,44.41,64.44,40.63,-24
+N0,"Neural Pure DR (Fixed NHC, Mag Rejected)",34.43,47.7,28,17.72,162.53,13.94,30.27,-1.28,-8
+N7 (Frozen Baseline),Production Model (Bounded Adaptive NHC + Causal Multi-Map),35.71,45.86,36,22.78,173.2,17.77,26.67,0.0,0
+N13_1 (Velocity Vector),3D Velocity Vector Constraint with Adaptive R_z,35.71,45.86,36,22.78,173.2,17.77,26.67,0.0,0
+N13_2 (ZARU Bias Observer),Straight-Line Zero Angular Rate Bias Tracking,35.71,45.86,36,22.78,173.2,17.77,26.67,0.0,0
+N13_3 (Bidirectional Road),Road Heading Ambiguity & 60 deg Gate,41.18,49.43,32,20.25,173.2,19.22,28.25,5.47,-4
+N13_4 (Targeted Lateral NHC),Causal Regime-Conditioned Lateral Covariance (Best Candidate),35.65,45.77,38,24.05,173.39,18.54,26.54,-0.06,2
+N13_5 (Calibrated Mag),Pre-Outage Calibrated Magnetometer with Chi2 Gating,34.68,45.77,32,20.25,173.2,18.46,27.13,-1.03,-4

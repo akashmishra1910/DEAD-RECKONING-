@@ -1,0 +1,7 @@
+Component,Median_Drift_pct,Pass_Count_10pct,Pass_Rate_pct,Along_m,Cross_m,Status
+N7 Frozen Baseline,35.71,36,22.78,17.77,26.67,Authoritative Control
++ Straight-Regime Tight NHC (N13_4),35.65,38,24.05,18.54,26.54,Positive Contribution (+2 Pass)
++ ZARU Gyro Bias Observer (N13_2),35.71,36,22.78,17.77,26.67,Neutral Contribution
++ Calibrated Magnetometer (N13_5),34.68,32,20.25,18.46,27.13,Negative (-4 Pass due to Local Mag Interference)
++ Bidirectional Map Heading (N13_3),41.18,32,20.25,19.22,28.25,Negative (+5.47% Drift due to False Road Association)
+Diagnostic Attitude Oracle (Upper Bound),6.55,103,65.19,4.84,5.19,Non-Causal Diagnostic Reference Only

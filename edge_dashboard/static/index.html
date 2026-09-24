@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ISRO IDR — Edge Engine Test Dashboard</title>
+  <style>
+    :root {
+      --bg-dark: #0a0e17;
+      --panel-bg: #121824;
+      --card-bg: #182234;
+      --border-color: #24334a;
+      --text-main: #e2e8f0;
+      --text-muted: #889bb4;
+      --accent-cyan: #00e5ff;
+      --accent-green: #00e676;
+      --accent-amber: #ffab00;
+      --accent-red: #ff3d00;
+      --accent-blue: #2979ff;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace; }
+    body { background: var(--bg-dark); color: var(--text-main); font-size: 13px; line-height: 1.4; padding: 12px; }
+
+    /* Top Header */
+    header {
+      background: var(--panel-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 12px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .header-title { display: flex; align-items: center; gap: 12px; }
+    .header-title h1 { font-size: 18px; font-weight: 700; color: #ffffff; letter-spacing: 0.5px; }
+    .tag-laptop { background: #233554; color: var(--accent-cyan); padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; border: 1px solid #334d77; }
+    .header-badges { display: flex; gap: 10px; }
+    .badge { padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; background: var(--card-bg); border: 1px solid var(--border-color); }
+    .badge-green { color: var(--accent-green); border-color: rgba(0,230,118,0.4); background: rgba(0,230,118,0.1); }
+    .badge-amber { color: var(--accent-amber); border-color: rgba(255,171,0,0.4); background: rgba(255,171,0,0.1); }
+    .badge-red { color: var(--accent-red); border-color: rgba(255,61,0,0.4); background: rgba(255,61,0,0.1); animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0% { opacity: 0.8; } 50% { opacity: 1; filter: drop-shadow(0 0 4px var(--accent-red)); } 100% { opacity: 0.8; } }
+
+    /* Main Grid Layout */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 2.2fr 1fr;
+      gap: 12px;
+    }
+    .col-left, .col-right { display: flex; flex-direction: column; gap: 12px; }
+
+    /* Panel Card */
+    .panel {
+      background: var(--panel-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .panel-header {
+      background: #151e2e;
+      padding: 8px 14px;
+      font-weight: 600;
+      font-size: 12px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: var(--text-muted);
+    }
+    .panel-header span.highlight { color: var(--accent-cyan); }
+    .panel-body { padding: 12px; }
+
+    /* Trajectory Canvas */
+    .canvas-container { position: relative; width: 100%; height: 380px; background: #070b12; border-radius: 4px; overflow: hidden; }
+    canvas#trajCanvas { width: 100%; height: 100%; display: block; }
+    .canvas-overlay {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(18, 24, 36, 0.85);
+      border: 1px solid var(--border-color);
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      pointer-events: none;
+    }
+    .legend-item { display: flex; align-items: center; gap: 8px; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 2px; }
+    .dot-ref { background: #3b82f6; }
+    .dot-est { background: var(--accent-green); }
+    .dot-outage { background: var(--accent-red); }
+
+    /* Key-Value Metrics Grid */
+    .metric-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .metric-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .metric-box {
+      background: var(--card-bg);
+      padding: 8px 10px;
+      border-radius: 4px;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+    .metric-label { font-size: 10px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 2px; }
+    .metric-value { font-size: 14px; font-weight: 700; color: #fff; }
+    .val-highlight { color: var(--accent-cyan); }
+    .val-speed { color: var(--accent-green); }
+
+    /* Button Controls */
+    .btn-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+    button {
+      background: var(--card-bg);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      padding: 6px 14px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 11px;
+      transition: all 0.15s ease;
+    }
+    button:hover { background: #202d44; border-color: var(--accent-cyan); color: #fff; }
+    button:active { transform: scale(0.98); }
+    button.btn-primary { background: #004d40; border-color: var(--accent-green); color: var(--accent-green); }
+    button.btn-primary:hover { background: #00695c; color: #fff; }
+    button.btn-danger { background: #4a1515; border-color: var(--accent-red); color: var(--accent-red); }
+    button.btn-danger:hover { background: #6b1d1d; color: #fff; }
+    button.btn-warn { background: #4a3410; border-color: var(--accent-amber); color: var(--accent-amber); }
+    button.btn-warn:hover { background: #694914; color: #fff; }
+    button.btn-active { background: #1a365d; border-color: var(--accent-cyan); color: var(--accent-cyan); }
+
+    /* Progress bar */
+    .progress-bar-container {
+      background: var(--card-bg);
+      height: 8px;
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 8px 0;
+      border: 1px solid var(--border-color);
+    }
+    .progress-fill { background: var(--accent-cyan); height: 100%; width: 0%; transition: width 0.1s linear; }
+
+    /* API Health Badges */
+    .api-health-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .api-item {
+      background: var(--card-bg);
+      padding: 5px 8px;
+      border-radius: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 10px;
+      border: 1px solid var(--border-color);
+    }
+    .api-status { font-weight: bold; }
+    .status-pass { color: var(--accent-green); }
+    .status-fail { color: var(--accent-red); }
+    .status-untested { color: var(--text-muted); }
+
+    /* Event Log Box */
+    .log-container {
+      background: #070b12;
+      border-radius: 4px;
+      padding: 8px;
+      height: 150px;
+      overflow-y: auto;
+      font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+      font-size: 11px;
+    }
+    .log-entry { margin-bottom: 4px; }
+    .log-time { color: var(--text-muted); margin-right: 6px; }
+    .log-INFO { color: #a5d6a7; }
+    .log-WARN { color: var(--accent-amber); }
+    .log-ERROR { color: var(--accent-red); }
+
+    /* Outage Banner */
+    .outage-alert-banner {
+      background: #4a1515;
+      border: 1px solid var(--accent-red);
+      color: #ff8a80;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-weight: 700;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      animation: pulse 1.5s infinite;
+    }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="header-title">
+      <h1>ISRO IDR — EDGE ENGINE TEST DASHBOARD</h1>
+      <span class="tag-laptop">SOFTWARE EDGE TEST (LAPTOP)</span>
+    </div>
+    <div class="header-badges">
+      <div class="badge" id="badgeEngineState">ENGINE: INITIALIZING</div>
+      <div class="badge badge-green">PROFILE: EDGE_FOG</div>
+      <div class="badge" id="badgeGnssState">GNSS: AVAILABLE</div>
+      <div class="badge badge-green" id="badgeThroughput">3500 Hz CORE CAPABLE</div>
+    </div>
+  </header>
+
+  <!-- Outage Alert Banner (hidden by default) -->
+  <div id="outageBanner" class="outage-alert-banner hidden">
+    <span>⚠️ GNSS DENIED — INTELLIGENT DEAD RECKONING ACTIVE</span>
+    <span id="outageTimer">DRIFT CONTAINMENT ENGAGED</span>
+  </div>
+
+  <!-- Main Grid -->
+  <div class="dashboard-grid">
+
+    <!-- Left Column: Trajectory & Navigation State -->
+    <div class="col-left">
+
+      <!-- 2D Trajectory View -->
+      <div class="panel">
+        <div class="panel-header">
+          <span>LIVE TRAJECTORY (LOCAL ENU PLANE)</span>
+          <span class="highlight" id="posSummary">E: 0.0 m | N: 0.0 m | Alt: 0.0 m</span>
+        </div>
+        <div class="panel-body" style="padding: 6px;">
+          <div class="canvas-container">
+            <canvas id="trajCanvas"></canvas>
+            <div class="canvas-overlay">
+              <div class="legend-item"><div class="legend-dot dot-ref"></div><span>Reference / GNSS Data</span></div>
+              <div class="legend-item"><div class="legend-dot dot-est"></div><span>Estimated Navigation (IDR Core)</span></div>
+              <div class="legend-item"><div class="legend-dot dot-outage"></div><span>GNSS-Denied Outage Segment</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Navigation State & Velocity -->
+      <div class="panel">
+        <div class="panel-header">
+          <span>NAVIGATION ESTIMATE & VELOCITY VECTOR</span>
+          <span id="navModeText" style="color: var(--accent-green); font-weight: bold;">GNSS_AIDED</span>
+        </div>
+        <div class="panel-body">
+          <div class="metric-grid-4">
+            <div class="metric-box"><div class="metric-label">Latitude</div><div class="metric-value val-highlight" id="valLat">25.435800°</div></div>
+            <div class="metric-box"><div class="metric-label">Longitude</div><div class="metric-value val-highlight" id="valLon">81.846300°</div></div>
+            <div class="metric-box"><div class="metric-label">Altitude</div><div class="metric-value" id="valAlt">120.0 m</div></div>
+            <div class="metric-box"><div class="metric-label">Forward Speed</div><div class="metric-value val-speed" id="valSpeed">0.0 km/h</div></div>
+            <div class="metric-box"><div class="metric-label">Heading Azimuth</div><div class="metric-value" id="valHeading">0.0°</div></div>
+            <div class="metric-box"><div class="metric-label">Pitch / Roll</div><div class="metric-value" id="valPitchRoll">0.0° / 0.0°</div></div>
+            <div class="metric-box"><div class="metric-label">Vx / Vy / Vz (ENU)</div><div class="metric-value" id="valVelVec">0.0 / 0.0 / 0.0</div></div>
+            <div class="metric-box"><div class="metric-label">P-Trace (Covariance)</div><div class="metric-value" id="valPTrace">0.0000</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Controls & Replay -->
+      <div class="panel">
+        <div class="panel-header">
+          <span>ENGINE CONTROLS & REPLAY MANAGEMENT</span>
+          <span id="replayStatus">IDLE</span>
+        </div>
+        <div class="panel-body">
+          <div class="btn-row">
+            <button class="btn-primary" onclick="sendControl('start')">▶ START REPLAY</button>
+            <button class="btn-warn" onclick="sendControl('pause')">⏸ PAUSE</button>
+            <button class="btn-danger" onclick="sendControl('stop')">⏹ STOP</button>
+            <button onclick="sendControl('restart')">↺ RESTART</button>
+            <button onclick="sendControl('reset')">RESET ENGINE</button>
+          </div>
+
+          <div class="btn-row" style="margin-top: 10px;">
+            <span style="align-self: center; font-weight: 600; color: var(--text-muted);">GNSS SIMULATION:</span>
+            <button id="btnGnssOn" class="btn-primary" onclick="sendControl('gnss_restore')">GNSS ON (AIDING)</button>
+            <button id="btnGnssDenied" class="btn-danger" onclick="sendControl('gnss_denied')">SIMULATE GNSS DENIED</button>
+            
+            <span style="align-self: center; margin-left: 12px; font-weight: 600; color: var(--text-muted);">SPEED:</span>
+            <button class="speed-btn btn-active" onclick="setSpeed(1.0)">1x</button>
+            <button class="speed-btn" onclick="setSpeed(2.0)">2x</button>
+            <button class="speed-btn" onclick="setSpeed(5.0)">5x</button>
+            <button class="speed-btn" onclick="setSpeed(10.0)">10x</button>
+          </div>
+
+          <div class="progress-bar-container">
+            <div class="progress-fill" id="replayProgress"></div>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted);">
+            <span id="replayFileInfo">File: Built-in 200 Hz Corridor Replay</span>
+            <span id="replayIndexInfo">0 / 0 samples (0.0%)</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right Column: Diagnostics, Scenarios, API Health & Raw Data -->
+    <div class="col-right">
+
+      <!-- Engine Diagnostics -->
+      <div class="panel">
+        <div class="panel-header"><span>EDGE CORE DIAGNOSTICS</span></div>
+        <div class="panel-body">
+          <div class="metric-grid">
+            <div class="metric-box"><div class="metric-label">Processing Rate</div><div class="metric-value val-highlight" id="diagRate">0.0 Hz</div></div>
+            <div class="metric-box"><div class="metric-label">Mean Cycle Time</div><div class="metric-value" id="diagMeanUs">0.0 μs</div></div>
+            <div class="metric-box"><div class="metric-label">Max Cycle Time</div><div class="metric-value" id="diagMaxUs">0.0 μs</div></div>
+            <div class="metric-box"><div class="metric-label">Dropped Packets</div><div class="metric-value" id="diagDropped">0</div></div>
+          </div>
+          <div style="margin-top: 8px; font-size: 11px; color: var(--text-muted);">
+            Hardware Status: <span id="diagHwStatus" style="color: var(--accent-amber); font-weight: 600;">SOFTWARE_ONLY_VALIDATION_PENDING_FOG_HARDWARE</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Predefined Test Scenarios -->
+      <div class="panel">
+        <div class="panel-header"><span>AUTOMATED TEST SCENARIOS</span></div>
+        <div class="panel-body">
+          <div class="btn-row" style="margin-bottom: 0;">
+            <button onclick="runTest(1)">TEST 1: STARTUP</button>
+            <button onclick="runTest(2)">TEST 2: SENSOR REPLAY</button>
+            <button onclick="runTest(3)">TEST 3: GNSS DENIED</button>
+            <button onclick="runTest(4)">TEST 4: GNSS RESTORE</button>
+            <button onclick="runTest(5)">TEST 5: RESET</button>
+            <button onclick="runTest(6)">TEST 6: FULL REPLAY</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Public Edge API Health -->
+      <div class="panel">
+        <div class="panel-header"><span>PUBLIC EDGE API VALIDATION</span></div>
+        <div class="panel-body">
+          <div class="api-health-grid" id="apiGrid">
+            <!-- Populated dynamically via JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Raw Sensor Inspection (Encapsulated debug feed) -->
+      <div class="panel">
+        <div class="panel-header"><span>RAW SENSOR INSPECTION (LATEST PACKET)</span></div>
+        <div class="panel-body" style="font-size: 11px;">
+          <div style="margin-bottom: 4px;"><strong>IMU:</strong> t=<span id="rawImuT">0.0</span>s | a=[<span id="rawImuA">0, 0, 9.8</span>] | ω=[<span id="rawImuG">0, 0, 0</span>]</div>
+          <div style="margin-bottom: 4px;"><strong>GNSS:</strong> t=<span id="rawGnssT">0.0</span>s | pos=[<span id="rawGnssP">0, 0, 0</span>] | valid=<span id="rawGnssV">false</span></div>
+          <div><strong>BARO:</strong> t=<span id="rawBaroT">0.0</span>s | alt=<span id="rawBaroA">120.0</span>m</div>
+        </div>
+      </div>
+
+      <!-- Scrolling Event Log -->
+      <div class="panel">
+        <div class="panel-header"><span>SYSTEM & EVENT LOG</span></div>
+        <div class="panel-body" style="padding: 6px;">
+          <div class="log-container" id="logBox"></div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+    // State Polling & Visualization Loop
+    let lastLogCount = 0;
+
+    async function pollState() {
+      try {
+        const res = await fetch('/api/state');
+        if (!res.ok) return;
+        const data = await res.json();
+        updateUI(data);
+      } catch (err) {
+        console.error("Polling error:", err);
+      }
+    }
+
+    function updateUI(d) {
+      // Header Badges
+      const bEngine = document.getElementById('badgeEngineState');
+      bEngine.innerText = `ENGINE: ${d.engine_status}`;
+      bEngine.className = `badge ${d.engine_status === 'RUNNING' ? 'badge-green' : (d.engine_status === 'ERROR' ? 'badge-red' : '')}`;
+
+      const bGnss = document.getElementById('badgeGnssState');
+      const isDenied = d.gnss_denied_override || d.in_outage;
+      bGnss.innerText = `GNSS: ${isDenied ? 'DENIED' : 'AVAILABLE'}`;
+      bGnss.className = `badge ${isDenied ? 'badge-red' : 'badge-green'}`;
+
+      // Outage banner
+      const banner = document.getElementById('outageBanner');
+      if (d.in_outage) {
+        banner.classList.remove('hidden');
+      } else {
+        banner.classList.add('hidden');
+      }
+
+      // Nav State
+      document.getElementById('navModeText').innerText = d.navigation_mode;
+      document.getElementById('navModeText').style.color = d.in_outage ? 'var(--accent-red)' : 'var(--accent-green)';
+      document.getElementById('valLat').innerText = `${d.position.latitude.toFixed(6)}°`;
+      document.getElementById('valLon').innerText = `${d.position.longitude.toFixed(6)}°`;
+      document.getElementById('valAlt').innerText = `${d.position.altitude_m.toFixed(1)} m`;
+      document.getElementById('valSpeed').innerText = `${d.velocity.speed_kmh.toFixed(1)} km/h`;
+      document.getElementById('valHeading').innerText = `${d.attitude.heading_deg.toFixed(1)}°`;
+      document.getElementById('valPitchRoll').innerText = `${d.attitude.pitch_deg.toFixed(1)}° / ${d.attitude.roll_deg.toFixed(1)}°`;
+      document.getElementById('valVelVec').innerText = `${d.velocity.vx.toFixed(1)} / ${d.velocity.vy.toFixed(1)} / ${d.velocity.vz.toFixed(1)} m/s`;
+      document.getElementById('valPTrace').innerText = `${d.diagnostics.p_trace.toFixed(4)}`;
+      document.getElementById('posSummary').innerText = `E: ${d.position.enu[0].toFixed(1)} m | N: ${d.position.enu[1].toFixed(1)} m | Alt: ${d.position.altitude_m.toFixed(1)} m`;
+
+      // Diagnostics
+      document.getElementById('diagRate').innerText = `${d.diagnostics.sustained_rate_hz.toFixed(1)} Hz`;
+      document.getElementById('diagMeanUs').innerText = `${d.diagnostics.mean_cycle_time_us.toFixed(1)} μs`;
+      document.getElementById('diagMaxUs').innerText = `${d.diagnostics.max_cycle_time_us.toFixed(1)} μs`;
+      document.getElementById('diagDropped').innerText = `${d.diagnostics.dropped_samples}`;
+      document.getElementById('diagHwStatus').innerText = `${d.diagnostics.hardware_status}`;
+
+      // Replay
+      document.getElementById('replayStatus').innerText = `${d.replay.state} (${d.replay.speed_multiplier}x)`;
+      document.getElementById('replayProgress').style.width = `${d.replay.progress_pct}%`;
+      document.getElementById('replayIndexInfo').innerText = `${d.replay.index} / ${d.replay.total} samples (${d.replay.progress_pct.toFixed(1)}%)`;
+      document.getElementById('replayFileInfo').innerText = `File: ${d.replay.file}`;
+
+      // Raw inspection
+      document.getElementById('rawImuT').innerText = d.raw_inspection.imu.t;
+      document.getElementById('rawImuA').innerText = d.raw_inspection.imu.accel.join(', ');
+      document.getElementById('rawImuG').innerText = d.raw_inspection.imu.gyro.join(', ');
+      document.getElementById('rawGnssT').innerText = d.raw_inspection.gnss.t;
+      document.getElementById('rawGnssP').innerText = d.raw_inspection.gnss.pos.join(', ');
+      document.getElementById('rawGnssV').innerText = d.raw_inspection.gnss.valid;
+      document.getElementById('rawBaroT').innerText = d.raw_inspection.baro.t;
+      document.getElementById('rawBaroA').innerText = d.raw_inspection.baro.alt;
+
+      // API Health
+      renderApiHealth(d.api_health);
+
+      // Event Log
+      renderLogs(d.event_log);
+
+      // Canvas Draw
+      drawTrajectory(d.trajectories, d.position.enu, d.attitude.heading_deg);
+    }
+
+    function renderApiHealth(health) {
+      const grid = document.getElementById('apiGrid');
+      grid.innerHTML = '';
+      for (const [key, val] of Object.entries(health)) {
+        const item = document.createElement('div');
+        item.className = 'api-item';
+        const cls = val === 'PASS' ? 'status-pass' : (val === 'FAIL' ? 'status-fail' : 'status-untested');
+        item.innerHTML = `<span>${key}</span><span class="api-status ${cls}">${val}</span>`;
+        grid.appendChild(item);
+      }
+    }
+
+    function renderLogs(logs) {
+      const box = document.getElementById('logBox');
+      if (logs.length !== lastLogCount) {
+        box.innerHTML = logs.map(l => `<div class="log-entry"><span class="log-time">[${l.timestamp}]</span><span class="log-${l.level}">${l.message}</span></div>`).join('');
+        box.scrollTop = box.scrollHeight;
+        lastLogCount = logs.length;
+      }
+    }
+
+    // Trajectory Drawing
+    function drawTrajectory(trajs, currPos, headingDeg) {
+      const canvas = document.getElementById('trajCanvas');
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width = canvas.clientWidth;
+      const h = canvas.height = canvas.clientHeight;
+
+      ctx.fillStyle = '#070b12';
+      ctx.fillRect(0, 0, w, h);
+
+      // Determine bounding box
+      let minX = -10, maxX = 10, minY = -10, maxY = 10;
+      const allPts = (trajs.reference || []).concat((trajs.estimated || []).map(p => [p[0], p[1]]));
+      if (allPts.length > 0) {
+        minX = Math.min(...allPts.map(p => p[0]));
+        maxX = Math.max(...allPts.map(p => p[0]));
+        minY = Math.min(...allPts.map(p => p[1]));
+        maxY = Math.max(...allPts.map(p => p[1]));
+      }
+
+      const pad = 20;
+      const spanX = Math.max(10, maxX - minX);
+      const spanY = Math.max(10, maxY - minY);
+      const scale = Math.min((w - 2 * pad) / spanX, (h - 2 * pad) / spanY);
+
+      function toScreen(x, y) {
+        return [
+          pad + (x - minX) * scale,
+          h - (pad + (y - minY) * scale)
+        ];
+      }
+
+      // Draw Grid
+      ctx.strokeStyle = '#152033';
+      ctx.lineWidth = 1;
+      for (let gx = 0; gx < w; gx += 40) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, h); ctx.stroke(); }
+      for (let gy = 0; gy < h; gy += 40) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(w, gy); ctx.stroke(); }
+
+      // Draw Reference Track (Dashed blue)
+      if (trajs.reference && trajs.reference.length > 1) {
+        ctx.strokeStyle = '#2563eb';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        const [x0, y0] = toScreen(trajs.reference[0][0], trajs.reference[0][1]);
+        ctx.moveTo(x0, y0);
+        for (let i = 1; i < trajs.reference.length; i++) {
+          const [sx, sy] = toScreen(trajs.reference[i][0], trajs.reference[i][1]);
+          ctx.lineTo(sx, sy);
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      // Draw Estimated Track (Solid green / Red in outage)
+      if (trajs.estimated && trajs.estimated.length > 1) {
+        for (let i = 1; i < trajs.estimated.length; i++) {
+          const p1 = trajs.estimated[i - 1];
+          const p2 = trajs.estimated[i];
+          const [sx1, sy1] = toScreen(p1[0], p1[1]);
+          const [sx2, sy2] = toScreen(p2[0], p2[1]);
+
+          ctx.strokeStyle = p2[2] === 1 ? '#ff3d00' : '#00e676';
+          ctx.lineWidth = p2[2] === 1 ? 3 : 2;
+          ctx.beginPath();
+          ctx.moveTo(sx1, sy1);
+          ctx.lineTo(sx2, sy2);
+          ctx.stroke();
+        }
+      }
+
+      // Draw Current Vehicle Position & Heading Pointer
+      if (currPos) {
+        const [cx, cy] = toScreen(currPos[0], currPos[1]);
+        ctx.fillStyle = '#00e5ff';
+        ctx.beginPath();
+        ctx.arc(cx, cy, 6, 0, 2 * Math.PI);
+        ctx.fill();
+
+        // Heading arrow
+        const rad = (headingDeg - 90) * (Math.PI / 180);
+        const hLen = 16;
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + Math.cos(rad) * hLen, cy + Math.sin(rad) * hLen);
+        ctx.stroke();
+      }
+    }
+
+    // API Controls
+    async function sendControl(action, value = null) {
+      await fetch('/api/control', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, value })
+      });
+      pollState();
+    }
+
+    async function setSpeed(mult) {
+      document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('btn-active'));
+      event.target.classList.add('btn-active');
+      sendControl('rate', mult);
+    }
+
+    async function runTest(id) {
+      await fetch('/api/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scenario: id })
+      });
+      pollState();
+    }
+
+    // Start Poller (10 Hz)
+    setInterval(pollState, 100);
+    pollState();
+  </script>
+</body>
+</html>

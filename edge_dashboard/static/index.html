@@ -6,382 +6,1188 @@
   <title>ISRO IDR — Edge Engine Test Dashboard</title>
   <style>
     :root {
-      --bg-dark: #0a0e17;
-      --panel-bg: #121824;
-      --card-bg: #182234;
-      --border-color: #24334a;
-      --text-main: #e2e8f0;
-      --text-muted: #889bb4;
-      --accent-cyan: #00e5ff;
-      --accent-green: #00e676;
-      --accent-amber: #ffab00;
-      --accent-red: #ff3d00;
-      --accent-blue: #2979ff;
+      /* Light Aerospace Color System */
+      --bg-app: #F5F7FA;
+      --surface-card: #FFFFFF;
+      --surface-subtle: #F8FAFC;
+      --surface-muted: #F1F5F9;
+      --surface-active: #EFF6FF;
+      
+      --border-subtle: #E2E8F0;
+      --border-main: #D9E0E8;
+      --border-focus: #3B82F6;
+      
+      --text-main: #172033;
+      --text-secondary: #64748B;
+      --text-muted: #94A3B8;
+      
+      --accent-navy: #0A2540;
+      --accent-blue: #0284C7;
+      --accent-blue-light: #E0F2FE;
+      --accent-blue-border: #BAE6FD;
+      
+      --color-success: #16A34A;
+      --color-success-bg: #DCFCE7;
+      --color-success-border: #BBF7D0;
+      
+      --color-warning: #D97706;
+      --color-warning-bg: #FEF3C7;
+      --color-warning-border: #FDE68A;
+      
+      --color-danger: #DC2626;
+      --color-danger-bg: #FEE2E2;
+      --color-danger-border: #FECACA;
+      
+      --shadow-card: 0 1px 3px 0 rgba(15, 23, 42, 0.04), 0 1px 2px -1px rgba(15, 23, 42, 0.02);
+      --shadow-hover: 0 4px 6px -1px rgba(15, 23, 42, 0.06), 0 2px 4px -2px rgba(15, 23, 42, 0.04);
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 12px;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace; }
-    body { background: var(--bg-dark); color: var(--text-main); font-size: 13px; line-height: 1.4; padding: 12px; }
 
-    /* Top Header */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      background: var(--bg-app);
+      color: var(--text-main);
+      font-size: 13px;
+      line-height: 1.5;
+      padding: 16px 20px 24px;
+      min-width: 1100px;
+    }
+
+    /* Tabular figures for telemetry stability */
+    .tabular {
+      font-variant-numeric: tabular-nums;
+      font-feature-settings: "tnum";
+    }
+
+    /* ---------------------------------------------------- */
+    /* Header                                               */
+    /* ---------------------------------------------------- */
     header {
-      background: var(--panel-bg);
-      border: 1px solid var(--border-color);
-      border-radius: 6px;
-      padding: 12px 18px;
+      background: var(--surface-card);
+      border: 1px solid var(--border-main);
+      border-radius: var(--radius-lg);
+      padding: 14px 20px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       margin-bottom: 12px;
+      box-shadow: var(--shadow-card);
     }
-    .header-title { display: flex; align-items: center; gap: 12px; }
-    .header-title h1 { font-size: 18px; font-weight: 700; color: #ffffff; letter-spacing: 0.5px; }
-    .tag-laptop { background: #233554; color: var(--accent-cyan); padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; border: 1px solid #334d77; }
-    .header-badges { display: flex; gap: 10px; }
-    .badge { padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; background: var(--card-bg); border: 1px solid var(--border-color); }
-    .badge-green { color: var(--accent-green); border-color: rgba(0,230,118,0.4); background: rgba(0,230,118,0.1); }
-    .badge-amber { color: var(--accent-amber); border-color: rgba(255,171,0,0.4); background: rgba(255,171,0,0.1); }
-    .badge-red { color: var(--accent-red); border-color: rgba(255,61,0,0.4); background: rgba(255,61,0,0.1); animation: pulse 1.5s infinite; }
-    @keyframes pulse { 0% { opacity: 0.8; } 50% { opacity: 1; filter: drop-shadow(0 0 4px var(--accent-red)); } 100% { opacity: 0.8; } }
 
-    /* Main Grid Layout */
-    .dashboard-grid {
-      display: grid;
-      grid-template-columns: 2.2fr 1fr;
-      gap: 12px;
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
     }
-    .col-left, .col-right { display: flex; flex-direction: column; gap: 12px; }
 
-    /* Panel Card */
-    .panel {
-      background: var(--panel-bg);
-      border: 1px solid var(--border-color);
-      border-radius: 6px;
-      overflow: hidden;
+    .isro-mark {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      background: #FFFFFF;
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
     }
-    .panel-header {
-      background: #151e2e;
-      padding: 8px 14px;
+
+    .header-titles h1 {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text-main);
+      letter-spacing: -0.2px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .header-titles p {
+      font-size: 11.5px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      margin-top: 1px;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .header-clock {
+      font-size: 11px;
       font-weight: 600;
-      font-size: 12px;
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
-      border-bottom: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      padding: 0 4px;
+    }
+
+    .v-divider {
+      width: 1px;
+      height: 22px;
+      background: var(--border-subtle);
+    }
+
+    /* Status Pills */
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      border: 1px solid transparent;
+    }
+
+    .pill-green {
+      background: var(--color-success-bg);
+      color: var(--color-success);
+      border-color: var(--color-success-border);
+    }
+
+    .pill-amber {
+      background: var(--color-warning-bg);
+      color: var(--color-warning);
+      border-color: var(--color-warning-border);
+    }
+
+    .pill-red {
+      background: var(--color-danger-bg);
+      color: var(--color-danger);
+      border-color: var(--color-danger-border);
+    }
+
+    .pill-blue {
+      background: var(--surface-active);
+      color: #1D4ED8;
+      border-color: #BFDBFE;
+    }
+
+    .pill-slate {
+      background: var(--surface-muted);
+      color: var(--text-secondary);
+      border-color: var(--border-subtle);
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    /* ---------------------------------------------------- */
+    /* Data Source Bar                                      */
+    /* ---------------------------------------------------- */
+    .data-source-bar {
+      background: var(--surface-card);
+      border: 1px solid var(--border-main);
+      border-radius: var(--radius-md);
+      padding: 10px 16px;
+      margin-bottom: 12px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      color: var(--text-muted);
+      flex-wrap: wrap;
+      gap: 12px;
+      box-shadow: var(--shadow-card);
     }
-    .panel-header span.highlight { color: var(--accent-cyan); }
-    .panel-body { padding: 12px; }
 
-    /* Trajectory Canvas */
-    .canvas-container { position: relative; width: 100%; height: 380px; background: #070b12; border-radius: 4px; overflow: hidden; }
-    canvas#trajCanvas { width: 100%; height: 100%; display: block; }
-    .canvas-overlay {
+    .source-profile-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .group-label {
+      font-size: 10.5px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      margin-right: 4px;
+    }
+
+    .profile-btn {
+      background: var(--surface-subtle);
+      border: 1px solid var(--border-main);
+      color: var(--text-secondary);
+      padding: 5px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .profile-btn:hover {
+      background: #FFFFFF;
+      border-color: var(--border-focus);
+      color: var(--text-main);
+    }
+
+    .profile-btn.btn-active {
+      background: var(--surface-active);
+      border-color: var(--border-focus);
+      color: #1D4ED8;
+      box-shadow: 0 0 0 1px #3B82F6;
+    }
+
+    .dataset-pill {
+      background: #FFFFFF;
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+      padding: 4px 9px;
+      border-radius: 6px;
+      font-size: 10.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .dataset-pill:hover {
+      border-color: #94A3B8;
+      color: var(--text-main);
+    }
+
+    .dataset-pill.btn-active {
+      background: #F0FDF4;
+      border-color: #86EFAC;
+      color: #15803D;
+      font-weight: 700;
+    }
+
+    .source-meta-group {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 11.5px;
+    }
+
+    .meta-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .meta-label {
+      color: var(--text-muted);
+      font-weight: 500;
+      text-transform: uppercase;
+      font-size: 10px;
+      letter-spacing: 0.4px;
+    }
+
+    .meta-val {
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    /* ---------------------------------------------------- */
+    /* 12-Column Grid Layout                                */
+    /* ---------------------------------------------------- */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 8fr 4fr;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .col-left, .col-right {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* Cards */
+    .card {
+      background: var(--surface-card);
+      border: 1px solid var(--border-main);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card-header {
+      padding: 12px 18px;
+      background: #FFFFFF;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .card-title-group {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+
+    .card-title {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--text-main);
+      letter-spacing: -0.1px;
+    }
+
+    .card-subtitle {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .card-body {
+      padding: 16px 18px;
+    }
+
+    /* ---------------------------------------------------- */
+    /* Trajectory Canvas                                    */
+    /* ---------------------------------------------------- */
+    .canvas-container {
+      position: relative;
+      width: 100%;
+      height: 380px;
+      background: #FAFBFC;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      border: 1px solid var(--border-subtle);
+    }
+
+    canvas#trajCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .canvas-overlay-legend {
       position: absolute;
       top: 10px;
       left: 10px;
-      background: rgba(18, 24, 36, 0.85);
-      border: 1px solid var(--border-color);
-      padding: 6px 10px;
-      border-radius: 4px;
-      font-size: 11px;
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(4px);
+      border: 1px solid var(--border-subtle);
+      padding: 7px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 10.5px;
       display: flex;
-      flex-direction: column;
-      gap: 4px;
+      gap: 14px;
       pointer-events: none;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
-    .legend-item { display: flex; align-items: center; gap: 8px; }
-    .legend-dot { width: 10px; height: 10px; border-radius: 2px; }
-    .dot-ref { background: #3b82f6; }
-    .dot-est { background: var(--accent-green); }
-    .dot-outage { background: var(--accent-red); }
 
-    /* Key-Value Metrics Grid */
-    .metric-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
-    .metric-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-    .metric-box {
-      background: var(--card-bg);
-      padding: 8px 10px;
-      border-radius: 4px;
-      border: 1px solid rgba(255,255,255,0.05);
-    }
-    .metric-label { font-size: 10px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 2px; }
-    .metric-value { font-size: 14px; font-weight: 700; color: #fff; }
-    .val-highlight { color: var(--accent-cyan); }
-    .val-speed { color: var(--accent-green); }
-
-    /* Button Controls */
-    .btn-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
-    button {
-      background: var(--card-bg);
-      color: var(--text-main);
-      border: 1px solid var(--border-color);
-      padding: 6px 14px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-weight: 600;
-      font-size: 11px;
-      transition: all 0.15s ease;
-    }
-    button:hover { background: #202d44; border-color: var(--accent-cyan); color: #fff; }
-    button:active { transform: scale(0.98); }
-    button.btn-primary { background: #004d40; border-color: var(--accent-green); color: var(--accent-green); }
-    button.btn-primary:hover { background: #00695c; color: #fff; }
-    button.btn-danger { background: #4a1515; border-color: var(--accent-red); color: var(--accent-red); }
-    button.btn-danger:hover { background: #6b1d1d; color: #fff; }
-    button.btn-warn { background: #4a3410; border-color: var(--accent-amber); color: var(--accent-amber); }
-    button.btn-warn:hover { background: #694914; color: #fff; }
-    button.btn-active { background: #1a365d; border-color: var(--accent-cyan); color: var(--accent-cyan); }
-
-    /* Progress bar */
-    .progress-bar-container {
-      background: var(--card-bg);
-      height: 8px;
-      border-radius: 4px;
-      overflow: hidden;
-      margin: 8px 0;
-      border: 1px solid var(--border-color);
-    }
-    .progress-fill { background: var(--accent-cyan); height: 100%; width: 0%; transition: width 0.1s linear; }
-
-    /* API Health Badges */
-    .api-health-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-    .api-item {
-      background: var(--card-bg);
-      padding: 5px 8px;
-      border-radius: 4px;
+    .legend-item {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      font-size: 10px;
-      border: 1px solid var(--border-color);
+      gap: 6px;
+      color: var(--text-secondary);
+      font-weight: 500;
     }
-    .api-status { font-weight: bold; }
-    .status-pass { color: var(--accent-green); }
-    .status-fail { color: var(--accent-red); }
-    .status-untested { color: var(--text-muted); }
 
-    /* Event Log Box */
-    .log-container {
-      background: #070b12;
-      border-radius: 4px;
-      padding: 8px;
-      height: 150px;
-      overflow-y: auto;
-      font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+    .legend-line {
+      width: 14px;
+      height: 2px;
+      border-radius: 1px;
+    }
+
+    .line-ref {
+      background: #2563EB;
+      border-top: 1px dashed #2563EB;
+    }
+
+    .line-est {
+      background: #0284C7;
+      height: 2.5px;
+    }
+
+    .line-outage {
+      background: #D97706;
+      height: 3px;
+    }
+
+    .outage-alert-box {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(254, 243, 199, 0.95);
+      border: 1px solid #FDE68A;
+      color: #92400E;
+      padding: 5px 10px;
+      border-radius: var(--radius-sm);
       font-size: 11px;
-    }
-    .log-entry { margin-bottom: 4px; }
-    .log-time { color: var(--text-muted); margin-right: 6px; }
-    .log-INFO { color: #a5d6a7; }
-    .log-WARN { color: var(--accent-amber); }
-    .log-ERROR { color: var(--accent-red); }
-
-    /* Outage Banner */
-    .outage-alert-banner {
-      background: #4a1515;
-      border: 1px solid var(--accent-red);
-      color: #ff8a80;
-      padding: 8px 12px;
-      border-radius: 4px;
       font-weight: 700;
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      margin-bottom: 8px;
-      animation: pulse 1.5s infinite;
+      gap: 6px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
     }
+
+    /* ---------------------------------------------------- */
+    /* Metrics Grid & Navigation Display                    */
+    /* ---------------------------------------------------- */
+    .metric-grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+
+    .metric-grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    .metric-box {
+      background: var(--surface-subtle);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: border-color 0.15s ease;
+    }
+
+    .metric-box:hover {
+      border-color: #CBD5E1;
+    }
+
+    .metric-label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 4px;
+    }
+
+    .metric-label {
+      font-size: 10.5px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+    }
+
+    .metric-sublabel {
+      font-size: 10px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .metric-val {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text-main);
+      letter-spacing: -0.3px;
+    }
+
+    .metric-val.val-highlight {
+      color: #0369A1;
+    }
+
+    .metric-val.val-speed {
+      color: #0F766E;
+    }
+
+    /* Velocity Vector Strip */
+    .velocity-strip {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #FFFFFF;
+    }
+
+    .velocity-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      letter-spacing: 0.5px;
+    }
+
+    .velocity-items {
+      display: flex;
+      gap: 18px;
+    }
+
+    .vel-cell {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      font-size: 12px;
+    }
+
+    .vel-name {
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .vel-num {
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    /* ---------------------------------------------------- */
+    /* Controls & Timeline                                  */
+    /* ---------------------------------------------------- */
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    button {
+      background: var(--surface-card);
+      color: var(--text-main);
+      border: 1px solid var(--border-main);
+      padding: 6px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    }
+
+    button:hover {
+      background: var(--surface-subtle);
+      border-color: #94A3B8;
+      color: var(--text-main);
+    }
+
+    button:active {
+      transform: scale(0.99);
+    }
+
+    button.btn-primary {
+      background: #0284C7;
+      border-color: #0284C7;
+      color: #FFFFFF;
+    }
+
+    button.btn-primary:hover {
+      background: #0369A1;
+      border-color: #0369A1;
+    }
+
+    button.btn-warn {
+      background: #FFFFFF;
+      border-color: #F59E0B;
+      color: #B45309;
+    }
+
+    button.btn-warn:hover {
+      background: #FEF3C7;
+    }
+
+    button.btn-danger {
+      background: #FFFFFF;
+      border-color: #F87171;
+      color: #DC2626;
+    }
+
+    button.btn-danger:hover {
+      background: #FEE2E2;
+    }
+
+    button.btn-gnss-denied-active {
+      background: #FEF3C7;
+      border-color: #D97706;
+      color: #B45309;
+      box-shadow: 0 0 0 1px #D97706;
+    }
+
+    .speed-btn {
+      padding: 4px 8px;
+      font-size: 11px;
+      border-radius: var(--radius-sm);
+    }
+
+    .speed-btn.btn-active {
+      background: var(--surface-active);
+      border-color: var(--border-focus);
+      color: #1D4ED8;
+      font-weight: 700;
+    }
+
+    .progress-bar-container {
+      background: var(--surface-muted);
+      height: 6px;
+      border-radius: 9999px;
+      overflow: hidden;
+      margin: 10px 0 6px;
+      border: 1px solid var(--border-subtle);
+    }
+
+    .progress-fill {
+      background: #0284C7;
+      height: 100%;
+      width: 0%;
+      transition: width 0.1s linear;
+    }
+
+    /* ---------------------------------------------------- */
+    /* Test Scenarios & Edge API Sections                   */
+    /* ---------------------------------------------------- */
+    .bottom-split-grid {
+      display: grid;
+      grid-template-columns: 7fr 5fr;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .scenario-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 8px;
+    }
+
+    .scenario-btn {
+      background: var(--surface-subtle);
+      border: 1px solid var(--border-main);
+      border-radius: var(--radius-md);
+      padding: 10px 6px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      text-align: center;
+    }
+
+    .scenario-btn:hover {
+      background: #FFFFFF;
+      border-color: #3B82F6;
+      box-shadow: var(--shadow-hover);
+    }
+
+    .scenario-btn.active {
+      background: var(--surface-active);
+      border-color: #3B82F6;
+      color: #1D4ED8;
+    }
+
+    .scenario-num {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-muted);
+      letter-spacing: 0.5px;
+    }
+
+    .scenario-name {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    /* Edge API Checklist */
+    .api-checklist-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px 14px;
+    }
+
+    .api-check-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 10px;
+      background: var(--surface-subtle);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      font-size: 11px;
+    }
+
+    .api-check-left {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-main);
+      font-weight: 500;
+    }
+
+    .check-icon {
+      color: var(--color-success);
+      font-weight: 700;
+      font-size: 12px;
+    }
+
+    .api-badge-pass {
+      color: var(--color-success);
+      font-weight: 700;
+      font-size: 10px;
+      letter-spacing: 0.3px;
+    }
+
+    .api-badge-fail {
+      color: var(--color-danger);
+      font-weight: 700;
+      font-size: 10px;
+    }
+
+    .api-badge-untested {
+      color: var(--text-muted);
+      font-size: 10px;
+    }
+
+    /* ---------------------------------------------------- */
+    /* Collapsible Latest Sensor Packet Section             */
+    /* ---------------------------------------------------- */
+    .collapsible-header {
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.15s ease;
+    }
+
+    .collapsible-header:hover {
+      background: #F8FAFC;
+    }
+
+    .packet-summary-strip {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      font-size: 12px;
+    }
+
+    .packet-summary-items {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .packet-item-summary {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .packet-item-summary .lbl {
+      font-size: 9.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .packet-item-summary .val {
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .packet-details-body {
+      padding: 14px 18px;
+      border-top: 1px solid var(--border-subtle);
+      background: var(--surface-subtle);
+      display: none;
+    }
+
+    .packet-details-body.open {
+      display: block;
+    }
+
+    .raw-data-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .raw-box {
+      background: #FFFFFF;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 11px;
+    }
+
+    .raw-title {
+      font-weight: 700;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+      font-family: inherit;
+    }
+
+    /* Event Log */
+    .log-box {
+      background: #FFFFFF;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 8px 12px;
+      height: 120px;
+      overflow-y: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 11px;
+    }
+
+    .log-entry { margin-bottom: 3px; }
+    .log-time { color: var(--text-muted); margin-right: 6px; }
+    .log-INFO { color: #0284C7; }
+    .log-WARN { color: var(--color-warning); font-weight: 600; }
+    .log-ERROR { color: var(--color-danger); font-weight: 700; }
+
     .hidden { display: none !important; }
   </style>
 </head>
 <body>
 
-  <!-- Header -->
+  <!-- ==================================================== -->
+  <!-- Header                                               -->
+  <!-- ==================================================== -->
   <header>
-    <div class="header-title">
-      <h1>ISRO IDR — EDGE ENGINE TEST DASHBOARD</h1>
-      <span class="tag-laptop">SOFTWARE EDGE TEST (LAPTOP)</span>
+    <div class="header-left">
+      <div class="isro-mark" title="ISRO Satellite Navigation">
+        <!-- Stylized aerospace insignia -->
+        <svg width="26" height="26" viewBox="0 0 32 32" fill="none">
+          <circle cx="16" cy="16" r="14" stroke="#0A2540" stroke-width="1.5" stroke-dasharray="2 2"/>
+          <path d="M7 21L16 6L25 21L16 17L7 21Z" fill="#0284C7"/>
+          <path d="M16 6V17" stroke="#FFFFFF" stroke-width="1.2"/>
+          <circle cx="16" cy="16" r="3" fill="#F59E0B"/>
+        </svg>
+      </div>
+      <div class="header-titles">
+        <h1>ISRO IDR — Edge Engine Test Dashboard</h1>
+        <p>Intelligent Dead Reckoning System | Edge Navigation Platform</p>
+      </div>
     </div>
-    <div class="header-badges">
-      <div class="badge" id="badgeEngineState">ENGINE: INITIALIZING</div>
-      <div class="badge badge-green" id="badgeProfile">PROFILE: EDGE_FOG</div>
-      <div class="badge" id="badgeGnssState">GNSS: AVAILABLE</div>
-      <div class="badge badge-green" id="badgeThroughput">3500 Hz CORE CAPABLE</div>
+
+    <div class="header-right">
+      <span class="header-clock" id="lblLiveClock">Thu, 24 Sep 2026 | 10:16 PM</span>
+      <div class="v-divider"></div>
+      <div class="status-pill pill-green" id="badgeEngineState">
+        <span class="status-dot"></span>
+        <span id="txtEngineStatus">ENGINE RUNNING</span>
+      </div>
+      <div class="status-pill pill-blue" id="badgeProfile">EDGE_FOG</div>
+      <div class="status-pill pill-green" id="badgeGnssState">
+        <span class="status-dot"></span>
+        <span id="txtGnssStatus">GNSS AVAILABLE</span>
+      </div>
+      <div class="status-pill pill-slate" id="badgeThroughput">3500 Hz CORE</div>
     </div>
   </header>
 
-  <!-- Input Profile & Sensor Source Selector Bar -->
-  <div style="background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 6px; padding: 10px 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-    <div style="display: flex; align-items: center; gap: 8px;">
-      <span style="font-weight: 700; color: var(--text-muted); font-size: 11px; text-transform: uppercase;">INPUT PROFILE:</span>
-      <button id="btnProfileMobile" class="profile-btn" onclick="setInputProfile('MOBILE_REPLAY')">📱 MOBILE REPLAY</button>
-      <button id="btnProfileEdge" class="profile-btn btn-active" onclick="setInputProfile('EDGE_EXTERNAL_IMU')">⚡ EDGE EXTERNAL IMU</button>
+  <!-- ==================================================== -->
+  <!-- Data Source Bar                                      -->
+  <!-- ==================================================== -->
+  <div class="data-source-bar">
+    <div class="source-profile-group">
+      <span class="group-label">Input Profile</span>
+      <button id="btnProfileMobile" class="profile-btn" onclick="setInputProfile('MOBILE_REPLAY')">
+        📱 Mobile Replay
+      </button>
+      <button id="btnProfileEdge" class="profile-btn btn-active" onclick="setInputProfile('EDGE_EXTERNAL_IMU')">
+        ⚡ Edge External IMU
+      </button>
+      
+      <div class="v-divider" style="margin: 0 4px;"></div>
+      
+      <span class="group-label">Dataset</span>
+      <button class="dataset-pill btn-active" onclick="loadDataset('synthetic')">Corridor (200Hz)</button>
+      <button class="dataset-pill" onclick="loadDataset('i2nav_icm20602')">i2Nav ICM20602</button>
+      <button class="dataset-pill" onclick="loadDataset('i2nav_adis16460')">i2Nav ADIS16460</button>
+      <button class="dataset-pill" onclick="loadDataset('i2nav_adis16465')">i2Nav ADIS16465</button>
+      <button class="dataset-pill" onclick="loadDataset('i2nav_i300')">i2Nav HGuide-i300</button>
     </div>
-    <div style="display: flex; align-items: center; gap: 16px; font-size: 11px;">
-      <div><span style="color: var(--text-muted);">SOURCE:</span> <strong id="lblInputSource" style="color: var(--accent-cyan);">EXTERNAL IMU (Replay / Stream Adapter)</strong></div>
-      <div><span style="color: var(--text-muted);">FRAME:</span> <strong id="lblCoordFrame" style="color: var(--text-main);">body FLU (Forward-Left-Up)</strong></div>
-      <div><span style="color: var(--text-muted);">RATE:</span> <strong id="lblInputRate" style="color: var(--accent-green);">200.0 Hz</strong></div>
-      <div><span style="color: var(--accent-amber); font-weight: 600;" id="lblHwTestNotice">SOFTWARE EXTERNAL-IMU REPLAY (Hardware test pending)</span></div>
+
+    <div class="source-meta-group">
+      <div class="meta-item">
+        <span class="meta-label">Source</span>
+        <span class="meta-val" id="lblInputSource">External IMU (Replay / Stream Adapter)</span>
+      </div>
+      <div class="v-divider"></div>
+      <div class="meta-item">
+        <span class="meta-label">Frame</span>
+        <span class="meta-val" id="lblCoordFrame">body FLU (Forward-Left-Up)</span>
+      </div>
+      <div class="v-divider"></div>
+      <div class="meta-item">
+        <span class="meta-label">Rate</span>
+        <span class="meta-val tabular" id="lblInputRate">200.0 Hz</span>
+      </div>
+      <div class="v-divider"></div>
+      <div class="meta-item">
+        <span class="meta-label">Status</span>
+        <span class="status-pill pill-amber" id="lblHwTestNotice" style="padding: 2px 8px; font-size: 10.5px;">
+          Software Validation · Hardware Pending
+        </span>
+      </div>
     </div>
   </div>
 
-  <!-- Outage Alert Banner (hidden by default) -->
-  <div id="outageBanner" class="outage-alert-banner hidden">
-    <span>⚠️ GNSS DENIED — INTELLIGENT DEAD RECKONING ACTIVE</span>
-    <span id="outageTimer">DRIFT CONTAINMENT ENGAGED</span>
-  </div>
+  <!-- Outage Alert Banner (hidden unless GNSS is denied) -->
+  <div id="outageBanner" class="hidden"></div>
+  <span id="outageTimer" class="hidden"></span>
 
-  <!-- Main Grid -->
+  <!-- ==================================================== -->
+  <!-- Main Grid                                            -->
+  <!-- ==================================================== -->
   <div class="dashboard-grid">
 
     <!-- Left Column: Trajectory & Navigation State -->
     <div class="col-left">
 
-      <!-- 2D Trajectory View -->
-      <div class="panel">
-        <div class="panel-header">
-          <span>LIVE TRAJECTORY (LOCAL ENU PLANE)</span>
-          <span class="highlight" id="posSummary">E: 0.0 m | N: 0.0 m | Alt: 0.0 m</span>
+      <!-- 1. Trajectory Card -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <span class="card-title">Trajectory</span>
+            <span class="card-subtitle">Local ENU Plane</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <span class="tabular" style="font-size: 11px; font-weight: 600; color: var(--text-secondary);" id="posSummary">
+              E: 0.0 m | N: 0.0 m | Alt: 0.0 m
+            </span>
+            <div class="status-pill pill-green" id="trajNavBadge">
+              <span class="status-dot"></span>
+              <span id="trajNavMode">GNSS AVAILABLE</span>
+            </div>
+          </div>
         </div>
-        <div class="panel-body" style="padding: 6px;">
+        <div class="card-body" style="padding: 12px;">
           <div class="canvas-container">
             <canvas id="trajCanvas"></canvas>
-            <div class="canvas-overlay">
-              <div class="legend-item"><div class="legend-dot dot-ref"></div><span>Reference / GNSS Data</span></div>
-              <div class="legend-item"><div class="legend-dot dot-est"></div><span>Estimated Navigation (IDR Core)</span></div>
-              <div class="legend-item"><div class="legend-dot dot-outage"></div><span>GNSS-Denied Outage Segment</span></div>
+            
+            <!-- Minimal Canvas Overlay Legend -->
+            <div class="canvas-overlay-legend">
+              <div class="legend-item">
+                <div class="legend-line line-ref"></div>
+                <span>Reference / GNSS</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-line line-est"></div>
+                <span>Estimated / IDR Core</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-line line-outage"></div>
+                <span>GNSS-Denied Outage</span>
+              </div>
+            </div>
+
+            <!-- Outage badge overlay in canvas -->
+            <div id="canvasOutageBadge" class="outage-alert-box hidden">
+              ⚠️ GNSS DENIED — DEAD RECKONING ACTIVE
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Navigation State & Velocity -->
-      <div class="panel">
-        <div class="panel-header">
-          <span>NAVIGATION ESTIMATE & VELOCITY VECTOR</span>
-          <span id="navModeText" style="color: var(--accent-green); font-weight: bold;">GNSS_AIDED</span>
+      <!-- 2. Navigation State Card -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <span class="card-title">Navigation State</span>
+            <span class="card-subtitle">Current Kinematic Solution</span>
+          </div>
+          <span id="navModeText" style="font-weight: 700; color: var(--color-success); font-size: 11.5px;">
+            GNSS_AIDED
+          </span>
         </div>
-        <div class="panel-body">
+        <div class="card-body">
           <div class="metric-grid-4">
-            <div class="metric-box"><div class="metric-label">Latitude</div><div class="metric-value val-highlight" id="valLat">25.435800°</div></div>
-            <div class="metric-box"><div class="metric-label">Longitude</div><div class="metric-value val-highlight" id="valLon">81.846300°</div></div>
-            <div class="metric-box"><div class="metric-label">Altitude</div><div class="metric-value" id="valAlt">120.0 m</div></div>
-            <div class="metric-box"><div class="metric-label">Forward Speed</div><div class="metric-value val-speed" id="valSpeed">0.0 km/h</div></div>
-            <div class="metric-box"><div class="metric-label">Heading Azimuth</div><div class="metric-value" id="valHeading">0.0°</div></div>
-            <div class="metric-box"><div class="metric-label">Pitch / Roll</div><div class="metric-value" id="valPitchRoll">0.0° / 0.0°</div></div>
-            <div class="metric-box"><div class="metric-label">Vx / Vy / Vz (ENU)</div><div class="metric-value" id="valVelVec">0.0 / 0.0 / 0.0</div></div>
-            <div class="metric-box"><div class="metric-label">P-Trace (Covariance)</div><div class="metric-value" id="valPTrace">0.0000</div></div>
-          </div>
-        </div>
-      </div>
+            <div class="metric-box">
+              <div class="metric-label-row">
+                <span class="metric-label">Latitude</span>
+                <span class="metric-sublabel">WGS84</span>
+              </div>
+              <div class="metric-val val-highlight tabular" id="valLat">25.435800°</div>
+            </div>
 
-      <!-- Controls & Replay -->
-      <div class="panel">
-        <div class="panel-header">
-          <span>ENGINE CONTROLS & REPLAY MANAGEMENT</span>
-          <span id="replayStatus">IDLE</span>
-        </div>
-        <div class="panel-body">
-          <div class="btn-row" style="margin-bottom: 10px; align-items: center;">
-            <span style="font-weight: 600; color: var(--text-muted);">DATASET:</span>
-            <button class="dataset-btn btn-active" onclick="loadDataset('synthetic')">Corridor (200Hz)</button>
-            <button class="dataset-btn" onclick="loadDataset('i2nav_icm20602')">i2Nav ICM20602</button>
-            <button class="dataset-btn" onclick="loadDataset('i2nav_adis16460')">i2Nav ADIS16460</button>
-            <button class="dataset-btn" onclick="loadDataset('i2nav_adis16465')">i2Nav ADIS16465</button>
-            <button class="dataset-btn" onclick="loadDataset('i2nav_i300')">i2Nav HGuide-i300</button>
+            <div class="metric-box">
+              <div class="metric-label-row">
+                <span class="metric-label">Longitude</span>
+                <span class="metric-sublabel">WGS84</span>
+              </div>
+              <div class="metric-val val-highlight tabular" id="valLon">81.846300°</div>
+            </div>
+
+            <div class="metric-box">
+              <div class="metric-label-row">
+                <span class="metric-label">Altitude</span>
+                <span class="metric-sublabel">MSL</span>
+              </div>
+              <div class="metric-val tabular" id="valAlt">120.0 m</div>
+            </div>
+
+            <div class="metric-box">
+              <div class="metric-label-row">
+                <span class="metric-label">Forward Speed</span>
+                <span class="metric-sublabel" id="valSpeedMps">0.0 m/s</span>
+              </div>
+              <div class="metric-val val-speed tabular" id="valSpeed">0.0 km/h</div>
+            </div>
+
+            <div class="metric-box">
+              <div class="metric-label-row">
+                <span class="metric-label">Heading Azimuth</span>
+                <span class="metric-sublabel">0–360°</span>
+              </div>
+              <div class="metric-val tabular" id="valHeading">0.0°</div>
+            </div>
+
+            <div class="metric-box">
+              <div class="metric-label-row">
+                <span class="metric-label">Pitch / Roll</span>
+                <span class="metric-sublabel">deg</span>
+              </div>
+              <div class="metric-val tabular" id="valPitchRoll">0.0° / 0.0°</div>
+            </div>
+
+            <div class="metric-box" style="grid-column: span 2;">
+              <div class="metric-label-row">
+                <span class="metric-label">P-Trace (Covariance)</span>
+                <span class="metric-sublabel">Uncertainty Bound</span>
+              </div>
+              <div class="metric-val tabular" id="valPTrace">0.0000</div>
+            </div>
           </div>
 
-          <div class="btn-row">
-            <button class="btn-primary" onclick="sendControl('start')">▶ START REPLAY</button>
-            <button class="btn-warn" onclick="sendControl('pause')">⏸ PAUSE</button>
-            <button class="btn-danger" onclick="sendControl('stop')">⏹ STOP</button>
-            <button onclick="sendControl('restart')">↺ RESTART</button>
-            <button onclick="sendControl('reset')">RESET ENGINE</button>
-          </div>
-
-          <div class="btn-row" style="margin-top: 10px;">
-            <span style="align-self: center; font-weight: 600; color: var(--text-muted);">GNSS SIMULATION:</span>
-            <button id="btnGnssOn" class="btn-primary" onclick="sendControl('gnss_restore')">GNSS ON (AIDING)</button>
-            <button id="btnGnssDenied" class="btn-danger" onclick="sendControl('gnss_denied')">SIMULATE GNSS DENIED</button>
-            
-            <span style="align-self: center; margin-left: 12px; font-weight: 600; color: var(--text-muted);">SPEED:</span>
-            <button class="speed-btn btn-active" onclick="setSpeed(1.0)">1x</button>
-            <button class="speed-btn" onclick="setSpeed(2.0)">2x</button>
-            <button class="speed-btn" onclick="setSpeed(5.0)">5x</button>
-            <button class="speed-btn" onclick="setSpeed(10.0)">10x</button>
-          </div>
-
-          <div class="progress-bar-container">
-            <div class="progress-fill" id="replayProgress"></div>
-          </div>
-          <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted);">
-            <span id="replayFileInfo">File: Built-in 200 Hz Corridor Replay</span>
-            <span id="replayIndexInfo">0 / 0 samples (0.0%)</span>
+          <!-- Velocity Vector Strip -->
+          <div class="velocity-strip">
+            <span class="velocity-title">Velocity Vector (ENU)</span>
+            <div class="velocity-items">
+              <div class="vel-cell"><span class="vel-name">Vx</span><span class="vel-num tabular" id="valVx">0.0 m/s</span></div>
+              <div class="vel-cell"><span class="vel-name">Vy</span><span class="vel-num tabular" id="valVy">0.0 m/s</span></div>
+              <div class="vel-cell"><span class="vel-name">Vz</span><span class="vel-num tabular" id="valVz">0.0 m/s</span></div>
+              <span id="valVelVec" class="hidden">0.0 / 0.0 / 0.0</span>
+            </div>
           </div>
         </div>
       </div>
 
     </div>
 
-    <!-- Right Column: Diagnostics, Scenarios, API Health & Raw Data -->
+    <!-- Right Column: Runtime Status & Timeline Controls -->
     <div class="col-right">
 
-      <!-- Engine Diagnostics -->
-      <div class="panel">
-        <div class="panel-header"><span>EDGE CORE DIAGNOSTICS</span></div>
-        <div class="panel-body">
-          <div class="metric-grid">
-            <div class="metric-box"><div class="metric-label">Processing Rate</div><div class="metric-value val-highlight" id="diagRate">0.0 Hz</div></div>
-            <div class="metric-box"><div class="metric-label">Mean Cycle Time</div><div class="metric-value" id="diagMeanUs">0.0 μs</div></div>
-            <div class="metric-box"><div class="metric-label">Max Cycle Time</div><div class="metric-value" id="diagMaxUs">0.0 μs</div></div>
-            <div class="metric-box"><div class="metric-label">Dropped Packets</div><div class="metric-value" id="diagDropped">0</div></div>
+      <!-- 1. Runtime Status Card -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <span class="card-title">Runtime Status</span>
+            <span class="card-subtitle">Edge Core Performance</span>
           </div>
-          <div style="margin-top: 8px; font-size: 11px; color: var(--text-muted);">
-            Hardware Status: <span id="diagHwStatus" style="color: var(--accent-amber); font-weight: 600;">SOFTWARE_ONLY_VALIDATION_PENDING_FOG_HARDWARE</span>
+          <div class="status-pill pill-green" style="padding: 2px 8px;">
+            <span class="status-dot"></span>
+            <span>REAL-TIME</span>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="metric-grid-2">
+            <div class="metric-box">
+              <div class="metric-label-row">
+                <span class="metric-label">Processing Rate</span>
+                <span class="metric-sublabel">target 200 Hz</span>
+              </div>
+              <div class="metric-val val-highlight tabular" id="diagRate">0.0 Hz</div>
+            </div>
+
+            <div class="metric-box">
+              <div class="metric-label-row">
+                <span class="metric-label">Mean Cycle Time</span>
+                <span class="metric-sublabel">target &lt; 5 ms</span>
+              </div>
+              <div class="metric-val tabular" id="diagMeanUs">0.0 μs</div>
+            </div>
+
+            <div class="metric-box">
+              <div class="metric-label-row">
+                <span class="metric-label">Max Cycle Time</span>
+                <span class="metric-sublabel">peak latency</span>
+              </div>
+              <div class="metric-val tabular" id="diagMaxUs">0.0 μs</div>
+            </div>
+
+            <div class="metric-box">
+              <div class="metric-label-row">
+                <span class="metric-label">Dropped Packets</span>
+                <span class="metric-sublabel">target 0</span>
+              </div>
+              <div class="metric-val tabular" id="diagDropped">0</div>
+            </div>
+          </div>
+
+          <div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center; font-size: 11px;">
+            <span style="color: var(--text-secondary); font-weight: 500;">Hardware Validation:</span>
+            <span class="status-pill pill-amber" style="padding: 2px 8px;" id="diagHwStatus">
+              SOFTWARE VALIDATION · FOG PENDING
+            </span>
           </div>
         </div>
       </div>
 
-      <!-- Predefined Test Scenarios -->
-      <div class="panel">
-        <div class="panel-header"><span>AUTOMATED TEST SCENARIOS</span></div>
-        <div class="panel-body">
-          <div class="btn-row" style="margin-bottom: 0;">
-            <button onclick="runTest(1)">TEST 1: STARTUP</button>
-            <button onclick="runTest(2)">TEST 2: SENSOR REPLAY</button>
-            <button onclick="runTest(3)">TEST 3: GNSS DENIED</button>
-            <button onclick="runTest(4)">TEST 4: GNSS RESTORE</button>
-            <button onclick="runTest(5)">TEST 5: RESET</button>
-            <button onclick="runTest(6)">TEST 6: FULL REPLAY</button>
+      <!-- 2. Replay & Controls Card -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <span class="card-title">Replay Management</span>
+            <span class="card-subtitle" id="replayStatus">IDLE</span>
           </div>
         </div>
-      </div>
-
-      <!-- Public Edge API Health -->
-      <div class="panel">
-        <div class="panel-header"><span>PUBLIC EDGE API VALIDATION</span></div>
-        <div class="panel-body">
-          <div class="api-health-grid" id="apiGrid">
-            <!-- Populated dynamically via JS -->
+        <div class="card-body">
+          <!-- Playback Actions -->
+          <div class="btn-row" style="margin-bottom: 12px;">
+            <button class="btn-primary" onclick="sendControl('start')">▶ Start Replay</button>
+            <button class="btn-warn" onclick="sendControl('pause')">⏸ Pause</button>
+            <button class="btn-danger" onclick="sendControl('stop')">⏹ Stop</button>
+            <button onclick="sendControl('restart')">↺ Restart</button>
+            <button onclick="sendControl('reset')">Reset</button>
           </div>
-        </div>
-      </div>
 
-      <!-- Raw Sensor Inspection (Encapsulated debug feed) -->
-      <div class="panel">
-        <div class="panel-header"><span>RAW SENSOR INSPECTION (LATEST PACKET)</span></div>
-        <div class="panel-body" style="font-size: 11px;">
-          <div style="margin-bottom: 4px;"><strong>IMU:</strong> t=<span id="rawImuT">0.0</span>s | a=[<span id="rawImuA">0, 0, 9.8</span>] | ω=[<span id="rawImuG">0, 0, 0</span>]</div>
-          <div style="margin-bottom: 4px;"><strong>GNSS:</strong> t=<span id="rawGnssT">0.0</span>s | pos=[<span id="rawGnssP">0, 0, 0</span>] | valid=<span id="rawGnssV">false</span></div>
-          <div><strong>BARO:</strong> t=<span id="rawBaroT">0.0</span>s | alt=<span id="rawBaroA">120.0</span>m</div>
-        </div>
-      </div>
+          <!-- GNSS Simulation Toggle -->
+          <div style="margin-bottom: 12px; padding: 10px 12px; background: var(--surface-subtle); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 11px; font-weight: 600; color: var(--text-secondary);">GNSS Signal:</span>
+            <div style="display: flex; gap: 6px;">
+              <button id="btnGnssOn" class="btn-primary" style="padding: 4px 10px; font-size: 11px;" onclick="sendControl('gnss_restore')">
+                GNSS Aiding
+              </button>
+              <button id="btnGnssDenied" class="btn-warn" style="padding: 4px 10px; font-size: 11px;" onclick="sendControl('gnss_denied')">
+                Simulate GNSS Denied
+              </button>
+            </div>
+          </div>
 
-      <!-- Scrolling Event Log -->
-      <div class="panel">
-        <div class="panel-header"><span>SYSTEM & EVENT LOG</span></div>
-        <div class="panel-body" style="padding: 6px;">
-          <div class="log-container" id="logBox"></div>
+          <!-- Speed Mult -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="font-size: 11px; font-weight: 600; color: var(--text-secondary);">Playback Speed:</span>
+            <div class="btn-row" style="gap: 4px;">
+              <button class="speed-btn btn-active" onclick="setSpeed(1.0)">1x</button>
+              <button class="speed-btn" onclick="setSpeed(2.0)">2x</button>
+              <button class="speed-btn" onclick="setSpeed(5.0)">5x</button>
+              <button class="speed-btn" onclick="setSpeed(10.0)">10x</button>
+            </div>
+          </div>
+
+          <!-- Progress Bar -->
+          <div class="progress-bar-container">
+            <div class="progress-fill" id="replayProgress"></div>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 10.5px; color: var(--text-muted);">
+            <span id="replayFileInfo">File: Built-in 200 Hz Corridor Replay</span>
+            <span class="tabular" id="replayIndexInfo">0 / 0 samples (0.0%)</span>
+          </div>
         </div>
       </div>
 
@@ -389,9 +1195,165 @@
 
   </div>
 
+  <!-- ==================================================== -->
+  <!-- Bottom Split: Test Scenarios & Edge API              -->
+  <!-- ==================================================== -->
+  <div class="bottom-split-grid">
+
+    <!-- Test Scenarios -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title-group">
+          <span class="card-title">Test Scenarios</span>
+          <span class="card-subtitle">Automated Verification Harness</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="scenario-grid">
+          <div class="scenario-btn" onclick="runTest(1)">
+            <span class="scenario-num">01</span>
+            <span class="scenario-name">Startup</span>
+          </div>
+          <div class="scenario-btn" onclick="runTest(2)">
+            <span class="scenario-num">02</span>
+            <span class="scenario-name">Sensor Replay</span>
+          </div>
+          <div class="scenario-btn" onclick="runTest(3)" style="border-color: #FCD34D;">
+            <span class="scenario-num" style="color: #D97706;">03</span>
+            <span class="scenario-name" style="color: #B45309;">GNSS Denied</span>
+          </div>
+          <div class="scenario-btn" onclick="runTest(4)">
+            <span class="scenario-num">04</span>
+            <span class="scenario-name">GNSS Restore</span>
+          </div>
+          <div class="scenario-btn" onclick="runTest(5)">
+            <span class="scenario-num">05</span>
+            <span class="scenario-name">Reset</span>
+          </div>
+          <div class="scenario-btn" onclick="runTest(6)">
+            <span class="scenario-num">06</span>
+            <span class="scenario-name">Full Replay</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edge API Checklist -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title-group">
+          <span class="card-title">Edge API</span>
+          <span class="card-subtitle">Public C++ / Python Contract</span>
+        </div>
+        <div class="status-pill pill-green" style="padding: 2px 8px;">
+          <span class="status-dot"></span>
+          <span>HEALTHY</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="api-checklist-grid" id="apiGrid">
+          <!-- Populated dynamically via JS -->
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ==================================================== -->
+  <!-- Collapsible: Latest Sensor Packet                    -->
+  <!-- ==================================================== -->
+  <div class="card">
+    <div class="card-header collapsible-header" onclick="toggleDetails()">
+      <div class="packet-summary-strip">
+        <div class="packet-summary-items">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="card-title" style="font-size: 12.5px;">Latest Sensor Packet</span>
+            <span class="status-pill pill-green" style="padding: 1px 6px; font-size: 10px;">
+              <span class="status-dot"></span>
+              <span>VALID</span>
+            </span>
+          </div>
+          <div class="packet-item-summary">
+            <span class="lbl">Epoch</span>
+            <span class="val tabular" id="summaryPacketTime">357473.022 s</span>
+          </div>
+          <div class="packet-item-summary">
+            <span class="lbl">Primary Stream</span>
+            <span class="val" id="summaryPacketSource">IMU (External)</span>
+          </div>
+          <div class="packet-item-summary">
+            <span class="lbl">Rate / Cadence</span>
+            <span class="val tabular" id="summaryPacketRate">200.0 Hz</span>
+          </div>
+        </div>
+
+        <button id="btnToggleDetails" style="font-size: 11px; padding: 4px 10px;">
+          View Details →
+        </button>
+      </div>
+    </div>
+
+    <div class="packet-details-body" id="packetDetailsBody">
+      <div class="raw-data-grid">
+        <div class="raw-box">
+          <div class="raw-title">IMU (Body Frame)</div>
+          <div>t: <span id="rawImuT" class="tabular">0.0</span>s</div>
+          <div>a: [<span id="rawImuA" class="tabular">0, 0, 9.8</span>] m/s²</div>
+          <div>ω: [<span id="rawImuG" class="tabular">0, 0, 0</span>] rad/s</div>
+        </div>
+
+        <div class="raw-box">
+          <div class="raw-title">GNSS Fix</div>
+          <div>t: <span id="rawGnssT" class="tabular">0.0</span>s</div>
+          <div>pos: [<span id="rawGnssP" class="tabular">0, 0, 0</span>] m</div>
+          <div>valid: <span id="rawGnssV">false</span></div>
+        </div>
+
+        <div class="raw-box">
+          <div class="raw-title">Barometer</div>
+          <div>t: <span id="rawBaroT" class="tabular">0.0</span>s</div>
+          <div>alt: <span id="rawBaroA" class="tabular">120.0</span> m</div>
+        </div>
+      </div>
+
+      <!-- System & Event Log -->
+      <div style="margin-top: 10px;">
+        <div style="font-size: 10.5px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 6px;">
+          System & Event Log
+        </div>
+        <div class="log-box" id="logBox"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================================================== -->
+  <!-- JavaScript Client Logic                              -->
+  <!-- ==================================================== -->
   <script>
-    // State Polling & Visualization Loop
     let lastLogCount = 0;
+    let detailsExpanded = false;
+
+    function toggleDetails() {
+      detailsExpanded = !detailsExpanded;
+      const body = document.getElementById('packetDetailsBody');
+      const btn = document.getElementById('btnToggleDetails');
+      if (detailsExpanded) {
+        body.classList.add('open');
+        btn.innerText = 'Hide Details ↑';
+      } else {
+        body.classList.remove('open');
+        btn.innerText = 'View Details →';
+      }
+    }
+
+    // Live clock update
+    function updateClock() {
+      const now = new Date();
+      const options = { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+      document.getElementById('lblLiveClock').innerText = now.toLocaleDateString('en-GB', options).replace(',', ' |');
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
 
     async function pollState() {
       try {
@@ -405,70 +1367,94 @@
     }
 
     function updateUI(d) {
-      // Header Badges
+      // 1. Header Badges
       const bEngine = document.getElementById('badgeEngineState');
-      bEngine.innerText = `ENGINE: ${d.engine_status}`;
-      bEngine.className = `badge ${d.engine_status === 'RUNNING' ? 'badge-green' : (d.engine_status === 'ERROR' ? 'badge-red' : '')}`;
+      const tEngine = document.getElementById('txtEngineStatus');
+      tEngine.innerText = `ENGINE ${d.engine_status}`;
+      bEngine.className = `status-pill ${d.engine_status === 'RUNNING' ? 'pill-green' : (d.engine_status === 'ERROR' ? 'pill-red' : 'pill-slate')}`;
 
       const bGnss = document.getElementById('badgeGnssState');
+      const tGnss = document.getElementById('txtGnssStatus');
       const isDenied = d.gnss_denied_override || d.in_outage;
-      bGnss.innerText = `GNSS: ${isDenied ? 'DENIED' : 'AVAILABLE'}`;
-      bGnss.className = `badge ${isDenied ? 'badge-red' : 'badge-green'}`;
+      tGnss.innerText = `GNSS ${isDenied ? 'DENIED' : 'AVAILABLE'}`;
+      bGnss.className = `status-pill ${isDenied ? 'pill-amber' : 'pill-green'}`;
 
-      // Input Profile & External IMU metadata
+      if (document.getElementById('badgeProfile')) {
+        document.getElementById('badgeProfile').innerText = d.profile;
+      }
+
+      // 2. Data Source Bar
       const btnMob = document.getElementById('btnProfileMobile');
       const btnEdge = document.getElementById('btnProfileEdge');
       if (d.input_profile === 'MOBILE_REPLAY') {
         btnMob.classList.add('btn-active');
         btnEdge.classList.remove('btn-active');
-        document.getElementById('lblHwTestNotice').innerText = 'SOFTWARE MOBILE REPLAY (Smartphone IMU)';
+        document.getElementById('lblHwTestNotice').innerText = 'Software Mobile Replay';
       } else {
         btnEdge.classList.add('btn-active');
         btnMob.classList.remove('btn-active');
-        document.getElementById('lblHwTestNotice').innerText = 'SOFTWARE EXTERNAL-IMU REPLAY (Hardware test pending)';
+        document.getElementById('lblHwTestNotice').innerText = 'Software Validation · Hardware Pending';
       }
-      document.getElementById('lblInputSource').innerText = d.input_source_desc || 'EXTERNAL IMU (Replay / Stream Adapter)';
+      document.getElementById('lblInputSource').innerText = d.input_source_desc || 'External IMU (Replay / Stream Adapter)';
       document.getElementById('lblCoordFrame').innerText = d.coordinate_frame || 'body FLU (Forward-Left-Up)';
       document.getElementById('lblInputRate').innerText = `${(d.measured_rate_hz || 200.0).toFixed(1)} Hz`;
-      if (document.getElementById('badgeProfile')) {
-        document.getElementById('badgeProfile').innerText = `PROFILE: ${d.profile}`;
-      }
 
-      // Outage banner
-      const banner = document.getElementById('outageBanner');
+      // 3. Outage Status on Trajectory
+      const trajBadge = document.getElementById('trajNavBadge');
+      const trajNavText = document.getElementById('trajNavMode');
+      const canvasOutage = document.getElementById('canvasOutageBadge');
       if (d.in_outage) {
-        banner.classList.remove('hidden');
+        trajBadge.className = 'status-pill pill-amber';
+        trajNavText.innerText = 'GNSS DENIED';
+        canvasOutage.classList.remove('hidden');
       } else {
-        banner.classList.add('hidden');
+        trajBadge.className = 'status-pill pill-green';
+        trajNavText.innerText = 'GNSS AVAILABLE';
+        canvasOutage.classList.add('hidden');
       }
 
-      // Nav State
-      document.getElementById('navModeText').innerText = d.navigation_mode;
-      document.getElementById('navModeText').style.color = d.in_outage ? 'var(--accent-red)' : 'var(--accent-green)';
+      // 4. Navigation State
+      const navModeText = document.getElementById('navModeText');
+      navModeText.innerText = d.navigation_mode;
+      navModeText.style.color = d.in_outage ? 'var(--color-warning)' : 'var(--color-success)';
+
       document.getElementById('valLat').innerText = `${d.position.latitude.toFixed(6)}°`;
       document.getElementById('valLon').innerText = `${d.position.longitude.toFixed(6)}°`;
       document.getElementById('valAlt').innerText = `${d.position.altitude_m.toFixed(1)} m`;
       document.getElementById('valSpeed').innerText = `${d.velocity.speed_kmh.toFixed(1)} km/h`;
+      document.getElementById('valSpeedMps').innerText = `${d.velocity.speed_mps.toFixed(1)} m/s`;
       document.getElementById('valHeading').innerText = `${d.attitude.heading_deg.toFixed(1)}°`;
       document.getElementById('valPitchRoll').innerText = `${d.attitude.pitch_deg.toFixed(1)}° / ${d.attitude.roll_deg.toFixed(1)}°`;
-      document.getElementById('valVelVec').innerText = `${d.velocity.vx.toFixed(1)} / ${d.velocity.vy.toFixed(1)} / ${d.velocity.vz.toFixed(1)} m/s`;
       document.getElementById('valPTrace').innerText = `${d.diagnostics.p_trace.toFixed(4)}`;
       document.getElementById('posSummary').innerText = `E: ${d.position.enu[0].toFixed(1)} m | N: ${d.position.enu[1].toFixed(1)} m | Alt: ${d.position.altitude_m.toFixed(1)} m`;
 
-      // Diagnostics
+      // Velocity ENU
+      document.getElementById('valVx').innerText = `${d.velocity.vx.toFixed(1)} m/s`;
+      document.getElementById('valVy').innerText = `${d.velocity.vy.toFixed(1)} m/s`;
+      document.getElementById('valVz').innerText = `${d.velocity.vz.toFixed(1)} m/s`;
+      document.getElementById('valVelVec').innerText = `${d.velocity.vx.toFixed(1)} / ${d.velocity.vy.toFixed(1)} / ${d.velocity.vz.toFixed(1)}`;
+
+      // 5. Diagnostics
       document.getElementById('diagRate').innerText = `${d.diagnostics.sustained_rate_hz.toFixed(1)} Hz`;
       document.getElementById('diagMeanUs').innerText = `${d.diagnostics.mean_cycle_time_us.toFixed(1)} μs`;
       document.getElementById('diagMaxUs').innerText = `${d.diagnostics.max_cycle_time_us.toFixed(1)} μs`;
       document.getElementById('diagDropped').innerText = `${d.diagnostics.dropped_samples}`;
-      document.getElementById('diagHwStatus').innerText = `${d.diagnostics.hardware_status}`;
+      document.getElementById('diagHwStatus').innerText = d.diagnostics.hardware_status.includes('PENDING') ? 'SOFTWARE VALIDATION · FOG PENDING' : d.diagnostics.hardware_status;
 
-      // Replay
+      // 6. Replay & Controls
       document.getElementById('replayStatus').innerText = `${d.replay.state} (${d.replay.speed_multiplier}x)`;
       document.getElementById('replayProgress').style.width = `${d.replay.progress_pct}%`;
       document.getElementById('replayIndexInfo').innerText = `${d.replay.index} / ${d.replay.total} samples (${d.replay.progress_pct.toFixed(1)}%)`;
       document.getElementById('replayFileInfo').innerText = `File: ${d.replay.file}`;
 
-      // Raw inspection
+      const btnGnssDen = document.getElementById('btnGnssDenied');
+      if (d.gnss_denied_override) {
+        btnGnssDen.classList.add('btn-gnss-denied-active');
+      } else {
+        btnGnssDen.classList.remove('btn-gnss-denied-active');
+      }
+
+      // 7. Raw inspection & summary
       document.getElementById('rawImuT').innerText = d.raw_inspection.imu.t;
       document.getElementById('rawImuA').innerText = d.raw_inspection.imu.accel.join(', ');
       document.getElementById('rawImuG').innerText = d.raw_inspection.imu.gyro.join(', ');
@@ -478,24 +1464,53 @@
       document.getElementById('rawBaroT').innerText = d.raw_inspection.baro.t;
       document.getElementById('rawBaroA').innerText = d.raw_inspection.baro.alt;
 
-      // API Health
+      document.getElementById('summaryPacketTime').innerText = `${d.raw_inspection.imu.t.toFixed(3)} s`;
+      document.getElementById('summaryPacketSource').innerText = d.input_source_desc ? d.input_source_desc.split('(')[0] : 'IMU (External)';
+      document.getElementById('summaryPacketRate').innerText = `${(d.measured_rate_hz || 200.0).toFixed(1)} Hz`;
+
+      // 8. API Health
       renderApiHealth(d.api_health);
 
-      // Event Log
+      // 9. Event Log
       renderLogs(d.event_log);
 
-      // Canvas Draw
+      // 10. Canvas Draw (Light Aerospace Theme)
       drawTrajectory(d.trajectories, d.position.enu, d.attitude.heading_deg);
     }
 
     function renderApiHealth(health) {
       const grid = document.getElementById('apiGrid');
       grid.innerHTML = '';
+      
+      const apiLabels = {
+        "initialize": "Engine Core",
+        "pushImu": "IMU Ingestion",
+        "pushGnss": "GNSS Ingestion",
+        "pushBarometer": "Barometer Ingestion",
+        "update": "State Estimation",
+        "getNavigationState": "Navigation State",
+        "getDiagnostics": "Diagnostics",
+        "reset": "Control Interface",
+        "shutdown": "Lifecycle Management"
+      };
+
       for (const [key, val] of Object.entries(health)) {
         const item = document.createElement('div');
-        item.className = 'api-item';
-        const cls = val === 'PASS' ? 'status-pass' : (val === 'FAIL' ? 'status-fail' : 'status-untested');
-        item.innerHTML = `<span>${key}</span><span class="api-status ${cls}">${val}</span>`;
+        item.className = 'api-check-item';
+        const label = apiLabels[key] || key;
+        const isPass = val === 'PASS';
+        const isFail = val === 'FAIL';
+        
+        const badgeCls = isPass ? 'api-badge-pass' : (isFail ? 'api-badge-fail' : 'api-badge-untested');
+        const icon = isPass ? '✓' : (isFail ? '✕' : '○');
+        
+        item.innerHTML = `
+          <div class="api-check-left">
+            <span class="check-icon" style="color: ${isPass ? 'var(--color-success)' : (isFail ? 'var(--color-danger)' : 'var(--text-muted)')};">${icon}</span>
+            <span>${label}</span>
+          </div>
+          <span class="${badgeCls}">${val}</span>
+        `;
         grid.appendChild(item);
       }
     }
@@ -509,14 +1524,17 @@
       }
     }
 
-    // Trajectory Drawing
+    // ----------------------------------------------------
+    // Light-Themed Trajectory Drawing
+    // ----------------------------------------------------
     function drawTrajectory(trajs, currPos, headingDeg) {
       const canvas = document.getElementById('trajCanvas');
       const ctx = canvas.getContext('2d');
       const w = canvas.width = canvas.clientWidth;
       const h = canvas.height = canvas.clientHeight;
 
-      ctx.fillStyle = '#070b12';
+      // Clean Light Background
+      ctx.fillStyle = '#FAFBFC';
       ctx.fillRect(0, 0, w, h);
 
       // Determine bounding box
@@ -529,28 +1547,54 @@
         maxY = Math.max(...allPts.map(p => p[1]));
       }
 
-      const pad = 20;
+      const padX = 40;
+      const padY = 30;
       const spanX = Math.max(10, maxX - minX);
       const spanY = Math.max(10, maxY - minY);
-      const scale = Math.min((w - 2 * pad) / spanX, (h - 2 * pad) / spanY);
+      const scale = Math.min((w - 2 * padX) / spanX, (h - 2 * padY) / spanY);
 
       function toScreen(x, y) {
         return [
-          pad + (x - minX) * scale,
-          h - (pad + (y - minY) * scale)
+          padX + (x - minX) * scale,
+          h - (padY + (y - minY) * scale)
         ];
       }
 
-      // Draw Grid
-      ctx.strokeStyle = '#152033';
+      // Draw Subtle Grid
+      ctx.strokeStyle = '#EDF2F7';
       ctx.lineWidth = 1;
-      for (let gx = 0; gx < w; gx += 40) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, h); ctx.stroke(); }
-      for (let gy = 0; gy < h; gy += 40) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(w, gy); ctx.stroke(); }
+      for (let gx = 0; gx < w; gx += 45) {
+        ctx.beginPath();
+        ctx.moveTo(gx, 0);
+        ctx.lineTo(gx, h);
+        ctx.stroke();
+      }
+      for (let gy = 0; gy < h; gy += 45) {
+        ctx.beginPath();
+        ctx.moveTo(0, gy);
+        ctx.lineTo(w, gy);
+        ctx.stroke();
+      }
 
-      // Draw Reference Track (Dashed blue)
+      // Axes lines
+      ctx.strokeStyle = '#CBD5E1';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(padX, 10);
+      ctx.lineTo(padX, h - padY);
+      ctx.lineTo(w - 10, h - padY);
+      ctx.stroke();
+
+      // Axis labels
+      ctx.fillStyle = '#64748B';
+      ctx.font = '10px -apple-system, sans-serif';
+      ctx.fillText('North (m)', padX + 6, 20);
+      ctx.fillText('East (m)', w - 55, h - padY - 6);
+
+      // Draw Reference Track (Subtle Dashed Blue)
       if (trajs.reference && trajs.reference.length > 1) {
-        ctx.strokeStyle = '#2563eb';
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#2563EB';
+        ctx.lineWidth = 1.8;
         ctx.setLineDash([4, 4]);
         ctx.beginPath();
         const [x0, y0] = toScreen(trajs.reference[0][0], trajs.reference[0][1]);
@@ -563,7 +1607,7 @@
         ctx.setLineDash([]);
       }
 
-      // Draw Estimated Track (Solid green / Red in outage)
+      // Draw Estimated Track (Solid Teal / Amber in outage)
       if (trajs.estimated && trajs.estimated.length > 1) {
         for (let i = 1; i < trajs.estimated.length; i++) {
           const p1 = trajs.estimated[i - 1];
@@ -571,8 +1615,9 @@
           const [sx1, sy1] = toScreen(p1[0], p1[1]);
           const [sx2, sy2] = toScreen(p2[0], p2[1]);
 
-          ctx.strokeStyle = p2[2] === 1 ? '#ff3d00' : '#00e676';
-          ctx.lineWidth = p2[2] === 1 ? 3 : 2;
+          const isOutage = p2[2] === 1;
+          ctx.strokeStyle = isOutage ? '#D97706' : '#0284C7';
+          ctx.lineWidth = isOutage ? 2.8 : 2.2;
           ctx.beginPath();
           ctx.moveTo(sx1, sy1);
           ctx.lineTo(sx2, sy2);
@@ -583,15 +1628,26 @@
       // Draw Current Vehicle Position & Heading Pointer
       if (currPos) {
         const [cx, cy] = toScreen(currPos[0], currPos[1]);
-        ctx.fillStyle = '#00e5ff';
+
+        // Subtle vehicle pulse halo
+        ctx.fillStyle = 'rgba(2, 132, 199, 0.15)';
         ctx.beginPath();
-        ctx.arc(cx, cy, 6, 0, 2 * Math.PI);
+        ctx.arc(cx, cy, 10, 0, 2 * Math.PI);
         ctx.fill();
+
+        // Core marker
+        ctx.fillStyle = '#0284C7';
+        ctx.beginPath();
+        ctx.arc(cx, cy, 5, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
 
         // Heading arrow
         const rad = (headingDeg - 90) * (Math.PI / 180);
-        const hLen = 16;
-        ctx.strokeStyle = '#ffffff';
+        const hLen = 15;
+        ctx.strokeStyle = '#0A2540';
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.moveTo(cx, cy);
@@ -600,7 +1656,9 @@
       }
     }
 
-    // API Controls
+    // ----------------------------------------------------
+    // User Control Actions
+    // ----------------------------------------------------
     async function sendControl(action, value = null) {
       await fetch('/api/control', {
         method: 'POST',
@@ -615,7 +1673,7 @@
     }
 
     async function loadDataset(source) {
-      document.querySelectorAll('.dataset-btn').forEach(b => b.classList.remove('btn-active'));
+      document.querySelectorAll('.dataset-pill').forEach(b => b.classList.remove('btn-active'));
       event.target.classList.add('btn-active');
       await fetch('/api/replay', {
         method: 'POST',

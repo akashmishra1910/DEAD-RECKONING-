@@ -16,8 +16,8 @@ The objective of **Phase 10C** is to convert this diagnostic insight into a **ge
 
 ### Key Findings:
 1. **Candidate Performance:**
-   - On straight road segments ($N=107$), adaptive lateral covariance models $N_3$ and $N_6$ reduce straight-line drift to **22.91% – 23.25%** with tight along/cross-track tracking (1.54 m along, 4.84 m cross).
-   - Across the full 158-outage authentic population, **$N_7$ (Bounded Adaptive NHC + Causal Multi-Hypothesis Map Fusion)** achieved the best causal performance: **35.71% median drift** and a **36/158 pass count (22.78%)** (improving pass count by +28.6% over the $N_0$ baseline of 28 pass).
+   - On straight road segments ($N=12$, $\bar{\omega}_z \le 0.05\text{ rad/s}, \bar{a}_y \le 0.50\text{ m/s}^2$), candidate $N_7$ achieves **29.80% (29.81%) median drift** (4/12 pass), while adaptive covariance models $N_3$ and $N_6$ achieve 22.91% – 23.25% with tight along/cross-track tracking (1.54 m along, 4.84 m cross). **Authoritative Constraint:** The 29.80% result is strictly a dynamic-segment subset metric and must not replace the authoritative overall $N_7$ population baseline.
+   - Across the full 158-outage authentic population, **$N_7$ (Bounded Adaptive NHC + Causal Multi-Hypothesis Map Fusion)** achieved the authoritative production baseline: **35.71% median drift** and a **36/158 pass count (22.78%)** (improving pass count by +28.6% over the $N_0$ baseline of 28 pass).
 2. **The $B_2 \rightarrow$ Causal Gap:**
    - The diagnostic oracle $B_2$ achieved 3.52% by injecting the exact ground-truth side-slip velocity $v_{y, \text{gt}}^b$.
    - A causal adaptive-NHC relaxes the measurement covariance $R_{\text{lat}} \rightarrow R_{\text{max}}$ during slip, preventing the filter from injecting false zero-velocity innovations. However, without a physical lateral sensor (e.g. dual-antenna GNSS, optical ground speed, or steering angle odometry), the estimator open-loops laterally during heavy cornering, leaving a residual gap from 3.52% to 35.71%.

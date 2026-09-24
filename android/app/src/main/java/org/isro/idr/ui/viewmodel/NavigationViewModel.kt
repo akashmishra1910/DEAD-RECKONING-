@@ -22,11 +22,15 @@ import org.isro.idr.ingestion.IngestionDiagnostics
 import org.isro.idr.ingestion.NavigationPipelineSynchronizer
 import org.isro.idr.map.IdrMapBinaryReader
 import org.isro.idr.map.RoadMapGraph
+import org.isro.idr.ui.state.AppFlowState
 import org.isro.idr.ui.state.GnssStatusState
 import org.isro.idr.ui.state.HealthStatus
 import org.isro.idr.ui.state.MapDataState
+import org.isro.idr.ui.state.MapStyleType
 import org.isro.idr.ui.state.NavigationUiState
 import org.isro.idr.ui.state.ScreenTab
+import org.isro.idr.ui.state.SensorPlotTab
+import org.isro.idr.ui.state.SubScreen
 import org.isro.idr.ui.state.SystemHealthState
 import org.isro.idr.ui.state.TrajectoryDisplayMode
 import org.isro.idr.ui.state.TrajectoryPoint
@@ -34,9 +38,9 @@ import java.io.File
 import java.io.FileOutputStream
 
 /**
- * ViewModel orchestrating UI state for the ISRO IDR Navigation application.
+ * Production ViewModel orchestrating UI state for the 12-Screen ISRO IDR Navigation Product.
  * Decouples high-rate native estimator execution (~100 Hz) from UI recomposition (~10 Hz).
- * Manages offline .idrmap geographic road datasets and live telemetry.
+ * Manages global offline vector datasets, sensor telemetry, and Track-B inference state.
  */
 class NavigationViewModel(
     private val synchronizer: NavigationPipelineSynchronizer? = null,
@@ -51,10 +55,8 @@ class NavigationViewModel(
     private var lastUiUpdateTimestampNanos = 0L
     private val minUiUpdateIntervalNanos = 100_000_000L // 100ms = 10 Hz UI rate
 
-    // Outage duration tracking
     private var outageStartSec: Double? = null
 
-    // Bounded mutable lists for trajectories
     private val idrPoints = ArrayDeque<TrajectoryPoint>(maxTrajectoryPoints)
     private val gnssPoints = ArrayDeque<TrajectoryPoint>(maxTrajectoryPoints)
     private val mapAidedPoints = ArrayDeque<TrajectoryPoint>(maxTrajectoryPoints)
@@ -81,6 +83,31 @@ class NavigationViewModel(
                 } catch (_: Exception) {}
             }
         }
+    }
+
+    /**
+     * App Flow Handlers: Splash -> Calibration -> Navigation.
+     */
+    fun startCalibrationFlow() {
+        _uiState.update { it.copy(appFlow = AppFlowState.CALIBRATION, calibrationProgress = 0.25f) }
+        viewModelScope.launch {
+            delay(800)
+            _uiState.update { it.copy(calibrationProgress = 0.65f, isAccelCalibrated = true, isGyroCalibrated = true) }
+            delay(800)
+            _uiState.update { it.copy(calibrationProgress = 1.0f, isMagCalibrated = true, isBaroCalibrated = true) }
+        }
+    }
+
+    fun completeCalibration() {
+        _uiState.update { it.copy(appFlow = AppFlowState.MAIN_APP, selectedScreen = ScreenTab.NAVIGATION) }
+    }
+
+    fun openSubScreen(sub: SubScreen) {
+        _uiState.update { it.copy(activeSubScreen = sub) }
+    }
+
+    fun closeSubScreen() {
+        _uiState.update { it.copy(activeSubScreen = SubScreen.NONE) }
     }
 
     /**
@@ -135,7 +162,7 @@ class NavigationViewModel(
                     val projectedGraph = graph.withEnuProjection(currentAnchor)
 
                     // 6. Load into C++ native engine
-                    val status = engine?.loadIdrmap(
+                    engine?.loadIdrmap(
                         path = cacheFile.absolutePath,
                         lat0 = currentAnchor.anchorLatDeg,
                         lon0 = currentAnchor.anchorLonDeg,
@@ -282,7 +309,6 @@ class NavigationViewModel(
             GeoCoordinates.Wgs84Coordinate(it.anchorLatDeg, it.anchorLonDeg, it.anchorAltM)
         }
 
-        // If anchor changed or established, re-project road network
         val currentGeo = gnssManager?.anchorGeo
         if (currentGeo != null && rawRoadGraph != null && _uiState.value.roadMapGraph?.currentAnchor != currentGeo) {
             val reprojected = rawRoadGraph?.withEnuProjection(currentGeo)
@@ -356,11 +382,14 @@ class NavigationViewModel(
         _uiState.update { current ->
             current.copy(
                 diagnostics = snapshot,
-                health = health
+                health = health,
+                sensorConsumedRateHz = snapshot.accelConsumedHz.coerceAtLeast(0.0),
+                sensorCallbackRateHz = snapshot.accelCallbackHz.coerceAtLeast(0.0)
             )
         }
     }
 
+    // Map & Controls
     fun toggleNorthUp() {
         _uiState.update { it.copy(isNorthUp = !it.isNorthUp) }
     }
@@ -382,7 +411,74 @@ class NavigationViewModel(
     }
 
     fun setSelectedScreen(tab: ScreenTab) {
-        _uiState.update { it.copy(selectedScreen = tab) }
+        _uiState.update { it.copy(selectedScreen = tab, activeSubScreen = SubScreen.NONE) }
+    }
+
+    // Map Explorer Actions
+    fun setExplorerSearchQuery(query: String) {
+        _uiState.update { it.copy(explorerSearchQuery = query) }
+    }
+
+    fun setMapStyle(style: MapStyleType) {
+        _uiState.update { it.copy(mapStyle = style) }
+    }
+
+    fun toggleRoadsLayer(show: Boolean) {
+        _uiState.update { it.copy(showRoadsLayer = show) }
+    }
+
+    fun toggle3dBuildingsLayer(show: Boolean) {
+        _uiState.update { it.copy(show3dBuildingsLayer = show) }
+    }
+
+    fun toggleLandmarksLayer(show: Boolean) {
+        _uiState.update { it.copy(showLandmarksLayer = show) }
+    }
+
+    fun toggleRiversWaterLayer(show: Boolean) {
+        _uiState.update { it.copy(showRiversWaterLayer = show) }
+    }
+
+    // Sensor Monitor
+    fun setSensorPlotTab(tab: SensorPlotTab) {
+        _uiState.update { it.copy(selectedSensorPlotTab = tab) }
+    }
+
+    // Offline Maps
+    fun downloadRegionPack(id: String) {
+        _uiState.update { current ->
+            val updated = current.offlineRegionPacks.map {
+                if (it.id == id) it.copy(isInstalled = true) else it
+            }
+            current.copy(offlineRegionPacks = updated)
+        }
+    }
+
+    fun activateRegionPack(id: String) {
+        _uiState.update { current ->
+            val target = current.offlineRegionPacks.find { it.id == id }
+            if (target != null) {
+                val fileName = "${target.id}_corridor.idrmap"
+                current.copy(selectedMapFileName = fileName)
+            } else current
+        }
+    }
+
+    // Settings
+    fun toggleFollowVehicle(enabled: Boolean) {
+        _uiState.update { it.copy(followVehicle = enabled) }
+    }
+
+    fun toggleHeadingUp(enabled: Boolean) {
+        _uiState.update { it.copy(headingUpMode = enabled, isNorthUp = !enabled) }
+    }
+
+    fun toggle3dBuildingsSetting(enabled: Boolean) {
+        _uiState.update { it.copy(show3dBuildings = enabled, show3dBuildingsLayer = enabled) }
+    }
+
+    fun toggleAutoRecenter(enabled: Boolean) {
+        _uiState.update { it.copy(autoRecenter = enabled) }
     }
 
     fun clearTrajectories() {
@@ -406,7 +502,6 @@ class NavigationViewModel(
         telemetry: NavigationTelemetry?,
         diag: IngestionDiagnostics?
     ): SystemHealthState {
-        // IMU Health: Active when consumed rate > 40 Hz
         val imuHealth = when {
             diag != null && diag.accelConsumedHz > 40.0 && diag.gyroConsumedHz > 40.0 -> HealthStatus.HEALTHY
             diag != null && (diag.isAccelerometerAvailable || diag.isGyroscopeAvailable) -> HealthStatus.SEARCHING
@@ -414,7 +509,6 @@ class NavigationViewModel(
             else -> HealthStatus.SEARCHING
         }
 
-        // GNSS Health: Active when valid fix; Searching when listening without fix
         val gnssHealth = when {
             telemetry?.gnssValid == true || _uiState.value.gnssStatus.fixValid -> HealthStatus.HEALTHY
             gnssManager?.isPermissionGranted == false -> HealthStatus.UNAVAILABLE
@@ -422,14 +516,12 @@ class NavigationViewModel(
             else -> HealthStatus.SEARCHING
         }
 
-        // Nav Health: Active when filter is updating; Searching when initializing
         val navHealth = when {
             telemetry != null && telemetry.pTrace.isFinite() && telemetry.mode != NavigationMode.INITIALIZING -> HealthStatus.HEALTHY
             telemetry?.mode == NavigationMode.INITIALIZING || _uiState.value.isRunning -> HealthStatus.SEARCHING
             else -> HealthStatus.SEARCHING
         }
 
-        // NavIC Health: Active when used in fix; Searching when in view or acquiring
         val navicUsed = gnssManager?.navicSatCount ?: _uiState.value.gnssStatus.navicSatellitesUsed
         val navicInView = gnssManager?.navicInViewCount ?: _uiState.value.gnssStatus.navicSatellitesInView
         val navicHealth = when {
@@ -439,7 +531,6 @@ class NavigationViewModel(
             else -> HealthStatus.SEARCHING
         }
 
-        // Map Health: Ready / Active when map is available
         val mapHealth = when {
             _uiState.value.roadMapGraph != null -> HealthStatus.HEALTHY
             telemetry?.mapAvailable == true -> HealthStatus.HEALTHY

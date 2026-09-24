@@ -3,96 +3,107 @@ package org.isro.idr.theme
 import androidx.compose.ui.graphics.Color
 
 /**
- * Modern Aerospace & Automotive Light-Theme Color Palette for ISRO IDR Navigation Instrument.
- * Crisp clean white/neutral base, deep navy typography, vivid ISRO saffron brand accent,
- * electric navigation blue, and clear multi-state status indicators.
+ * Premium Dark Aerospace & Automotive Navigation Design Tokens for ISRO IDR.
+ * Spec:
+ * - Shell Backgrounds: #06111F, #0B1B2B, #10263A, #17324A
+ * - ISRO Brand: #FF8A00
+ * - GNSS: #1688FF
+ * - DR Active: #FF7A00
+ * - Recovery: #00B8FF
+ * - Success: #18D47B
+ * - Warning: #FFB020
+ * - Error: #FF4F5E
  */
 object IdrColors {
-    // Primary Backgrounds & Surfaces (Light Theme)
-    val Background = Color(0xFFF8FAFC)        // App canvas background (Slate 50)
-    val Surface = Color(0xFFFFFFFF)           // Primary card/panel surface
-    val SurfaceElevated = Color(0xFFFFFFFF)   // Elevated cards/modals
-    val SurfaceMuted = Color(0xFFF1F5F9)      // Secondary neutral background (Slate 100)
-    val SurfaceSubtle = Color(0xFFF1F5F9)     // Subtle container surface (Slate 100)
-    val CardBorder = Color(0xFFE2E8F0)        // Clean subtle border (Slate 200)
-    val CardBorderSubtle = Color(0xFFCBD5E1)  // Card separator (Slate 300)
+    // Aerospace Shell Hierarchy
+    val Background = Color(0xFF06111F)        // Deepest Cosmic Navy Background
+    val Surface = Color(0xFF0B1B2B)           // Primary Card & Panel Surface
+    val SurfaceElevated = Color(0xFF10263A)   // Elevated Cards, Modals & Floating HUDs
+    val SurfaceHighlight = Color(0xFF17324A)  // Active Elements, Borders, Selected Chips
+    val SurfaceMuted = Color(0xFF0B1B2B)      // Sub-surface muted
+    val SurfaceSubtle = Color(0xFF0B1B2B)     // Sub-surface subtle
+    val CardBorder = Color(0xFF17324A)        // Subtle Aerospace Border
+    val CardBorderSubtle = Color(0xFF0F273D)  // Divider & Grid Line
+    val CardBorderFocused = Color(0xFF1688FF) // Highlight Border
 
-    // Primary Brand & Navigation Accents
-    val SaffronPrimary = Color(0xFFFF6F00)    // Vivid ISRO Saffron Primary
-    val SaffronLight = Color(0xFFFF8F00)      // Lighter Saffron
-    val SaffronDark = Color(0xFFE65100)       // Deep Saffron for contrast
-    val SaffronDim = Color(0xFFFFF3E0)        // Soft Saffron chip background (Orange 50)
+    // Primary Brand & Mode Colors
+    val IsroSaffron = Color(0xFFFF8A00)       // ISRO Brand Orange
+    val SaffronPrimary = Color(0xFFFF8A00)
+    val SaffronLight = Color(0xFFFFAB40)
+    val SaffronDark = Color(0xFFE65100)
+    val SaffronDim = Color(0x26FF8A00)
 
-    val NavBlue = Color(0xFF0284C7)           // Electric Navigation Blue (Sky 600)
-    val NavBlueLight = Color(0xFF38BDF8)      // Bright Blue (Sky 400)
-    val NavBlueDim = Color(0xFFE0F2FE)        // Soft Blue chip background (Sky 100)
-    val NavBlueDark = Color(0xFF0369A1)       // Deep Blue for text (Sky 700)
+    val GnssBlue = Color(0xFF1688FF)          // GNSS Active Electric Blue
+    val NavBlue = Color(0xFF1688FF)
+    val NavBlueLight = Color(0xFF4DA6FF)
+    val NavBlueDim = Color(0x261688FF)
+    val NavBlueDark = Color(0xFF0D5CB8)
 
-    val MapPurple = Color(0xFF7C3AED)         // Map-Aided DR Purple (Violet 600)
-    val MapPurpleDim = Color(0xFFEDE9FE)      // Soft Purple chip background (Violet 100)
+    val DrOrange = Color(0xFFFF7A00)          // Dead Reckoning Vivid Saffron/Orange
+    val DrOrangeDim = Color(0x26FF7A00)
+    val DrOrangeDark = Color(0xFFD66000)
 
-    // Status Colors (Active, Searching, Degraded, Error, Offline)
-    val StatusGreen = Color(0xFF16A34A)       // Active / Fix Locked / Healthy (Green 600)
-    val StatusGreenDim = Color(0xFFDCFCE7)    // Soft Green chip background (Green 100)
-    val StatusGreenBg = Color(0xFFDCFCE7)     // Background for Green pill
-    val StatusGreenText = Color(0xFF15803D)   // High contrast Green text (Green 700)
-    val StatusGreenDark = Color(0xFF15803D)   // Deep Green for text
+    val RecoveryCyan = Color(0xFF00B8FF)      // GNSS Reacquisition Cyan
+    val RecoveryCyanDim = Color(0x2600B8FF)
 
-    val StatusAmber = Color(0xFFD97706)       // Searching / Degraded / DR Active (Amber 600)
-    val StatusAmberDim = Color(0xFFFEF3C7)    // Soft Amber chip background (Amber 100)
-    val StatusAmberBg = Color(0xFFFEF3C7)     // Background for Amber pill
-    val StatusAmberText = Color(0xFFB45309)   // High contrast Amber text (Amber 700)
-    val StatusAmberDark = Color(0xFFB45309)   // Deep Amber for text
+    val MapPurple = Color(0xFFA855F7)         // Map-Aided Maximum Likelihood Purple
+    val MapPurpleDim = Color(0x26A855F7)
 
-    val StatusOrange = Color(0xFFEA580C)      // Warm Orange for Dead Reckoning (Orange 600)
-    val StatusOrangeBg = Color(0xFFFFEDD5)    // Soft Orange chip background (Orange 100)
-    val StatusOrangeDark = Color(0xFFC2410C)  // Deep Orange text (Orange 700)
+    // Status Semantic Tokens
+    val StatusGreen = Color(0xFF18D47B)       // Healthy / Active Fix / 60 FPS
+    val StatusGreenDim = Color(0x2618D47B)
+    val StatusGreenText = Color(0xFF18D47B)
+    val StatusGreenBg = Color(0x1F18D47B)
+    val StatusGreenDark = Color(0xFF18D47B)
 
-    val StatusBlue = Color(0xFF2563EB)        // Initializing / Info (Blue 600)
-    val StatusBlueDim = Color(0xFFDBEAFE)     // Soft Blue chip background (Blue 100)
-    val StatusBlueBg = Color(0xFFE0F2FE)      // Soft Sky chip background
-    val StatusBlueText = Color(0xFF1D4ED8)    // High contrast Blue text (Blue 700)
+    val StatusAmber = Color(0xFFFFB020)       // Searching / Degraded / Warning
+    val StatusAmberDim = Color(0x26FFB020)
+    val StatusAmberText = Color(0xFFFFB020)
+    val StatusAmberBg = Color(0x1FFFB020)
+    val StatusAmberDark = Color(0xFFFFB020)
 
-    val StatusRed = Color(0xFFDC2626)         // Actual Hardware Error / Out of Bounds (Red 600)
-    val StatusRedDim = Color(0xFFFEE2E2)      // Soft Red chip background (Red 100)
-    val StatusRedBg = Color(0xFFFEE2E2)       // Soft Red chip background
-    val StatusRedText = Color(0xFFB91C1C)     // High contrast Red text (Red 700)
+    val StatusOrange = Color(0xFFFF7A00)      // Dead Reckoning Active
+    val StatusOrangeBg = Color(0x1FFF7A00)
+    val StatusOrangeDark = Color(0xFFD66000)
 
-    val StatusNeutral = Color(0xFF64748B)     // Offline / Not Loaded (Slate 500)
-    val StatusNeutralDim = Color(0xFFF1F5F9)  // Soft Gray chip background (Slate 100)
-    val StatusNeutralText = Color(0xFF475569) // Gray text (Slate 600)
+    val StatusBlue = Color(0xFF1688FF)        // Info / Standby
+    val StatusBlueDim = Color(0x261688FF)
+    val StatusBlueBg = Color(0x1F1688FF)
+    val StatusBlueText = Color(0xFF1688FF)
+
+    val StatusRed = Color(0xFFFF4F5E)         // Hardware Error / Gate Violation
+    val StatusRedDim = Color(0x26FF4F5E)
+    val StatusRedBg = Color(0x1FFF4F5E)
+    val StatusRedText = Color(0xFFFF4F5E)
+
+    val StatusNeutral = Color(0xFF64748B)     // Offline / Not Connected
+    val StatusNeutralDim = Color(0x1E64748B)
+    val StatusNeutralText = Color(0xFF94A3B8)
 
     // Typography & Content
-    val TextPrimary = Color(0xFF0F172A)       // Deep Space Navy text (Slate 900)
-    val TextSecondary = Color(0xFF475569)     // Muted Slate text (Slate 600)
-    val TextTertiary = Color(0xFF94A3B8)      // Hint / Footnote text (Slate 400)
-    val SlateMuted = Color(0xFF94A3B8)        // Slate Muted
-    val TextOnDark = Color(0xFFFFFFFF)        // High contrast white text for dark badges
-    val NavyDarkest = Color(0xFF0F172A)       // Deep Navy Darkest
+    val TextPrimary = Color(0xFFF1F5F9)       // Crisp White-Silver (Slate 100)
+    val TextSecondary = Color(0xFF94A3B8)     // Subtitle Muted Silver (Slate 400)
+    val TextTertiary = Color(0xFF64748B)      // Hint & Footnote Slate (Slate 500)
+    val SlateMuted = Color(0xFF94A3B8)
+    val TextOnDark = Color(0xFFFFFFFF)        // Pure White
+    val NavyDarkest = Color(0xFF06111F)
 
-    // Map & Trajectory Visualization Layers
-    val MapCanvasBg = Color(0xFFF1F5F9)       // Map background (Slate 100)
-    val MapGridLine = Color(0xFFE2E8F0)       // Map grid lines (Slate 200)
-    val MapAxisLine = Color(0xFFCBD5E1)       // Map center axes (Slate 300)
-    val GridLineColor = Color(0xFFCBD5E1)     // Tactical grid lines
-    val GridAxisColor = Color(0xFF94A3B8)     // Major tactical grid axes
-    val MapRoadOutline = Color(0xFF94A3B8)    // Road network outline (Slate 400)
-    val MapRoadSurface = Color(0xFFFFFFFF)    // Road network surface
-    val MapSelectedRoad = Color(0xFFFFD54F)   // Snapped active road highlight (Amber 300)
+    // Map & Trajectory Visualization Tokens
+    val MapCanvasBg = Color(0xFF06111F)
+    val MapGridLine = Color(0xFF0B1B2B)
+    val MapAxisLine = Color(0xFF10263A)
+    val GridLineColor = Color(0xFF0F273D)
+    val GridAxisColor = Color(0xFF17324A)
+    val MapRoadOutline = Color(0xFF17324A)
+    val MapRoadSurface = Color(0xFFE2E8F0)
+    val MapSelectedRoad = Color(0xFFFF8A00)
 
-    val TrajectoryGnss = Color(0xFF0284C7)    // Electric Blue for raw GNSS track
-    val TrajectoryIdr = Color(0xFFFF6F00)     // ISRO Saffron for IDR dead-reckoning track
-    val TrajectoryMap = Color(0xFF7C3AED)     // Royal Purple for Map-Aided track
-    val TrajectoryMapAided = Color(0xFF7C3AED)// Royal Purple for Map-Aided track
-    val VehicleMarker = Color(0xFFFF6F00)     // ISRO Saffron directional vehicle indicator
-    val VehicleOutline = Color(0xFF0F172A)    // Deep navy chevron outline
-    val VehicleHeadingCone = Color(0x33FF6F00)// Translucent heading cone
+    val TrajectoryGnss = Color(0xFF1688FF)    // GNSS Trajectory (Electric Blue)
+    val TrajectoryIdr = Color(0xFFFF7A00)     // Raw IDR DR Trajectory (Vivid Saffron)
+    val TrajectoryMap = Color(0xFFA855F7)     // Map Matched Trajectory (Royal Purple)
+    val TrajectoryMapAided = Color(0xFFA855F7)
 
-    // Legacy Aliases for backwards-compatibility
-    val NavyDark = Surface
-    val NavySurface = Surface
-    val NavyCard = Surface
-    val NavyCardBorder = CardBorder
-    val CyanAccent = NavBlue
-    val SaffronAccent = SaffronPrimary
+    val VehicleMarker = Color(0xFFFF8A00)     // Directional Chevron
+    val VehicleOutline = Color(0xFFFFFFFF)    // Crisp White Outline
+    val VehicleHeadingCone = Color(0x33FF8A00)// Translucent 30° Forward Beam
 }

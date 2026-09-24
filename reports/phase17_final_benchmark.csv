@@ -1,0 +1,8 @@
+Estimator,Median_Drift_Pct,Pass_Count,Total_Outages,Pass_Rate_Pct,Description
+C0 Classical Pure DR,76.33799,12,158,7.59494,Unaided INS strapdown integration
+N0 Neural Pure DR,34.42502,28,158,17.72152,AI speed regression + basic ESKF
+N7 Production Frozen Baseline,35.71036,36,158,22.78481,Bounded adaptive NHC + multi-hypothesis map fusion
+Phase 14 A1 Estimator,31.65089,39,158,24.68354,In-flight ZARU + conservative road heading
+Phase 15 Final Estimator,30.88417,39,158,24.68354,Bounded-slip NHC (r_max=0.40) + error-state damping
+Phase 16 Final Estimator,27.25206,45,158,28.48101,Pre-outage GNSS Doppler velocity + ESKF observability handover
+Phase 17 Final Estimator,27.635800026132067,49,158,31.0126582278481,Causal kinematic lateral consistency + dynamic confidence modulation

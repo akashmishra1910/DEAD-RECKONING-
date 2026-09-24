@@ -1,0 +1,7 @@
+Model,Description,Median_Drift_pct,Mean_Drift_pct,Pass_Count_10pct,Pass_Rate_pct,Along_m,Cross_m,Delta_Med_vs_N7,Delta_Pass_vs_N7
+C0 (Classical Control),Ingests uncalibrated magnetometer,76.34,74.45,12,7.59,44.41,64.44,40.63,-24
+N0 (Pure Gyro Strapdown),"Fixed NHC r=0.05, mag rejected",34.43,47.7,28,17.72,13.94,30.27,-1.28,-8
+N7 (Frozen Baseline),Bounded Adaptive NHC + Causal Multi-Map,35.71,45.86,36,22.78,17.77,26.67,0.0,0
+Candidate B (Lateral Cov),Clamped dynamic lateral covariance R_lat <= 2.5^2,36.73,45.76,35,22.15,18.01,28.02,1.02,-1
+Candidate C (Combined A+B),Combined gyro bias + clamped lateral covariance,34.89,45.46,37,23.42,17.38,24.04,-0.82,1
+Phase 14 Best (Candidate A1),Causal Gyro-Bias Observer + Tight Road Heading (r=0.050),31.65,43.48,39,24.68,16.86,22.62,-4.06,3

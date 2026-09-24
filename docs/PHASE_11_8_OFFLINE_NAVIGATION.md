@@ -29,11 +29,14 @@ Phase 11.8 establishes the complete, production-grade **100% offline navigation 
 |                    idr-core ENGINE / C++17 (C API / JNI Bridge)                       |
 |                                                                                       |
 |  +---------------------------------------------------------------------------------+  |
-|  |                           7-STATE NAVIGATION FSM                                |  |
-|  |  INITIALIZING -> ALIGNING -> GNSS_AIDED <-> DEAD_RECKONING <-> STATIONARY_ZUPT  |  |
-|  |                                  │                 │                            |  |
-|  |                                  ▼                 ▼                            |  |
-|  |                            MAP_AIDED_DR       DEGRADED_DR                       |  |
+|  |                   7-STATE SUPERVISOR NAVIGATION FSM                             |  |
+|  |  INITIALIZING (0) -> GNSS_AIDED (1) <-> GNSS_DEGRADED (2)                         |  |
+|  |                           │                                                     |  |
+|  |                           ▼                                                     |  |
+|  |                   TRANSITION_TO_DR (3) -> DR_ONLY (4)                           |  |
+|  |                           │                                                     |  |
+|  |                           ▼                                                     |  |
+|  |                   TRANSITION_TO_GNSS (5) -> GNSS_REACQUIRED (6) -> GNSS_AIDED (1)|  |
 |  +---------------------------------------------------------------------------------+  |
 |                                           │                                           |
 |      ┌────────────────────────────────────┴────────────────────────────────────┐      |
@@ -41,9 +44,10 @@ Phase 11.8 establishes the complete, production-grade **100% offline navigation 
 |  +─────────────────────────────────────────+     +──────────────────────────────────+ |
 |  |      KINEMATIC ESTIMATION CORE          |     |     CAUSAL 3D HMM MAP MATCHER    | |
 |  | • 15-State ESKF (p, v, q, ba, bg)       |     | • IdrMapReader (.idrmap v1.0)    | |
-|  | • Vibration & Pothole Shock Blanking    |     | • 3D Elevation Barrier (|dh|>4m) | |
-|  | • AI Speed Regressor (Tree Ensemble)    |     | • Parallel Road Ambiguity Metric | |
-|  | • Adaptive Measurement Noise RLS        |     | • Road-Normal Snapping           | |
+|  | • In-Vehicle Alignment (Gravity + PCA)  |     | • 3D Elevation Barrier (|dh|>4m) | |
+|  | • Vibration & Pothole Shock Blanking    |     | • Parallel Road Ambiguity Metric | |
+|  | • AI Speed Regressor (Tree Ensemble)    |     | • Road-Normal Snapping           | |
+|  | • Adaptive Measurement Noise RLS        |     |                                  | |
 |  | • Non-Holonomic Constraints (NHC)       |     |                                  | |
 |  | • Standstill Zero Velocity Update (ZUPT)|     |                                  | |
 |  |                                         |     |                                  | |
@@ -79,19 +83,19 @@ The system operates completely decoupled from any network or cloud infrastructur
 
 ---
 
-## 3. 7-State Navigation FSM
+## 3. 7-State Navigation FSM & Architectural Mapping
 
-The unified Finite State Machine manages navigation lifecycle across all operating regimes:
+The unified Finite State Machine manages navigation lifecycle across all operating regimes. The authoritative enum in C++ (`NavigationMode`), C API (`idr_nav_mode_t`), JNI, Kotlin (`NavigationMode`), and Python (`NavigationMode`) represents the 7-state supervisor lifecycle:
 
-| State ID | Enum / Name | Description | Entry Criteria | Exit / Transition |
-|---|---|---|---|---|
-| **0** | `INITIALIZING` | System startup and sensor buffer warm-up | Initial state or engine reset | Accelerometer variance stable $\to$ `ALIGNING` |
-| **1** | `ALIGNING` | Gravity leveling (roll/pitch) and PCA heading alignment | Initial stationary/accel phase | Tilt leveled, heading locked $\to$ `GNSS_AIDED` or `DEAD_RECKONING` |
-| **2** | `GNSS_AIDED` | Full GNSS + INS fusion with active $\chi^2$ innovation gating | Valid GNSS fixes arriving | Loss of GNSS $> 1.0\text{ s}$ or $\chi^2 > 11.35 \to$ `DEAD_RECKONING` |
-| **3** | `DEAD_RECKONING` | High-precision inertial dead reckoning (AI speed + NHC) | GNSS outage detected | Vehicle stops $\to$ `STATIONARY_ZUPT`; Map high confidence $\to$ `MAP_AIDED_DR` |
-| **4** | `STATIONARY_ZUPT`| Standstill zero-velocity updates to suppress velocity/drift | Speed $< 0.2\text{ m/s}$, Accel var $< 0.05$ | Speed $> 0.5\text{ m/s} \to$ `DEAD_RECKONING` or `GNSS_AIDED` |
-| **5** | `MAP_AIDED_DR` | DR with active topological map confidence & presentation | Valid map matched with high/medium confidence | Ambiguous/Off-road $\to$ `DEAD_RECKONING`; Reacquisition $\to$ `GNSS_AIDED` |
-| **6** | `DEGRADED_DR` | Sensor failure, extreme outage duration, or high cov | Covariance diagonal $P_{pos} > 100\text{ m}^2$ | Valid GNSS fixes $\to$ `GNSS_AIDED` |
+| State ID | Authoritative Enum Name | Phase 11 Architectural Name | Description & Ingestion Semantics | Entry Criteria | Exit / Transition |
+|---|---|---|---|---|---|
+| **0** | `INITIALIZING` | `INITIALIZING` | System startup and sensor buffer warm-up. Continuous alignment active. | Initial state or engine reset | First valid GNSS fix $\to$ `GNSS_AIDED`; Initial outage $\to$ `DR_ONLY` |
+| **1** | `GNSS_AIDED` | `GNSS_NAV` | Nominal full GNSS + INS fusion with active $\chi^2$ innovation gating. | Valid GNSS fixes arriving | Loss of GNSS $> 1.0\text{ s} \to$ `DR_ONLY`; Degraded fix $\to$ `GNSS_DEGRADED` |
+| **2** | `GNSS_DEGRADED` | `DEGRADED` | Degraded GNSS accuracy / multipath warning before complete blackout. | High HDOP or mild $\chi^2$ rise | Loss of GNSS $\to$ `DR_ONLY`; 3 clean fixes $\to$ `GNSS_AIDED` |
+| **3** | `TRANSITION_TO_DR`| `TRANSITION_TO_DR` | Handover state when GNSS signal drops below line-of-sight threshold. | Sudden loss of lock | Immediate deterministic transition $\to$ `DR_ONLY` |
+| **4** | `DR_ONLY` | `DR_NAV` / `MAP_AIDED_DR` | Dead reckoning via AI speed, NHC, and ZUPT. When map confidence is HIGH/MEDIUM, displayed as Map-Aided DR. | GNSS outage detected | Clean GNSS reappearance $\to$ `TRANSITION_TO_GNSS` |
+| **5** | `TRANSITION_TO_GNSS`| `GNSS_RECOVERY` | Multi-epoch $\chi^2$ innovation check rejecting tunnel-exit multipath spikes. | GNSS reappearance detected | Severe jump/spike $\to$ `DR_ONLY`; Innovation $\le 11.35 \to$ `GNSS_REACQUIRED` |
+| **6** | `GNSS_REACQUIRED`| `RECOVERED` | Validated smooth reacquisition before re-engaging full GNSS authority. | Confirmed valid recovery epoch | Full authority restored $\to$ `GNSS_AIDED` |
 
 ---
 

@@ -18,6 +18,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -39,9 +41,8 @@ import org.isro.idr.ui.state.NavigationUiState
 import org.isro.idr.ui.state.OfflineRegionPack
 
 /**
- * Screen 10: Offline World Maps.
- * Multi-scale regional and global vector pack manager, storage capacity indicator,
- * and offline dataset downloader.
+ * Screen 10: Offline Regional & World Maps.
+ * Multi-scale regional vector pack downloader and active offline map activator.
  */
 @Composable
 fun OfflineMapsScreen(
@@ -51,6 +52,11 @@ fun OfflineMapsScreen(
     modifier: Modifier = Modifier
 ) {
     var selectedCategory by remember { mutableStateOf("India") }
+    var activeRegionId by remember { mutableStateOf("prayagraj") }
+    var downloadingRegionId by remember { mutableStateOf<String?>(null) }
+    var downloadProgress by remember { mutableStateOf(0f) }
+
+    val filteredPacks = uiState.offlineRegionPacks.filter { it.category == selectedCategory }
 
     Column(
         modifier = modifier
@@ -61,7 +67,7 @@ fun OfflineMapsScreen(
     ) {
         // Header
         Text(
-            text = "Offline Maps",
+            text = "Offline Maps Manager",
             style = IdrTypography.titleLarge.copy(fontSize = 18.sp, fontWeight = FontWeight.Bold),
             color = Color.White
         )
@@ -72,8 +78,8 @@ fun OfflineMapsScreen(
                 .fillMaxWidth()
                 .shadow(8.dp, RoundedCornerShape(14.dp))
                 .clip(RoundedCornerShape(14.dp))
-                .background(IdrColors.Surface)
-                .border(1.2.dp, IdrColors.CardBorder, RoundedCornerShape(14.dp))
+                .background(Color(0xFF0D2238))
+                .border(1.2.dp, Color(0xFF1E3A5A), RoundedCornerShape(14.dp))
                 .padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
@@ -82,47 +88,55 @@ fun OfflineMapsScreen(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "Storage Used",
+                    text = "Offline Map Storage",
                     style = IdrTypography.labelMedium.copy(fontSize = 12.sp, fontWeight = FontWeight.Bold),
                     color = Color.White
                 )
                 Text(
-                    text = "1.74 GB / 64 GB",
+                    text = "1.28 GB / 64 GB",
                     style = IdrTypography.labelSmall.copy(fontSize = 11.sp),
                     color = Color(0xFF00B8FF)
                 )
             }
 
             LinearProgressIndicator(
-                progress = { 0.08f },
+                progress = { 0.04f },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(5.dp)
-                    .clip(RoundedCornerShape(2.5.dp)),
+                    .clip(RoundedCornerShape(3.dp)),
                 color = Color(0xFF1688FF),
-                trackColor = Color(0xFF10263A)
+                trackColor = Color(0xFF17324A)
             )
         }
 
-        // Category Tab Switcher (India, My Regions, Global)
+        // Category Tabs (India / Global)
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(10.dp))
-                .background(Color(0xFF0B1B2B))
-                .padding(3.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            CategoryTabChip("India", selectedCategory == "India", modifier = Modifier.weight(1f)) { selectedCategory = "India" }
-            CategoryTabChip("My Regions", selectedCategory == "My Regions", modifier = Modifier.weight(1f)) { selectedCategory = "My Regions" }
-            CategoryTabChip("Global", selectedCategory == "Global", modifier = Modifier.weight(1f)) { selectedCategory = "Global" }
+            listOf("India", "Global").forEach { cat ->
+                val isSelected = selectedCategory == cat
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (isSelected) Color(0xFFFF8A00) else Color(0xFF17324A))
+                        .clickable { selectedCategory = cat }
+                        .padding(vertical = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = cat,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
+            }
         }
 
         // Region Pack List
-        val filteredPacks = uiState.offlineRegionPacks.filter {
-            if (selectedCategory == "My Regions") it.isInstalled else it.category == selectedCategory
-        }
-
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
@@ -130,177 +144,78 @@ fun OfflineMapsScreen(
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             items(filteredPacks) { pack ->
-                RegionPackCard(
-                    pack = pack,
-                    onDownload = { onDownloadRegion(pack.id) },
-                    onActivate = { onActivateRegion(pack.id) }
-                )
+                val isActive = activeRegionId == pack.id
+                val isDownloaded = pack.isInstalled || isActive
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(6.dp, RoundedCornerShape(12.dp))
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(if (isActive) Color(0xFF132B45) else Color(0xFF0D2238))
+                        .border(1.dp, if (isActive) Color(0xFFFF8A00) else Color(0xFF1E3A5A), RoundedCornerShape(12.dp))
+                        .padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text(
+                                    text = pack.name,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                                if (isActive) {
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(4.dp))
+                                            .background(Color(0xFF0B4A2B))
+                                            .padding(horizontal = 5.dp, vertical = 1.dp)
+                                    ) {
+                                        Text(text = "ACTIVE", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF18D47B))
+                                    }
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = pack.subtitle,
+                                fontSize = 11.sp,
+                                color = Color(0xFF94A3B8)
+                            )
+                        }
+
+                        Button(
+                            onClick = {
+                                if (isDownloaded) {
+                                    activeRegionId = pack.id
+                                    onActivateRegion(pack.id)
+                                } else {
+                                    onDownloadRegion(pack.id)
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isActive) Color(0xFF18D47B) else if (isDownloaded) Color(0xFF1688FF) else Color(0xFFFF8A00)
+                            ),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text(
+                                text = if (isActive) "MOUNTED ✓" else if (isDownloaded) "ACTIVATE" else "DOWNLOAD",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
+                    }
+                }
             }
-
-            // Custom Region Selector CTA Card
-            item {
-                CustomRegionCard()
-            }
-        }
-    }
-}
-
-@Composable
-private fun CategoryTabChip(
-    title: String,
-    isSelected: Boolean,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit
-) {
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(if (isSelected) Color(0xFF1688FF) else Color.Transparent)
-            .clickable { onClick() }
-            .padding(vertical = 7.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = title,
-            style = IdrTypography.labelMedium.copy(
-                fontSize = 11.sp,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
-            ),
-            color = if (isSelected) Color.White else Color(0xFF94A3B8)
-        )
-    }
-}
-
-@Composable
-private fun RegionPackCard(
-    pack: OfflineRegionPack,
-    onDownload: () -> Unit,
-    onActivate: () -> Unit
-) {
-    val sizeMb = pack.sizeBytes / (1024 * 1024)
-    val sizeStr = if (sizeMb >= 1024) "${String.format("%.1f", sizeMb / 1024.0)} GB" else "$sizeMb MB"
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .shadow(6.dp, RoundedCornerShape(12.dp))
-            .clip(RoundedCornerShape(12.dp))
-            .background(IdrColors.Surface)
-            .border(1.dp, if (pack.isInstalled) Color(0xFF18D47B).copy(alpha = 0.5f) else IdrColors.CardBorder, RoundedCornerShape(12.dp))
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // City / Region Thumbnail Icon
-        Box(
-            modifier = Modifier
-                .size(46.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xFF10263A))
-                .border(1.dp, Color(0xFF17324A), RoundedCornerShape(8.dp)),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(text = "🗺", fontSize = 18.sp)
-        }
-
-        Spacer(modifier = Modifier.width(12.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = pack.name,
-                style = IdrTypography.titleMedium.copy(fontSize = 13.sp, fontWeight = FontWeight.Bold),
-                color = Color.White
-            )
-            Text(
-                text = "$sizeStr • ${pack.version}",
-                style = IdrTypography.bodySmall.copy(fontSize = 10.sp),
-                color = Color(0xFF94A3B8)
-            )
-            Text(
-                text = pack.subtitle,
-                style = IdrTypography.labelSmall.copy(fontSize = 9.sp),
-                color = Color(0xFF64748B)
-            )
-        }
-
-        Spacer(modifier = Modifier.width(8.dp))
-
-        if (pack.isInstalled) {
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0xFF18D47B).copy(alpha = 0.18f))
-                    .border(1.dp, Color(0xFF18D47B), RoundedCornerShape(16.dp))
-                    .clickable { onActivate() }
-                    .padding(horizontal = 10.dp, vertical = 5.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "ACTIVE",
-                    style = IdrTypography.labelSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.Bold),
-                    color = Color(0xFF18D47B)
-                )
-            }
-        } else {
-            Box(
-                modifier = Modifier
-                    .size(34.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFF1688FF))
-                    .clickable { onDownload() },
-                contentAlignment = Alignment.Center
-            ) {
-                Text(text = "↓", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-            }
-        }
-    }
-}
-
-@Composable
-private fun CustomRegionCard() {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .shadow(4.dp, RoundedCornerShape(12.dp))
-            .clip(RoundedCornerShape(12.dp))
-            .background(IdrColors.Surface)
-            .border(1.dp, IdrColors.CardBorder, RoundedCornerShape(12.dp))
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(46.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xFF10263A)),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(text = "⌖", fontSize = 20.sp, color = Color(0xFF1688FF))
-        }
-
-        Spacer(modifier = Modifier.width(12.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = "Custom Region",
-                style = IdrTypography.titleMedium.copy(fontSize = 13.sp, fontWeight = FontWeight.Bold),
-                color = Color.White
-            )
-            Text(
-                text = "Select area on map for offline vector download",
-                style = IdrTypography.bodySmall.copy(fontSize = 10.sp),
-                color = Color(0xFF94A3B8)
-            )
-        }
-
-        Box(
-            modifier = Modifier
-                .size(34.dp)
-                .clip(CircleShape)
-                .background(Color(0xFF10263A))
-                .border(1.dp, IdrColors.CardBorder, CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(text = "+", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
         }
     }
 }

@@ -14,8 +14,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -36,14 +40,32 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.isro.idr.theme.IdrColors
 import org.isro.idr.theme.IdrTypography
-import org.isro.idr.ui.map.TacticalGridMapCanvas
+import org.isro.idr.ui.map.RealGeographicMapCanvas
 import org.isro.idr.ui.state.MapStyleType
 import org.isro.idr.ui.state.NavigationUiState
 
+data class SearchPoiResult(
+    val title: String,
+    val subtitle: String,
+    val lat: Double,
+    val lon: Double,
+    val category: String = "Place"
+)
+
+private val PopularPois = listOf(
+    SearchPoiResult("Sangam Confluence", "Prayagraj, Uttar Pradesh", 25.4290, 81.8840, "Landmark"),
+    SearchPoiResult("Civil Lines Market", "Prayagraj, Uttar Pradesh", 25.4520, 81.8340, "Commercial"),
+    SearchPoiResult("Naini Bridge (New Yamuna Bridge)", "Prayagraj, Uttar Pradesh", 25.4260, 81.8540, "Bridge"),
+    SearchPoiResult("Prayagraj Junction Railway Station", "Leader Road, Prayagraj", 25.4450, 81.8260, "Transit"),
+    SearchPoiResult("ISRO Headquarters", "Antariksh Bhavan, New BEL Road, Bengaluru", 13.0334, 77.5645, "Aerospace"),
+    SearchPoiResult("Space Applications Centre (SAC / ISRO)", "Ahmedabad, Gujarat", 23.0225, 72.5167, "Aerospace"),
+    SearchPoiResult("India Gate", "Rajpath, New Delhi", 28.6129, 77.2295, "Monument"),
+    SearchPoiResult("Marine Drive", "South Mumbai, Maharashtra", 18.9438, 72.8233, "Corridor"),
+    SearchPoiResult("Hitec City Cyber Towers", "Hyderabad, Telangana", 17.4504, 78.3808, "Tech Park")
+)
+
 /**
- * Screen 6: Map Explorer.
- * Interactive continuous global-to-street map explorer with search,
- * style selection (Standard, Satellite, Dark, Terrain) and layer toggles.
+ * Screen 6: Map Explorer with working Search, Layer Toggles, and Destination Routing.
  */
 @Composable
 fun MapExplorerScreen(
@@ -54,6 +76,7 @@ fun MapExplorerScreen(
     onToggle3dBuildings: (Boolean) -> Unit,
     onToggleLandmarks: (Boolean) -> Unit,
     onToggleWater: (Boolean) -> Unit,
+    onStartNavigationToPoi: ((SearchPoiResult) -> Unit)? = null,
     onZoomIn: (() -> Unit)? = null,
     onZoomOut: (() -> Unit)? = null,
     onToggleNorthUp: (() -> Unit)? = null,
@@ -61,14 +84,28 @@ fun MapExplorerScreen(
     modifier: Modifier = Modifier
 ) {
     var isLayersSheetOpen by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+    var selectedPoi by remember { mutableStateOf<SearchPoiResult?>(null) }
+    var isSearchActive by remember { mutableStateOf(false) }
+
+    val filteredPois = remember(searchQuery) {
+        if (searchQuery.isBlank()) {
+            PopularPois
+        } else {
+            PopularPois.filter {
+                it.title.contains(searchQuery, ignoreCase = true) ||
+                it.subtitle.contains(searchQuery, ignoreCase = true)
+            }
+        }
+    }
 
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(IdrColors.Background)
     ) {
-        // 1. Full Viewport Real Geographic Map
-        org.isro.idr.ui.map.RealGeographicMapCanvas(
+        // 1. Full Viewport Geographic Map Canvas
+        RealGeographicMapCanvas(
             telemetry = uiState.telemetry,
             gnssStatus = uiState.gnssStatus,
             idrTrajectory = uiState.idrTrajectory,
@@ -80,15 +117,19 @@ fun MapExplorerScreen(
             mapStyle = uiState.mapStyle,
             isNorthUp = uiState.isNorthUp,
             userZoomFactor = uiState.mapZoomLevel,
+            targetLatLon = selectedPoi?.let { Pair(it.lat, it.lon) },
             onZoomIn = onZoomIn,
             onZoomOut = onZoomOut,
             onToggleNorthUp = onToggleNorthUp,
-            onResetMap = onResetMap,
+            onResetMap = {
+                selectedPoi = null
+                onResetMap?.invoke()
+            },
             modifier = Modifier.fillMaxSize()
         )
 
-        // 2. Top Global Search Bar
-        Box(
+        // 2. Top Interactive Search Bar & Suggestions Overlay
+        Column(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .fillMaxWidth()
@@ -99,9 +140,9 @@ fun MapExplorerScreen(
                     .fillMaxWidth()
                     .shadow(12.dp, RoundedCornerShape(24.dp))
                     .clip(RoundedCornerShape(24.dp))
-                    .background(IdrColors.SurfaceElevated.copy(alpha = 0.96f))
-                    .border(1.2.dp, IdrColors.CardBorder, RoundedCornerShape(24.dp))
-                    .padding(horizontal = 14.dp, vertical = 4.dp),
+                    .background(Color(0xFF0D2238).copy(alpha = 0.96f))
+                    .border(1.2.dp, Color(0xFF1E3A5A), RoundedCornerShape(24.dp))
+                    .padding(horizontal = 14.dp, vertical = 2.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
@@ -113,8 +154,12 @@ fun MapExplorerScreen(
                 Spacer(modifier = Modifier.width(8.dp))
 
                 TextField(
-                    value = uiState.explorerSearchQuery,
-                    onValueChange = onSearchQueryChanged,
+                    value = searchQuery,
+                    onValueChange = {
+                        searchQuery = it
+                        isSearchActive = true
+                        onSearchQueryChanged(it)
+                    },
                     placeholder = {
                         Text(
                             text = "Search places, roads, landmarks...",
@@ -133,46 +178,148 @@ fun MapExplorerScreen(
                     modifier = Modifier.weight(1f)
                 )
 
+                if (searchQuery.isNotEmpty()) {
+                    Text(
+                        text = "✕",
+                        fontSize = 14.sp,
+                        color = Color(0xFF94A3B8),
+                        modifier = Modifier
+                            .clickable {
+                                searchQuery = ""
+                                isSearchActive = false
+                                selectedPoi = null
+                            }
+                            .padding(8.dp)
+                    )
+                }
+
                 Box(
                     modifier = Modifier
                         .size(32.dp)
                         .clip(CircleShape)
                         .background(Color(0xFF1688FF).copy(alpha = 0.2f))
-                        .clickable { /* Voice input trigger */ },
+                        .clickable { isLayersSheetOpen = !isLayersSheetOpen },
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(text = "🎤", fontSize = 13.sp)
+                    Text(text = "◫", fontSize = 14.sp, color = Color(0xFF1688FF), fontWeight = FontWeight.Bold)
+                }
+            }
+
+            // Dropdown search suggestions when typing or active
+            if (isSearchActive && filteredPois.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(6.dp))
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(16.dp, RoundedCornerShape(14.dp))
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(Color(0xFF0D2238).copy(alpha = 0.98f))
+                        .border(1.2.dp, Color(0xFF1E3A5A), RoundedCornerShape(14.dp))
+                        .padding(vertical = 4.dp)
+                ) {
+                    items(filteredPois) { poi ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    selectedPoi = poi
+                                    searchQuery = poi.title
+                                    isSearchActive = false
+                                }
+                                .padding(horizontal = 14.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(text = "📍", fontSize = 14.sp)
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = poi.title,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = poi.subtitle,
+                                    fontSize = 11.sp,
+                                    color = Color(0xFF94A3B8)
+                                )
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(Color(0xFF17324A))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = poi.category,
+                                    fontSize = 9.sp,
+                                    color = Color(0xFFFFD54F)
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
 
-        // 3. Floating Right Map Action Controls (Layers, 2D/3D, Compass, Recenter)
-        Column(
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .padding(end = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            FloatingActionIcon(
-                icon = "◫",
-                isSelected = isLayersSheetOpen,
-                onClick = { isLayersSheetOpen = !isLayersSheetOpen }
-            )
-            FloatingActionIcon(
-                icon = if (uiState.is3dMode) "3D" else "2D",
-                onClick = { /* Toggle 3D */ }
-            )
-            FloatingActionIcon(
-                icon = if (uiState.isNorthUp) "N" else "H",
-                onClick = { onToggleNorthUp?.invoke() }
-            )
-            FloatingActionIcon(
-                icon = "⌖",
-                onClick = { onResetMap?.invoke() }
-            )
+        // 3. Destination Bottom Card when a place is selected
+        if (selectedPoi != null && !isLayersSheetOpen) {
+            val poi = selectedPoi!!
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(start = 14.dp, end = 14.dp, bottom = 14.dp)
+                    .shadow(16.dp, RoundedCornerShape(16.dp))
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color(0xFF0D2238).copy(alpha = 0.98f))
+                    .border(1.2.dp, Color(0xFFFF8A00).copy(alpha = 0.8f), RoundedCornerShape(16.dp))
+                    .padding(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = poi.title,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color.White
+                        )
+                        Text(
+                            text = poi.subtitle,
+                            fontSize = 11.sp,
+                            color = Color(0xFFCBD5E1)
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = String.format("%.4f° N, %.4f° E", poi.lat, poi.lon),
+                            fontSize = 10.sp,
+                            color = Color(0xFFFFAB40)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Button(
+                        onClick = { onStartNavigationToPoi?.invoke(poi) },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF8A00)),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text(
+                            text = "NAVIGATE",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+                }
+            }
         }
 
-        // 4. Bottom Map Layers Sheet (Appears when toggled)
+        // 4. Map Layers Sheet (Appears when layer button is clicked)
         if (isLayersSheetOpen) {
             Box(
                 modifier = Modifier
@@ -181,8 +328,8 @@ fun MapExplorerScreen(
                     .padding(start = 12.dp, end = 12.dp, bottom = 12.dp)
                     .shadow(16.dp, RoundedCornerShape(18.dp))
                     .clip(RoundedCornerShape(18.dp))
-                    .background(IdrColors.SurfaceElevated.copy(alpha = 0.97f))
-                    .border(1.2.dp, IdrColors.CardBorder, RoundedCornerShape(18.dp))
+                    .background(Color(0xFF0D2238).copy(alpha = 0.98f))
+                    .border(1.2.dp, Color(0xFF1E3A5A), RoundedCornerShape(18.dp))
                     .padding(16.dp)
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -192,11 +339,8 @@ fun MapExplorerScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Map Layers",
-                            style = IdrTypography.titleMedium.copy(
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Bold
-                            ),
+                            text = "Map Layers & Style",
+                            style = IdrTypography.titleMedium.copy(fontSize = 15.sp, fontWeight = FontWeight.Bold),
                             color = Color.White
                         )
                         Text(
@@ -209,12 +353,8 @@ fun MapExplorerScreen(
 
                     // Base Map Style Selector
                     Text(
-                        text = "BASE MAP",
-                        style = IdrTypography.labelSmall.copy(
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp
-                        ),
+                        text = "BASE MAP STYLE",
+                        style = IdrTypography.labelSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.Bold),
                         color = Color(0xFF64748B)
                     )
 
@@ -222,39 +362,32 @@ fun MapExplorerScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        MapStyleChip(
-                            label = "Standard",
-                            isSelected = uiState.mapStyle == MapStyleType.STANDARD,
-                            onClick = { onStyleSelected(MapStyleType.STANDARD) },
-                            modifier = Modifier.weight(1f)
-                        )
-                        MapStyleChip(
-                            label = "Satellite",
-                            isSelected = uiState.mapStyle == MapStyleType.SATELLITE,
-                            onClick = { onStyleSelected(MapStyleType.SATELLITE) },
-                            modifier = Modifier.weight(1f)
-                        )
-                        MapStyleChip(
-                            label = "Dark",
-                            isSelected = uiState.mapStyle == MapStyleType.DARK,
-                            onClick = { onStyleSelected(MapStyleType.DARK) },
-                            modifier = Modifier.weight(1f)
-                        )
-                        MapStyleChip(
-                            label = "Terrain",
-                            isSelected = uiState.mapStyle == MapStyleType.TERRAIN,
-                            onClick = { onStyleSelected(MapStyleType.TERRAIN) },
-                            modifier = Modifier.weight(1f)
-                        )
+                        MapStyleType.values().forEach { style ->
+                            val isSelected = uiState.mapStyle == style
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(if (isSelected) Color(0xFFFF8A00) else Color(0xFF17324A))
+                                    .clickable { onStyleSelected(style) }
+                                    .padding(vertical = 8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = style.label,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            }
+                        }
                     }
 
-                    // Layer Visibility Toggles
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        LayerToggleRow("Roads", uiState.showRoadsLayer, onToggleRoads)
-                        LayerToggleRow("Buildings (3D)", uiState.show3dBuildingsLayer, onToggle3dBuildings)
-                        LayerToggleRow("Landmarks & POIs", uiState.showLandmarksLayer, onToggleLandmarks)
-                        LayerToggleRow("Rivers & Water", uiState.showRiversWaterLayer, onToggleWater)
-                    }
+                    // Feature Toggles
+                    LayerSwitchRow("Roads & Highways", uiState.showRoadsLayer, onToggleRoads)
+                    LayerSwitchRow("3D Buildings", uiState.show3dBuildingsLayer, onToggle3dBuildings)
+                    LayerSwitchRow("Rivers & Water", uiState.showRiversWaterLayer, onToggleWater)
+                    LayerSwitchRow("Landmarks & POIs", uiState.showLandmarksLayer, onToggleLandmarks)
                 }
             }
         }
@@ -262,62 +395,8 @@ fun MapExplorerScreen(
 }
 
 @Composable
-private fun FloatingActionIcon(
-    icon: String,
-    isSelected: Boolean = false,
-    onClick: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .size(40.dp)
-            .shadow(6.dp, CircleShape)
-            .clip(CircleShape)
-            .background(if (isSelected) Color(0xFF1688FF) else IrColorsSurfaceElevated)
-            .border(1.dp, if (isSelected) Color(0xFF4DA6FF) else IdrColors.CardBorder, CircleShape)
-            .clickable { onClick() },
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = icon,
-            fontSize = 14.sp,
-            color = Color.White,
-            fontWeight = FontWeight.Bold
-        )
-    }
-}
-
-private val IrColorsSurfaceElevated = Color(0xFF10263A)
-
-@Composable
-private fun MapStyleChip(
+private fun LayerSwitchRow(
     label: String,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(if (isSelected) Color(0xFF1688FF).copy(alpha = 0.25f) else Color(0xFF0B1B2B))
-            .border(1.dp, if (isSelected) Color(0xFF1688FF) else Color(0xFF17324A), RoundedCornerShape(8.dp))
-            .clickable { onClick() }
-            .padding(vertical = 8.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = label,
-            style = IdrTypography.labelSmall.copy(
-                fontSize = 11.sp,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
-            ),
-            color = if (isSelected) Color.White else Color(0xFF94A3B8)
-        )
-    }
-}
-
-@Composable
-private fun LayerToggleRow(
-    title: String,
     isChecked: Boolean,
     onCheckedChange: (Boolean) -> Unit
 ) {
@@ -326,19 +405,15 @@ private fun LayerToggleRow(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = title,
-            style = IdrTypography.bodyMedium.copy(fontSize = 13.sp),
-            color = Color.White
-        )
+        Text(text = label, fontSize = 12.sp, color = Color.White)
         Switch(
             checked = isChecked,
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
                 checkedThumbColor = Color.White,
-                checkedTrackColor = Color(0xFF1688FF),
-                uncheckedThumbColor = Color(0xFF94A3B8),
-                uncheckedTrackColor = Color(0xFF10263A)
+                checkedTrackColor = Color(0xFFFF8A00),
+                uncheckedThumbColor = Color(0xFF64748B),
+                uncheckedTrackColor = Color(0xFF17324A)
             )
         )
     }

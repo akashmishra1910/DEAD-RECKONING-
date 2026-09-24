@@ -165,7 +165,7 @@ data class OfflineRegionPack(
 
 data class NavigationUiState(
     // App Navigation & Screen State
-    val appFlow: AppFlowState = AppFlowState.MAIN_APP,
+    val appFlow: AppFlowState = AppFlowState.SPLASH,
     val selectedScreen: ScreenTab = ScreenTab.NAVIGATION,
     val activeSubScreen: SubScreen = SubScreen.NONE,
 
@@ -195,7 +195,7 @@ data class NavigationUiState(
     val isNorthUp: Boolean = true,
     val is3dMode: Boolean = true,
     val mapZoomLevel: Float = 1.0f,
-    val mapStyle: MapStyleType = MapStyleType.DARK,
+    val mapStyle: MapStyleType = MapStyleType.STANDARD,
     val idrTrajectory: List<TrajectoryPoint> = emptyList(),
     val gnssTrajectory: List<TrajectoryPoint> = emptyList(),
     val mapAidedTrajectory: List<TrajectoryPoint> = emptyList(),

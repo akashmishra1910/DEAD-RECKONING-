@@ -3,30 +3,46 @@ package org.isro.idr.theme
 import androidx.compose.ui.graphics.Color
 
 /**
- * Premium Dark Aerospace & Automotive Navigation Design Tokens for ISRO IDR.
- * Spec:
- * - Shell Backgrounds: #06111F, #0B1B2B, #10263A, #17324A
- * - ISRO Brand: #FF8A00
- * - GNSS: #1688FF
- * - DR Active: #FF7A00
- * - Recovery: #00B8FF
- * - Success: #18D47B
- * - Warning: #FFB020
- * - Error: #FF4F5E
+ * Premium Aerospace & Automotive Navigation Design Tokens for ISRO IDR.
+ * Supports both Dynamic Dark Mode and Day/Light Mode.
  */
 object IdrColors {
-    // Aerospace Shell Hierarchy
-    val Background = Color(0xFF06111F)        // Deepest Cosmic Navy Background
-    val Surface = Color(0xFF0B1B2B)           // Primary Card & Panel Surface
-    val SurfaceElevated = Color(0xFF10263A)   // Elevated Cards, Modals & Floating HUDs
-    val SurfaceHighlight = Color(0xFF17324A)  // Active Elements, Borders, Selected Chips
-    val SurfaceMuted = Color(0xFF0B1B2B)      // Sub-surface muted
-    val SurfaceSubtle = Color(0xFF0B1B2B)     // Sub-surface subtle
-    val CardBorder = Color(0xFF17324A)        // Subtle Aerospace Border
-    val CardBorderSubtle = Color(0xFF0F273D)  // Divider & Grid Line
-    val CardBorderFocused = Color(0xFF1688FF) // Highlight Border
+    // Dark Theme Hierarchy
+    val BackgroundDark = Color(0xFF06111F)        // Deep Cosmic Navy
+    val SurfaceDark = Color(0xFF0B1B2B)           // Primary Card & Panel Surface
+    val SurfaceElevatedDark = Color(0xFF10263A)   // Elevated Cards & Floating HUDs
+    val SurfaceHighlightDark = Color(0xFF17324A)  // Active Elements & Borders
+    val TextPrimaryDark = Color(0xFFF1F5F9)       // Crisp White-Silver
+    val TextSecondaryDark = Color(0xFF94A3B8)     // Subtitle Muted Silver
+    val CardBorderDark = Color(0xFF17324A)
 
-    // Primary Brand & Mode Colors
+    // Light Theme Hierarchy
+    val BackgroundLight = Color(0xFFF8FAFC)       // Crisp Light Slate
+    val SurfaceLight = Color(0xFFFFFFFF)          // Clean White Card
+    val SurfaceElevatedLight = Color(0xFFF1F5F9)  // Elevated Surface
+    val SurfaceHighlightLight = Color(0xFFE2E8F0) // Subtle Slate Highlight
+    val TextPrimaryLight = Color(0xFF0F172A)      // Deep Slate Navy Text
+    val TextSecondaryLight = Color(0xFF475569)    // Secondary Slate Text
+    val CardBorderLight = Color(0xFFCBD5E1)
+
+    // Default Dynamic Proxies (Default to Dark Theme Tokens for backward compatibility)
+    var Background = BackgroundDark
+    var Surface = SurfaceDark
+    var SurfaceElevated = SurfaceElevatedDark
+    var SurfaceHighlight = SurfaceHighlightDark
+    var SurfaceMuted = SurfaceDark
+    var SurfaceSubtle = SurfaceDark
+    var CardBorder = CardBorderDark
+    var CardBorderSubtle = Color(0xFF0F273D)
+    var CardBorderFocused = Color(0xFF1688FF)
+    var TextPrimary = TextPrimaryDark
+    var TextSecondary = TextSecondaryDark
+    var TextTertiary = Color(0xFF64748B)
+    var SlateMuted = Color(0xFF94A3B8)
+    var TextOnDark = Color(0xFFFFFFFF)
+    var NavyDarkest = Color(0xFF06111F)
+
+    // Primary Brand & Mode Tokens (Consistent across themes)
     val IsroSaffron = Color(0xFFFF8A00)       // ISRO Brand Orange
     val SaffronPrimary = Color(0xFFFF8A00)
     val SaffronLight = Color(0xFFFFAB40)
@@ -50,13 +66,13 @@ object IdrColors {
     val MapPurpleDim = Color(0x26A855F7)
 
     // Status Semantic Tokens
-    val StatusGreen = Color(0xFF18D47B)       // Healthy / Active Fix / 60 FPS
+    val StatusGreen = Color(0xFF18D47B)       // Healthy / Active Fix
     val StatusGreenDim = Color(0x2618D47B)
     val StatusGreenText = Color(0xFF18D47B)
     val StatusGreenBg = Color(0x1F18D47B)
     val StatusGreenDark = Color(0xFF18D47B)
 
-    val StatusAmber = Color(0xFFFFB020)       // Searching / Degraded / Warning
+    val StatusAmber = Color(0xFFFFB020)       // Searching / Degraded
     val StatusAmberDim = Color(0x26FFB020)
     val StatusAmberText = Color(0xFFFFB020)
     val StatusAmberBg = Color(0x1FFFB020)
@@ -80,14 +96,6 @@ object IdrColors {
     val StatusNeutralDim = Color(0x1E64748B)
     val StatusNeutralText = Color(0xFF94A3B8)
 
-    // Typography & Content
-    val TextPrimary = Color(0xFFF1F5F9)       // Crisp White-Silver (Slate 100)
-    val TextSecondary = Color(0xFF94A3B8)     // Subtitle Muted Silver (Slate 400)
-    val TextTertiary = Color(0xFF64748B)      // Hint & Footnote Slate (Slate 500)
-    val SlateMuted = Color(0xFF94A3B8)
-    val TextOnDark = Color(0xFFFFFFFF)        // Pure White
-    val NavyDarkest = Color(0xFF06111F)
-
     // Map & Trajectory Visualization Tokens
     val MapCanvasBg = Color(0xFF06111F)
     val MapGridLine = Color(0xFF0B1B2B)
@@ -97,13 +105,11 @@ object IdrColors {
     val MapRoadOutline = Color(0xFF17324A)
     val MapRoadSurface = Color(0xFFE2E8F0)
     val MapSelectedRoad = Color(0xFFFF8A00)
-
-    val TrajectoryGnss = Color(0xFF1688FF)    // GNSS Trajectory (Electric Blue)
-    val TrajectoryIdr = Color(0xFFFF7A00)     // Raw IDR DR Trajectory (Vivid Saffron)
-    val TrajectoryMap = Color(0xFFA855F7)     // Map Matched Trajectory (Royal Purple)
-    val TrajectoryMapAided = Color(0xFFA855F7)
-
-    val VehicleMarker = Color(0xFFFF8A00)     // Directional Chevron
-    val VehicleOutline = Color(0xFFFFFFFF)    // Crisp White Outline
-    val VehicleHeadingCone = Color(0x33FF8A00)// Translucent 30° Forward Beam
+    val MapMatchedCyan = Color(0xFF00E5FF)
+    val GroundRoadColor = Color(0xFF64748B)
+    val FlyoverRoadColor = Color(0xFFFF8A00)
+    val TunnelRoadColor = Color(0xFF9333EA)
+    val WaterBodyColor = Color(0xFF0C2B4E)
+    val LanduseParkColor = Color(0xFF0D2818)
+    val Building3dColor = Color(0xFF1E3A5F)
 }

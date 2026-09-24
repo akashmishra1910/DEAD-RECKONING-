@@ -17,10 +17,16 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -31,13 +37,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.isro.idr.theme.IdrColors
 import org.isro.idr.theme.IdrTypography
+import org.isro.idr.ui.map.TileCacheManager
 import org.isro.idr.ui.state.NavigationUiState
 import org.isro.idr.ui.state.SubScreen
 
 /**
- * Screen 12: Settings & Preferences.
- * Configures Navigation preferences, Map Appearance, Units & Display,
- * Offline Maps storage, and Subsystem links.
+ * Screen 12: Interactive Settings & Preferences.
  */
 @Composable
 fun SettingsScreen(
@@ -49,6 +54,13 @@ fun SettingsScreen(
     onOpenSubScreen: (SubScreen) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var followVehicle by remember { mutableStateOf(uiState.followVehicle) }
+    var headingUp by remember { mutableStateOf(uiState.headingUpMode) }
+    var show3d by remember { mutableStateOf(uiState.show3dBuildings) }
+    var twoWheelerMode by remember { mutableStateOf(false) }
+    var navicAiding by remember { mutableStateOf(true) }
+    var cacheClearedMessage by remember { mutableStateOf(false) }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -59,7 +71,7 @@ fun SettingsScreen(
     ) {
         // Header
         Text(
-            text = "Settings",
+            text = "Settings & Configuration",
             style = IdrTypography.titleLarge.copy(fontSize = 18.sp, fontWeight = FontWeight.Bold),
             color = Color.White
         )
@@ -70,8 +82,8 @@ fun SettingsScreen(
                 .fillMaxWidth()
                 .shadow(8.dp, RoundedCornerShape(14.dp))
                 .clip(RoundedCornerShape(14.dp))
-                .background(IdrColors.Surface)
-                .border(1.2.dp, IdrColors.CardBorder, RoundedCornerShape(14.dp))
+                .background(Color(0xFF0D2238))
+                .border(1.2.dp, Color(0xFF1E3A5A), RoundedCornerShape(14.dp))
                 .padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
@@ -97,37 +109,105 @@ fun SettingsScreen(
             }
         }
 
-        // Section 1: Navigation Preferences
-        SettingsSectionCard(title = "Navigation") {
-            SettingsToggleRow("Follow Vehicle", uiState.followVehicle, onFollowVehicleToggled)
-            SettingsToggleRow("Heading Up Mode", uiState.headingUpMode, onHeadingUpToggled)
-            SettingsToggleRow("Show 3D Buildings", uiState.show3dBuildings, on3dBuildingsToggled)
-            SettingsToggleRow("Auto Recenter", uiState.autoRecenter, onAutoRecenterToggled)
-        }
+        // Section 1: Navigation & Estimator Modes
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .shadow(8.dp, RoundedCornerShape(14.dp))
+                .clip(RoundedCornerShape(14.dp))
+                .background(Color(0xFF0D2238))
+                .border(1.2.dp, Color(0xFF1E3A5A), RoundedCornerShape(14.dp))
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(
+                text = "Navigation & Estimator Modes",
+                style = IdrTypography.titleMedium.copy(fontSize = 13.sp, fontWeight = FontWeight.Bold),
+                color = Color.White
+            )
 
-        // Section 2: Map Appearance
-        SettingsSectionCard(title = "Map Appearance") {
-            SettingsValueRow("Theme", "Dark Aerospace")
-            SettingsValueRow("Map Style", uiState.mapStyle.label)
-            SettingsValueRow("Building Height", "Real Footprint (OSM)")
-            SettingsValueRow("Show Terrain", "Enabled")
-        }
-
-        // Section 3: Units & Display
-        SettingsSectionCard(title = "Units & Display") {
-            SettingsValueRow("Speed Unit", uiState.speedUnit)
-            SettingsValueRow("Distance Unit", uiState.distanceUnit)
-            SettingsValueRow("Coordinate Format", uiState.coordinateFormat)
-        }
-
-        // Section 4: Offline Maps & Data
-        SettingsSectionCard(title = "Offline Maps & Storage") {
-            SettingsActionRow("Manage Offline Regions", "8 packs available") {
-                onOpenSubScreen(SubScreen.OFFLINE_MAPS_MANAGER)
+            SettingsSwitchRow("Auto-Follow Vehicle Cursor", followVehicle) {
+                followVehicle = it
+                onFollowVehicleToggled(it)
             }
-            SettingsActionRow("Storage Settings", "1.74 GB used") {
-                onOpenSubScreen(SubScreen.OFFLINE_MAPS_MANAGER)
+            SettingsSwitchRow("Course-Up (Heading Rotation)", headingUp) {
+                headingUp = it
+                onHeadingUpToggled(it)
             }
+            SettingsSwitchRow("3D Extruded Buildings Layer", show3d) {
+                show3d = it
+                on3dBuildingsToggled(it)
+            }
+            SettingsSwitchRow("Two-Wheeler Lean Compensation", twoWheelerMode) {
+                twoWheelerMode = it
+            }
+            SettingsSwitchRow("NavIC (IRNSS) Constellation Aiding", navicAiding) {
+                navicAiding = it
+            }
+        }
+
+        // Section 2: Storage & Cache Management
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .shadow(8.dp, RoundedCornerShape(14.dp))
+                .clip(RoundedCornerShape(14.dp))
+                .background(Color(0xFF0D2238))
+                .border(1.2.dp, Color(0xFF1E3A5A), RoundedCornerShape(14.dp))
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(
+                text = "Map Tile & Vector Storage",
+                style = IdrTypography.titleMedium.copy(fontSize = 13.sp, fontWeight = FontWeight.Bold),
+                color = Color.White
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(text = "Cached Offline Tiles", fontSize = 12.sp, color = Color.White)
+                    Text(
+                        text = String.format("%.2f MB stored locally", TileCacheManager.getCacheSizeMb()),
+                        fontSize = 10.sp,
+                        color = Color(0xFF94A3B8)
+                    )
+                }
+
+                Button(
+                    onClick = {
+                        TileCacheManager.clearCache()
+                        cacheClearedMessage = true
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF17324A)),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        text = if (cacheClearedMessage) "Cleared ✓" else "Clear Cache",
+                        fontSize = 11.sp,
+                        color = if (cacheClearedMessage) Color(0xFF18D47B) else Color.White
+                    )
+                }
+            }
+        }
+
+        // Section 3: About & PS Attribution
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .shadow(8.dp, RoundedCornerShape(14.dp))
+                .clip(RoundedCornerShape(14.dp))
+                .background(Color(0xFF0D2238))
+                .border(1.2.dp, Color(0xFF1E3A5A), RoundedCornerShape(14.dp))
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text(text = "ISRO IDR • Version 2.4.0 (Production)", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            Text(text = "SIH PS 26168: AI-ML Based Intelligent Dead Reckoning System", fontSize = 10.sp, color = Color(0xFFFFAB40))
+            Text(text = "Mentored by SAC / ISRO (Apurv Vasal, Singamaneni Anusha, Ashutosh Dutt)", fontSize = 10.sp, color = Color(0xFF94A3B8))
         }
     }
 }
@@ -142,99 +222,42 @@ private fun SubsystemQuickButton(
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(10.dp))
-            .background(Color(0xFF10263A))
-            .border(1.dp, Color(0xFF17324A), RoundedCornerShape(10.dp))
-            .clickable { onClick() }
+            .background(Color(0xFF17324A))
+            .clickable(onClick = onClick)
             .padding(vertical = 10.dp, horizontal = 6.dp),
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(text = icon, fontSize = 18.sp)
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = title,
-                style = IdrTypography.labelSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.SemiBold),
-                color = Color.White
-            )
+            Text(text = icon, fontSize = 16.sp)
+            Spacer(modifier = Modifier.height(3.dp))
+            Text(text = title, fontSize = 10.sp, color = Color.White, fontWeight = FontWeight.SemiBold)
         }
     }
 }
 
 @Composable
-private fun SettingsSectionCard(
+private fun SettingsSwitchRow(
     title: String,
-    content: @Composable () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .shadow(6.dp, RoundedCornerShape(14.dp))
-            .clip(RoundedCornerShape(14.dp))
-            .background(IdrColors.Surface)
-            .border(1.2.dp, IdrColors.CardBorder, RoundedCornerShape(14.dp))
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Text(
-            text = title,
-            style = IdrTypography.titleMedium.copy(fontSize = 13.sp, fontWeight = FontWeight.Bold),
-            color = Color.White
-        )
-        content()
-    }
-}
-
-@Composable
-private fun SettingsToggleRow(
-    title: String,
-    isChecked: Boolean,
+    checked: Boolean,
     onCheckedChange: (Boolean) -> Unit
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(text = title, style = IdrTypography.bodyMedium.copy(fontSize = 12.sp), color = Color.White)
-        Switch(
-            checked = isChecked,
-            onCheckedChange = onCheckedChange,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = Color.White,
-                checkedTrackColor = Color(0xFF1688FF),
-                uncheckedThumbColor = Color(0xFF94A3B8),
-                uncheckedTrackColor = Color(0xFF10263A)
-            )
-        )
-    }
-}
-
-@Composable
-private fun SettingsValueRow(label: String, value: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(text = label, style = IdrTypography.bodySmall.copy(fontSize = 12.sp), color = Color(0xFF94A3B8))
-        Text(text = value, style = IdrTypography.bodyMedium.copy(fontSize = 12.sp, fontWeight = FontWeight.Bold), color = Color.White)
-    }
-}
-
-@Composable
-private fun SettingsActionRow(label: String, subtitle: String, onClick: () -> Unit) {
-    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }
             .padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Column {
-            Text(text = label, style = IdrTypography.bodyMedium.copy(fontSize = 12.sp), color = Color.White)
-            Text(text = subtitle, style = IdrTypography.labelSmall.copy(fontSize = 10.sp), color = Color(0xFF64748B))
-        }
-        Text(text = "›", fontSize = 18.sp, color = Color(0xFF94A3B8), fontWeight = FontWeight.Bold)
+        Text(text = title, fontSize = 12.sp, color = Color.White)
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Color.White,
+                checkedTrackColor = Color(0xFFFF8A00),
+                uncheckedThumbColor = Color(0xFF64748B),
+                uncheckedTrackColor = Color(0xFF17324A)
+            )
+        )
     }
 }

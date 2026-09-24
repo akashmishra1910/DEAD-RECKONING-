@@ -73,21 +73,21 @@ fun TrajectoryToggleControls(
                 TrajectoryChip(
                     label = "DR ($idrPointCount)",
                     isSelected = currentMode == TrajectoryDisplayMode.IDR_ONLY,
-                    accentColor = IdrColors.TrajectoryIdr,
+                    accentColor = IdrColors.DrOrange,
                     onClick = { onModeSelected(TrajectoryDisplayMode.IDR_ONLY) }
                 )
 
                 TrajectoryChip(
                     label = "GNSS ($gnssPointCount)",
                     isSelected = currentMode == TrajectoryDisplayMode.GNSS_ONLY,
-                    accentColor = IdrColors.TrajectoryGnss,
+                    accentColor = IdrColors.GnssBlue,
                     onClick = { onModeSelected(TrajectoryDisplayMode.GNSS_ONLY) }
                 )
 
                 TrajectoryChip(
                     label = "MAP ($mapAidedPointCount)",
                     isSelected = currentMode == TrajectoryDisplayMode.MAP_AIDED,
-                    accentColor = IdrColors.TrajectoryMap,
+                    accentColor = IdrColors.MapPurple,
                     onClick = { onModeSelected(TrajectoryDisplayMode.MAP_AIDED) }
                 )
 

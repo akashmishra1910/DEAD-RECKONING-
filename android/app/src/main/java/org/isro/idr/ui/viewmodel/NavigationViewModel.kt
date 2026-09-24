@@ -629,6 +629,31 @@ class NavigationViewModel(
         }
     }
 
+    fun startNavigationToPoi(title: String, lat: Double, lon: Double) {
+        _uiState.update { current ->
+            current.copy(
+                selectedScreen = ScreenTab.NAVIGATION,
+                activeSubScreen = SubScreen.NONE,
+                selectedRoadName = title,
+                nextTurnDistanceMeters = 280,
+                nextTurnDirection = "In 280m, Head towards $title"
+            )
+        }
+    }
+
+    fun toggleOutageSimulation() {
+        val willBeOutage = !_uiState.value.isDrActive
+        _uiState.update { current ->
+            current.copy(
+                isDrActive = willBeOutage,
+                isGnssOutage = willBeOutage,
+                isGnssReacquired = !willBeOutage,
+                outageDurationSec = if (willBeOutage) 1.0 else 0.0,
+                navigationMode = if (willBeOutage) NavigationMode.DR_ONLY else NavigationMode.GNSS_AIDED
+            )
+        }
+    }
+
     // Settings
     fun toggleFollowVehicle(enabled: Boolean) {
         _uiState.update { it.copy(followVehicle = enabled) }

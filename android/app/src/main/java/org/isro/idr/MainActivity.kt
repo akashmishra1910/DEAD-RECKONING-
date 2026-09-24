@@ -244,7 +244,8 @@ private fun MainApplicationShell(
                                 onToggleNorthUp = { viewModel.toggleNorthUp() },
                                 onResetMap = { viewModel.resetMap() },
                                 onOpenDiagnostics = { viewModel.setSelectedScreen(ScreenTab.DIAGNOSTICS) },
-                                onOpenNavicSkyView = { viewModel.openSubScreen(SubScreen.GNSS_NAVIC_SKYVIEW) }
+                                onOpenNavicSkyView = { viewModel.openSubScreen(SubScreen.GNSS_NAVIC_SKYVIEW) },
+                                onSimulateOutageToggle = { viewModel.toggleOutageSimulation() }
                             )
                         }
                         ScreenTab.MAP_EXPLORER -> {
@@ -256,6 +257,9 @@ private fun MainApplicationShell(
                                 onToggle3dBuildings = { viewModel.toggle3dBuildingsLayer(it) },
                                 onToggleLandmarks = { viewModel.toggleLandmarksLayer(it) },
                                 onToggleWater = { viewModel.toggleRiversWaterLayer(it) },
+                                onStartNavigationToPoi = { poi ->
+                                    viewModel.startNavigationToPoi(poi.title, poi.lat, poi.lon)
+                                },
                                 onZoomIn = { viewModel.zoomIn() },
                                 onZoomOut = { viewModel.zoomOut() },
                                 onToggleNorthUp = { viewModel.toggleNorthUp() },
@@ -270,7 +274,8 @@ private fun MainApplicationShell(
                         ScreenTab.DIAGNOSTICS -> {
                             DiagnosticsScreen(
                                 uiState = uiState,
-                                onOpenSubScreen = { viewModel.openSubScreen(it) }
+                                onOpenSubScreen = { viewModel.openSubScreen(it) },
+                                onSimulateOutageToggle = { viewModel.toggleOutageSimulation() }
                             )
                         }
                         ScreenTab.SETTINGS -> {

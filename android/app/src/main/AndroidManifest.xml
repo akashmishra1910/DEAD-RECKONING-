@@ -13,6 +13,7 @@
     <application
         android:allowBackup="true"
         android:label="ISRO IDR"
+        android:theme="@style/Theme.IdrNavigation"
         android:icon="@drawable/ic_launcher_idr"
         android:roundIcon="@drawable/ic_launcher_idr_round"
         android:supportsRtl="true">

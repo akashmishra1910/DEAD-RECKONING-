@@ -41,11 +41,13 @@ fun MainNavigationScreen(
     onResetMap: (() -> Unit)? = null,
     onOpenDiagnostics: (() -> Unit)? = null,
     onOpenNavicSkyView: (() -> Unit)? = null,
+    onSimulateOutageToggle: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val speedKmh = (uiState.telemetry?.speedKmh ?: (uiState.gnssStatus.speedMps * 3.6)).coerceAtLeast(0.0)
     val headingDeg = uiState.telemetry?.headingDeg ?: uiState.gnssStatus.bearingDeg
-    val isDrMode = uiState.isDrActive || !uiState.gnssStatus.fixValid
+    val isSearching = uiState.gnssStatus.isSearching && !uiState.gnssStatus.fixValid
+    val isDrMode = uiState.isDrActive || (!uiState.gnssStatus.fixValid && !isSearching)
     val accuracyOrError = if (isDrMode) {
         (uiState.outageDurationSec * 0.08 + 4.2).coerceIn(4.2, 35.0)
     } else {
@@ -95,7 +97,8 @@ fun MainNavigationScreen(
                 isDrActive = isDrMode,
                 isGnssReacquired = uiState.isGnssReacquired,
                 gnssStatus = uiState.gnssStatus,
-                outageDurationSec = uiState.outageDurationSec
+                outageDurationSec = uiState.outageDurationSec,
+                onSimulateOutageToggle = onSimulateOutageToggle
             )
         }
 

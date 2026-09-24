@@ -267,7 +267,8 @@ private fun MainApplicationShell(
                         }
                         ScreenTab.DIAGNOSTICS -> {
                             DiagnosticsScreen(
-                                uiState = uiState
+                                uiState = uiState,
+                                onOpenSubScreen = { viewModel.openSubScreen(it) }
                             )
                         }
                         ScreenTab.SETTINGS -> {

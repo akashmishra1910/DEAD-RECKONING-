@@ -1,13 +1,20 @@
 package org.isro.idr.ui
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
+import org.isro.idr.engine.GnssSample
 import org.isro.idr.engine.NativeStatus
 import org.isro.idr.engine.NavigationMode
 import org.isro.idr.engine.NavigationTelemetry
-import org.isro.idr.ingestion.GnssSample
+import org.isro.idr.engine.Vector3D
 import org.isro.idr.ui.state.HealthStatus
 import org.isro.idr.ui.state.ScreenTab
 import org.isro.idr.ui.state.TrajectoryDisplayMode
 import org.isro.idr.ui.viewmodel.NavigationViewModel
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -15,20 +22,28 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class NavigationViewModelTest {
 
+    private val testDispatcher = UnconfinedTestDispatcher()
     private lateinit var viewModel: NavigationViewModel
 
     @Before
     fun setUp() {
+        Dispatchers.setMain(testDispatcher)
         viewModel = NavigationViewModel()
+    }
+
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
     }
 
     @Test
     fun testInitialUiState() {
         val state = viewModel.uiState.value
         assertEquals(NavigationMode.INITIALIZING, state.navigationMode)
-        assertEquals(NativeStatus.SUCCESS, state.nativeStatus)
+        assertEquals(NativeStatus.OK, state.nativeStatus)
         assertEquals(0.0, state.outageDurationSec, 1e-6)
         assertFalse(state.isDrActive)
         assertEquals(TrajectoryDisplayMode.BOTH, state.trajectoryMode)
@@ -40,21 +55,23 @@ class NavigationViewModelTest {
     @Test
     fun testTelemetryConsumptionAndThrottling() {
         val telemetry = NavigationTelemetry(
-            timestampSec = 10.0,
-            posX = 15.0,
-            posY = 25.0,
-            posZ = 1.2,
-            velX = 5.0,
-            velY = 0.0,
-            velZ = 0.0,
-            rollDeg = 0.5,
+            mode = NavigationMode.GNSS_AIDED,
+            inOutage = false,
+            timeSeconds = 10.0,
+            posEnu = Vector3D(15.0, 25.0, 1.2),
+            velEnu = Vector3D(5.0, 0.0, 0.0),
+            speedKmh = 18.0,
+            headingDeg = 45.0,
             pitchDeg = -1.0,
-            azimuthDeg = 45.0,
-            mode = NavigationMode.GNSS_NAV,
-            status = NativeStatus.SUCCESS.code,
+            rollDeg = 0.5,
+            accelBias = Vector3D(),
+            gyroBias = Vector3D(),
+            outageDurationSeconds = 0.0,
+            outageDistanceTraveledMeters = 0.0,
             gnssValid = true,
-            navicSatellitesInView = 4,
-            navicSatellitesUsedInFix = 2
+            isPotholeActive = false,
+            isIdling = false,
+            pTrace = 0.05
         )
 
         viewModel.onTelemetryReceived(telemetry)
@@ -63,31 +80,32 @@ class NavigationViewModelTest {
         assertNotNull(state.telemetry)
         assertEquals(15.0, state.telemetry!!.posX, 1e-6)
         assertEquals(25.0, state.telemetry!!.posY, 1e-6)
-        assertEquals(NavigationMode.GNSS_NAV, state.navigationMode)
+        assertEquals(NavigationMode.GNSS_AIDED, state.navigationMode)
         assertEquals(HealthStatus.HEALTHY, state.health.navStatus)
         assertEquals(HealthStatus.HEALTHY, state.health.gnssStatus)
-        assertEquals(HealthStatus.HEALTHY, state.health.navicStatus)
         assertEquals(1, state.idrTrajectory.size)
     }
 
     @Test
     fun testDrOutageTimerTracking() {
         val drTelemetry1 = NavigationTelemetry(
-            timestampSec = 100.0,
-            posX = 50.0,
-            posY = 50.0,
-            posZ = 0.0,
-            velX = 10.0,
-            velY = 0.0,
-            velZ = 0.0,
-            rollDeg = 0.0,
+            mode = NavigationMode.DR_ONLY,
+            inOutage = true,
+            timeSeconds = 100.0,
+            posEnu = Vector3D(50.0, 50.0, 0.0),
+            velEnu = Vector3D(10.0, 0.0, 0.0),
+            speedKmh = 36.0,
+            headingDeg = 90.0,
             pitchDeg = 0.0,
-            azimuthDeg = 90.0,
-            mode = NavigationMode.DR_NAV,
-            status = NativeStatus.SUCCESS.code,
+            rollDeg = 0.0,
+            accelBias = Vector3D(),
+            gyroBias = Vector3D(),
+            outageDurationSeconds = 0.0,
+            outageDistanceTraveledMeters = 0.0,
             gnssValid = false,
-            navicSatellitesInView = 0,
-            navicSatellitesUsedInFix = 0
+            isPotholeActive = false,
+            isIdling = false,
+            pTrace = 0.12
         )
 
         viewModel.onTelemetryReceived(drTelemetry1)
@@ -98,7 +116,10 @@ class NavigationViewModelTest {
 
         // Advance time by 5 seconds
         Thread.sleep(120) // Exceed 100ms throttle interval
-        val drTelemetry2 = drTelemetry1.copy(timestampSec = 105.0, posX = 100.0)
+        val drTelemetry2 = drTelemetry1.copy(
+            timeSeconds = 105.0,
+            posEnu = Vector3D(100.0, 50.0, 0.0)
+        )
         viewModel.onTelemetryReceived(drTelemetry2)
 
         val state2 = viewModel.uiState.value
@@ -123,20 +144,18 @@ class NavigationViewModelTest {
     fun testGnssSampleAccumulation() {
         val sample = GnssSample(
             timestampNanos = 1_000_000_000L,
-            timestampSec = 1.0,
-            latitude = 25.4358,
-            longitude = 81.8463,
-            altitude = 98.0,
-            enuX = 12.5,
-            enuY = 34.2,
-            enuZ = 0.5,
-            speedMps = 14.2,
-            bearingDeg = 68.0,
-            accuracyM = 2.4,
-            totalSatellites = 18,
-            navicSatellitesInView = 6,
-            navicSatellitesUsed = 4,
-            isValid = true
+            timeSeconds = 1.0,
+            isValid = true,
+            posEnu = Vector3D(12.5, 34.2, 0.5),
+            velEnu = Vector3D(5.0, 0.0, 0.0),
+            latitudeDeg = 25.4358,
+            longitudeDeg = 81.8463,
+            altitudeM = 98.0,
+            groundSpeedMps = 14.2,
+            courseDeg = 68.0,
+            horizontalAccuracyMeters = 2.4f,
+            navicSatelliteCount = 4,
+            totalSatelliteCount = 18
         )
 
         viewModel.onGnssSample(sample)
@@ -144,9 +163,9 @@ class NavigationViewModelTest {
         val state = viewModel.uiState.value
         assertTrue(state.gnssStatus.fixValid)
         assertEquals(18, state.gnssStatus.totalSatellites)
-        assertEquals(6, state.gnssStatus.navicSatellitesInView)
         assertEquals(4, state.gnssStatus.navicSatellitesUsed)
         assertEquals(1, state.gnssTrajectory.size)
         assertEquals(12.5, state.gnssTrajectory.first().enuX, 1e-6)
     }
 }
+

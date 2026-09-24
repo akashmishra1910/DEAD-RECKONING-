@@ -2,6 +2,7 @@ package org.isro.idr.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,6 +32,7 @@ import org.isro.idr.theme.IdrColors
 import org.isro.idr.theme.IdrTypography
 import org.isro.idr.ui.state.HealthStatus
 import org.isro.idr.ui.state.NavigationUiState
+import org.isro.idr.ui.state.SubScreen
 
 /**
  * Screen 11: System Diagnostics.
@@ -40,6 +42,7 @@ import org.isro.idr.ui.state.NavigationUiState
 @Composable
 fun DiagnosticsScreen(
     uiState: NavigationUiState,
+    onOpenSubScreen: ((SubScreen) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -74,11 +77,21 @@ fun DiagnosticsScreen(
                 color = Color.White
             )
 
-            HealthMetricRow("IMU Pipeline", String.format("%.1f Hz", uiState.sensorConsumedRateHz), HealthStatus.HEALTHY)
-            HealthMetricRow("GNSS / NavIC", "${uiState.gnssStatus.totalSatellites} sats", if (uiState.gnssStatus.fixValid) HealthStatus.HEALTHY else HealthStatus.SEARCHING)
+            HealthMetricRow(
+                title = "IMU Pipeline",
+                value = String.format("%.1f Hz", uiState.sensorConsumedRateHz),
+                status = HealthStatus.HEALTHY,
+                onClick = { onOpenSubScreen?.invoke(SubScreen.SENSOR_MONITOR) }
+            )
+            HealthMetricRow(
+                title = "GNSS / NavIC",
+                value = "${uiState.gnssStatus.totalSatellites} sats",
+                status = if (uiState.gnssStatus.fixValid) HealthStatus.HEALTHY else HealthStatus.SEARCHING,
+                onClick = { onOpenSubScreen?.invoke(SubScreen.GNSS_NAVIC_SKYVIEW) }
+            )
             HealthMetricRow("Estimator (ESKF)", "Running", HealthStatus.HEALTHY)
             HealthMetricRow("Map Matcher (HMM)", "${uiState.hypothesisCount} hyps", HealthStatus.HEALTHY)
-            HealthMetricRow("JNI / Native", "0.18 ms", HealthStatus.HEALTHY)
+            HealthMetricRow("JNI / Native", "${uiState.diagnostics?.lastStepDurationMicros ?: 180} µs", HealthStatus.HEALTHY)
             HealthMetricRow("Memory", "${uiState.memoryUsageMb} MB", HealthStatus.HEALTHY)
         }
 
@@ -134,7 +147,8 @@ fun DiagnosticsScreen(
 private fun HealthMetricRow(
     title: String,
     value: String,
-    status: HealthStatus
+    status: HealthStatus,
+    onClick: (() -> Unit)? = null
 ) {
     val statusColor = when (status) {
         HealthStatus.HEALTHY -> Color(0xFF18D47B)
@@ -144,7 +158,9 @@ private fun HealthMetricRow(
     }
 
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {

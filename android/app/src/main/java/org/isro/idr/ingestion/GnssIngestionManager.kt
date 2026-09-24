@@ -51,6 +51,7 @@ class GnssIngestionManager(
         private set
 
     var onGnssSampleListener: ((GnssSample) -> Unit)? = null
+    var onSatelliteStatusListener: ((List<org.isro.idr.ui.state.SatelliteInfo>) -> Unit)? = null
 
     val isGnssAvailable: Boolean
         get() = latestGnssSample?.let {
@@ -99,25 +100,47 @@ class GnssIngestionManager(
                         var navicUsed = 0
                         var totalInView = 0
                         var navicInView = 0
+                        val satList = mutableListOf<org.isro.idr.ui.state.SatelliteInfo>()
 
                         val count = status.satelliteCount
                         for (i in 0 until count) {
                             totalInView++
-                            val isNavic = status.getConstellationType(i) == GnssStatus.CONSTELLATION_IRNSS
+                            val constTypeInt = status.getConstellationType(i)
+                            val constType = when (constTypeInt) {
+                                GnssStatus.CONSTELLATION_GPS -> org.isro.idr.ui.state.ConstellationType.GPS
+                                GnssStatus.CONSTELLATION_IRNSS -> org.isro.idr.ui.state.ConstellationType.NAVIC
+                                GnssStatus.CONSTELLATION_GLONASS -> org.isro.idr.ui.state.ConstellationType.GLONASS
+                                GnssStatus.CONSTELLATION_GALILEO -> org.isro.idr.ui.state.ConstellationType.GALILEO
+                                GnssStatus.CONSTELLATION_BEIDOU -> org.isro.idr.ui.state.ConstellationType.BEIDOU
+                                else -> org.isro.idr.ui.state.ConstellationType.GPS
+                            }
+                            val isNavic = (constType == org.isro.idr.ui.state.ConstellationType.NAVIC)
                             if (isNavic) {
                                 navicInView++
                             }
-                            if (status.usedInFix(i)) {
+                            val inFix = status.usedInFix(i)
+                            if (inFix) {
                                 totalUsed++
                                 if (isNavic) {
                                     navicUsed++
                                 }
                             }
+                            satList.add(
+                                org.isro.idr.ui.state.SatelliteInfo(
+                                    svid = status.getSvid(i),
+                                    constellation = constType,
+                                    elevationDeg = status.getElevationDegrees(i),
+                                    azimuthDeg = status.getAzimuthDegrees(i),
+                                    snrDbHz = status.getCn0DbHz(i),
+                                    usedInFix = inFix
+                                )
+                            )
                         }
                         totalSatCount = totalUsed
                         totalInViewCount = totalInView
                         navicSatCount = navicUsed
                         navicInViewCount = navicInView
+                        onSatelliteStatusListener?.invoke(satList)
                     }
                 }
                 locationManager.registerGnssStatusCallback(gnssStatusCallback!!, mainHandler)

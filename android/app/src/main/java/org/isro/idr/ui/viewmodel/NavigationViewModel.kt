@@ -52,6 +52,7 @@ class NavigationViewModel(
     val uiState: StateFlow<NavigationUiState> = _uiState.asStateFlow()
 
     private val maxTrajectoryPoints = 1500
+    private val maxWaveformSamples = 100
     private var lastUiUpdateTimestampNanos = 0L
     private val minUiUpdateIntervalNanos = 100_000_000L // 100ms = 10 Hz UI rate
 
@@ -61,14 +62,37 @@ class NavigationViewModel(
     private val gnssPoints = ArrayDeque<TrajectoryPoint>(maxTrajectoryPoints)
     private val mapAidedPoints = ArrayDeque<TrajectoryPoint>(maxTrajectoryPoints)
 
+    private val accelWaveforms = ArrayDeque<org.isro.idr.ui.state.SensorWaveformSample>(maxWaveformSamples)
+    private val gyroWaveforms = ArrayDeque<org.isro.idr.ui.state.SensorWaveformSample>(maxWaveformSamples)
+    private val magWaveforms = ArrayDeque<org.isro.idr.ui.state.SensorWaveformSample>(maxWaveformSamples)
+    private val baroWaveforms = ArrayDeque<org.isro.idr.ui.state.SensorWaveformSample>(maxWaveformSamples)
+
+    private var tripStartTimestampMs: Long = System.currentTimeMillis()
+    private var tripDistanceMetersTotal: Double = 0.0
+    private var lastEnuX: Double? = null
+    private var lastEnuY: Double? = null
+    private var tripMaxSpeedKmhVal: Double = 0.0
+    private var prevNavMode: NavigationMode? = null
+    private val tripEventsList = mutableListOf<org.isro.idr.ui.state.TripEvent>()
+    private val tripDriftList = mutableListOf<org.isro.idr.ui.state.DriftPoint>()
+
     private var rawRoadGraph: RoadMapGraph? = null
 
     init {
         synchronizer?.onTelemetryListener = { telemetry ->
             onTelemetryReceived(telemetry)
         }
+        synchronizer?.onImuSampleListener = { imu ->
+            onImuSample(imu)
+        }
+        synchronizer?.onMagSampleListener = { mag ->
+            onMagSample(mag)
+        }
         gnssManager?.onGnssSampleListener = { sample ->
             onGnssSample(sample)
+        }
+        gnssManager?.onSatelliteStatusListener = { satellites ->
+            onSatelliteStatus(satellites)
         }
 
         // Periodic 10 Hz Diagnostics Ticker
@@ -276,6 +300,72 @@ class NavigationViewModel(
             GeoCoordinates.Wgs84Coordinate(it.anchorLatDeg, it.anchorLonDeg, it.anchorAltM)
         }
 
+        // Trip distance accumulation
+        if (lastEnuX != null && lastEnuY != null) {
+            val d = Math.hypot(currentEnuX - lastEnuX!!, currentEnuY - lastEnuY!!)
+            if (d in 0.001..50.0) {
+                tripDistanceMetersTotal += d
+            }
+        }
+        lastEnuX = currentEnuX
+        lastEnuY = currentEnuY
+
+        // Speed & Duration
+        val speedKmh = telemetry.speedKmh
+        if (speedKmh > tripMaxSpeedKmhVal) {
+            tripMaxSpeedKmhVal = speedKmh
+        }
+        val elapsedSec = ((System.currentTimeMillis() - tripStartTimestampMs) / 1000L).coerceAtLeast(1L)
+        val avgSpeedKmh = (tripDistanceMetersTotal / elapsedSec) * 3.6
+
+        // Mode transition events
+        if (prevNavMode != telemetry.mode) {
+            val timeFmt = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(java.util.Date())
+            when (telemetry.mode) {
+                NavigationMode.GNSS_AIDED, NavigationMode.GNSS_REACQUIRED -> {
+                    if (prevNavMode == NavigationMode.DR_ONLY || prevNavMode == NavigationMode.TRANSITION_TO_DR) {
+                        tripEventsList.add(0, org.isro.idr.ui.state.TripEvent(timeFmt, "GNSS reacquired", "GNSS_REACQUIRED"))
+                    } else {
+                        tripEventsList.add(0, org.isro.idr.ui.state.TripEvent(timeFmt, "GNSS Acquired", "GNSS_ACQUIRED"))
+                    }
+                }
+                NavigationMode.DR_ONLY, NavigationMode.TRANSITION_TO_DR -> {
+                    tripEventsList.add(0, org.isro.idr.ui.state.TripEvent(timeFmt, "GNSS lost - DR active", "DR_ACTIVE"))
+                }
+                else -> {}
+            }
+            if (telemetry.isMapConfidenceValid) {
+                tripEventsList.add(0, org.isro.idr.ui.state.TripEvent(timeFmt, "Map aided DR", "MAP_AIDED"))
+            }
+            prevNavMode = telemetry.mode
+        }
+
+        // Drift tracking
+        val gnssSample = gnssManager?.latestGnssSample
+        if (gnssSample != null && gnssSample.isValid) {
+            val drErr = Math.hypot(telemetry.posX - gnssSample.posEnu.x, telemetry.posY - gnssSample.posEnu.y).toFloat()
+            val mapErr = if (telemetry.isMapConfidenceValid) {
+                Math.hypot(telemetry.mapMatchedPosEnu.x - gnssSample.posEnu.x, telemetry.mapMatchedPosEnu.y - gnssSample.posEnu.y).toFloat()
+            } else drErr
+            val distKm = (tripDistanceMetersTotal / 1000.0).toFloat()
+            if (tripDriftList.isEmpty() || (distKm - tripDriftList.last().distanceKm) >= 0.05f) {
+                if (tripDriftList.size >= 50) tripDriftList.removeAt(0)
+                tripDriftList.add(
+                    org.isro.idr.ui.state.DriftPoint(
+                        distanceKm = distKm,
+                        gnssErrorM = 0.5f,
+                        rawDrErrorM = drErr,
+                        mapMatchedErrorM = mapErr
+                    )
+                )
+            }
+        }
+
+        val accelSnap = synchronized(accelWaveforms) { accelWaveforms.toList() }
+        val gyroSnap = synchronized(gyroWaveforms) { gyroWaveforms.toList() }
+        val magSnap = synchronized(magWaveforms) { magWaveforms.toList() }
+        val baroSnap = synchronized(baroWaveforms) { baroWaveforms.toList() }
+
         _uiState.update { current ->
             current.copy(
                 telemetry = telemetry,
@@ -299,7 +389,81 @@ class NavigationViewModel(
                 candidateCount = telemetry.candidateCount,
                 hypothesisCount = telemetry.hypothesisCount,
                 scoreMargin = telemetry.scoreMargin,
+                accelHistory = accelSnap,
+                gyroHistory = gyroSnap,
+                magHistory = magSnap,
+                baroHistory = baroSnap,
+                tripDistanceMeters = tripDistanceMetersTotal,
+                tripDurationSec = elapsedSec,
+                tripAvgSpeedKmh = avgSpeedKmh,
+                tripMaxSpeedKmh = tripMaxSpeedKmhVal,
+                tripEvents = tripEventsList.toList(),
+                tripDriftData = tripDriftList.toList(),
                 enuAnchor = anchor
+            )
+        }
+    }
+
+    fun onImuSample(imu: org.isro.idr.engine.ImuSample) {
+        val nowMs = System.currentTimeMillis()
+        synchronized(accelWaveforms) {
+            if (accelWaveforms.size >= maxWaveformSamples) accelWaveforms.removeFirst()
+            accelWaveforms.addLast(
+                org.isro.idr.ui.state.SensorWaveformSample(
+                    nowMs,
+                    imu.accel.x.toFloat(),
+                    imu.accel.y.toFloat(),
+                    imu.accel.z.toFloat()
+                )
+            )
+        }
+        synchronized(gyroWaveforms) {
+            if (gyroWaveforms.size >= maxWaveformSamples) gyroWaveforms.removeFirst()
+            gyroWaveforms.addLast(
+                org.isro.idr.ui.state.SensorWaveformSample(
+                    nowMs,
+                    imu.gyro.x.toFloat(),
+                    imu.gyro.y.toFloat(),
+                    imu.gyro.z.toFloat()
+                )
+            )
+        }
+        if (imu.baroAltMeters != null) {
+            val alt = imu.baroAltMeters.toFloat()
+            synchronized(baroWaveforms) {
+                if (baroWaveforms.size >= maxWaveformSamples) baroWaveforms.removeFirst()
+                baroWaveforms.addLast(
+                    org.isro.idr.ui.state.SensorWaveformSample(nowMs, alt, alt, alt)
+                )
+            }
+        }
+    }
+
+    fun onMagSample(mag: org.isro.idr.engine.MagnetometerSample) {
+        val nowMs = System.currentTimeMillis()
+        synchronized(magWaveforms) {
+            if (magWaveforms.size >= maxWaveformSamples) magWaveforms.removeFirst()
+            magWaveforms.addLast(
+                org.isro.idr.ui.state.SensorWaveformSample(
+                    nowMs,
+                    mag.magUteslas.x.toFloat(),
+                    mag.magUteslas.y.toFloat(),
+                    mag.magUteslas.z.toFloat()
+                )
+            )
+        }
+    }
+
+    fun onSatelliteStatus(satellites: List<org.isro.idr.ui.state.SatelliteInfo>) {
+        _uiState.update { current ->
+            current.copy(
+                gnssStatus = current.gnssStatus.copy(
+                    satellites = satellites,
+                    totalSatellitesInView = satellites.size,
+                    totalSatellites = satellites.count { it.usedInFix },
+                    navicSatellitesInView = satellites.count { it.constellation == org.isro.idr.ui.state.ConstellationType.NAVIC },
+                    navicSatellitesUsed = satellites.count { it.constellation == org.isro.idr.ui.state.ConstellationType.NAVIC && it.usedInFix }
+                )
             )
         }
     }
@@ -355,6 +519,7 @@ class NavigationViewModel(
                         navicSatellitesInView = gnssManager?.navicInViewCount ?: sample.navicSatelliteCount,
                         navicSatellitesUsed = sample.navicSatelliteCount
                     ),
+                    gnssTrajectory = synchronized(gnssPoints) { gnssPoints.toList() },
                     enuAnchor = anchor
                 )
             }

@@ -24,6 +24,8 @@ class NavigationPipelineSynchronizer(
     @Volatile private var latestMagSample: MagnetometerSample? = null
 
     var onTelemetryListener: ((NavigationTelemetry) -> Unit)? = null
+    var onImuSampleListener: ((ImuSample) -> Unit)? = null
+    var onMagSampleListener: ((MagnetometerSample) -> Unit)? = null
 
     init {
         // Hook direct listeners
@@ -32,10 +34,12 @@ class NavigationPipelineSynchronizer(
                 // Dequeue from imuQueue so the bounded queue stays clean (0..1 occupancy)
                 sensorManager.imuQueue.poll()
                 processSingleImuSample(imuSample)
+                onImuSampleListener?.invoke(imuSample)
             }
         }
         sensorManager.onMagSampleListener = { magSample ->
             latestMagSample = magSample
+            onMagSampleListener?.invoke(magSample)
         }
     }
 

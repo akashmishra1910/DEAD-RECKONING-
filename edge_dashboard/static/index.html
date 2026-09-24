@@ -204,11 +204,26 @@
     </div>
     <div class="header-badges">
       <div class="badge" id="badgeEngineState">ENGINE: INITIALIZING</div>
-      <div class="badge badge-green">PROFILE: EDGE_FOG</div>
+      <div class="badge badge-green" id="badgeProfile">PROFILE: EDGE_FOG</div>
       <div class="badge" id="badgeGnssState">GNSS: AVAILABLE</div>
       <div class="badge badge-green" id="badgeThroughput">3500 Hz CORE CAPABLE</div>
     </div>
   </header>
+
+  <!-- Input Profile & Sensor Source Selector Bar -->
+  <div style="background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 6px; padding: 10px 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span style="font-weight: 700; color: var(--text-muted); font-size: 11px; text-transform: uppercase;">INPUT PROFILE:</span>
+      <button id="btnProfileMobile" class="profile-btn" onclick="setInputProfile('MOBILE_REPLAY')">📱 MOBILE REPLAY</button>
+      <button id="btnProfileEdge" class="profile-btn btn-active" onclick="setInputProfile('EDGE_EXTERNAL_IMU')">⚡ EDGE EXTERNAL IMU</button>
+    </div>
+    <div style="display: flex; align-items: center; gap: 16px; font-size: 11px;">
+      <div><span style="color: var(--text-muted);">SOURCE:</span> <strong id="lblInputSource" style="color: var(--accent-cyan);">EXTERNAL IMU (Replay / Stream Adapter)</strong></div>
+      <div><span style="color: var(--text-muted);">FRAME:</span> <strong id="lblCoordFrame" style="color: var(--text-main);">body FLU (Forward-Left-Up)</strong></div>
+      <div><span style="color: var(--text-muted);">RATE:</span> <strong id="lblInputRate" style="color: var(--accent-green);">200.0 Hz</strong></div>
+      <div><span style="color: var(--accent-amber); font-weight: 600;" id="lblHwTestNotice">SOFTWARE EXTERNAL-IMU REPLAY (Hardware test pending)</span></div>
+    </div>
+  </div>
 
   <!-- Outage Alert Banner (hidden by default) -->
   <div id="outageBanner" class="outage-alert-banner hidden">
@@ -391,6 +406,25 @@
       bGnss.innerText = `GNSS: ${isDenied ? 'DENIED' : 'AVAILABLE'}`;
       bGnss.className = `badge ${isDenied ? 'badge-red' : 'badge-green'}`;
 
+      // Input Profile & External IMU metadata
+      const btnMob = document.getElementById('btnProfileMobile');
+      const btnEdge = document.getElementById('btnProfileEdge');
+      if (d.input_profile === 'MOBILE_REPLAY') {
+        btnMob.classList.add('btn-active');
+        btnEdge.classList.remove('btn-active');
+        document.getElementById('lblHwTestNotice').innerText = 'SOFTWARE MOBILE REPLAY (Smartphone IMU)';
+      } else {
+        btnEdge.classList.add('btn-active');
+        btnMob.classList.remove('btn-active');
+        document.getElementById('lblHwTestNotice').innerText = 'SOFTWARE EXTERNAL-IMU REPLAY (Hardware test pending)';
+      }
+      document.getElementById('lblInputSource').innerText = d.input_source_desc || 'EXTERNAL IMU (Replay / Stream Adapter)';
+      document.getElementById('lblCoordFrame').innerText = d.coordinate_frame || 'body FLU (Forward-Left-Up)';
+      document.getElementById('lblInputRate').innerText = `${(d.measured_rate_hz || 200.0).toFixed(1)} Hz`;
+      if (document.getElementById('badgeProfile')) {
+        document.getElementById('badgeProfile').innerText = `PROFILE: ${d.profile}`;
+      }
+
       // Outage banner
       const banner = document.getElementById('outageBanner');
       if (d.in_outage) {
@@ -565,6 +599,10 @@
         body: JSON.stringify({ action, value })
       });
       pollState();
+    }
+
+    async function setInputProfile(profile) {
+      await sendControl('set_input_profile', profile);
     }
 
     async function setSpeed(mult) {

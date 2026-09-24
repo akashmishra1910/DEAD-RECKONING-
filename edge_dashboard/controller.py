@@ -35,6 +35,13 @@ class EdgeTestController:
         self.profile = "EDGE_FOG"
         self.platform = "SOFTWARE EDGE TEST"
 
+        # Input profile configuration
+        self.input_profile = "EDGE_EXTERNAL_IMU"
+        self.input_source_desc = "EXTERNAL IMU (Replay / Stream Adapter)"
+        self.coordinate_frame = "body FLU (Forward-Left-Up)"
+        self.validation_status = "VALIDATED (Replay / Stream Ingestion)"
+        self.measured_rate_hz = 200.0
+
         # Sensor availability & overrides
         self.gnss_denied_override = False
         self.imu_status = "STOPPED"
@@ -242,6 +249,35 @@ class EdgeTestController:
                 self.log_event("WARN", "GNSS DENIED simulated by user. Dead reckoning engaged.")
             else:
                 self.log_event("INFO", "GNSS RESTORED by user. Resuming GNSS aiding.")
+
+    def set_input_profile(self, profile: str):
+        """Switches between EDGE_EXTERNAL_IMU and MOBILE_REPLAY."""
+        with self.lock:
+            p_upper = profile.strip().upper()
+            if "MOBILE" in p_upper:
+                self.input_profile = "MOBILE_REPLAY"
+                self.profile = "MOBILE"
+                self.input_source_desc = "SMARTPHONE MEMS (IO-VNBD / Android)"
+                self.coordinate_frame = "phone body frame"
+                self.validation_status = "VALIDATED (IO-VNBD Ground Truth)"
+                self.measured_rate_hz = 100.0
+                cfg = NavigationProfileConfig.mobile_defaults()
+                cfg.target_update_rate_hz = 10.0
+                cfg.imu_sample_rate_hz = 100.0
+                self.engine.initialize(cfg)
+                self.log_event("INFO", "Switched input profile to MOBILE REPLAY (Smartphone MEMS)")
+            else:
+                self.input_profile = "EDGE_EXTERNAL_IMU"
+                self.profile = "EDGE_FOG"
+                self.input_source_desc = "EXTERNAL IMU (Replay / Stream Adapter)"
+                self.coordinate_frame = "body FLU (Forward-Left-Up)"
+                self.validation_status = "VALIDATED (Replay / Stream Ingestion)"
+                self.measured_rate_hz = 200.0
+                cfg = NavigationProfileConfig.edge_fog_defaults()
+                cfg.target_update_rate_hz = 200.0
+                cfg.imu_sample_rate_hz = 200.0
+                self.engine.initialize(cfg)
+                self.log_event("INFO", "Switched input profile to EDGE EXTERNAL IMU (Tactical / FOG)")
 
     def set_replay_speed(self, multiplier: float):
         """Sets replay speed multiplier (1x, 2x, 5x, 10x)."""
@@ -618,6 +654,11 @@ class EdgeTestController:
             return {
                 "engine_status": self.engine_state,
                 "profile": self.profile,
+                "input_profile": self.input_profile,
+                "input_source_desc": self.input_source_desc,
+                "coordinate_frame": self.coordinate_frame,
+                "validation_status": self.validation_status,
+                "measured_rate_hz": self.measured_rate_hz,
                 "platform": self.platform,
                 "navigation_mode": mode_str,
                 "in_outage": in_outage,

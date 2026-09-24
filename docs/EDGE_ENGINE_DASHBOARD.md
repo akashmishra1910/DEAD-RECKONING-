@@ -135,6 +135,20 @@ Displays a live grid of PASS/FAIL badges verifying that the dashboard is activel
 - **Raw Inspection:** Inspects the most recent sensor packet timestamps, specific force $[a_x, a_y, a_z]$, turn rates $[\omega_x, \omega_y, \omega_z]$, GNSS fix validity, and barometer altitude.
 - **Scrolling Event Log:** Chronological record of major engine events with timestamps.
 
+### 4.9 Input Profile Selector & External IMU Ingestion
+The dashboard features an interactive profile selector allowing real-time switching between ingestion modes:
+- **`[ MOBILE REPLAY ]`**:
+  - Profile: `NavigationProfile.MOBILE` (100 Hz IMU, 10 Hz navigation).
+  - Source: Smartphone MEMS (Android HAL / IO-VNBD schema).
+  - Coordinate Frame: Phone body frame.
+  - Status Notice: `SOFTWARE MOBILE REPLAY (Smartphone IMU)`.
+- **`[ EDGE EXTERNAL IMU ]`**:
+  - Profile: `NavigationProfile.EDGE_FOG` (200 Hz IMU & navigation).
+  - Source: External IMU (Replay / Stream Adapter via `ExternalImuReplayAdapter`).
+  - Coordinate Frame: Body FLU (Forward-Left-Up).
+  - Status Notice: `SOFTWARE EXTERNAL-IMU REPLAY (Hardware test pending)`.
+  - Dynamically updates measured input rate and frame metadata in the UI header.
+
 ---
 
 ## 5. Limitations & Unavailable Metrics
@@ -143,6 +157,8 @@ Displays a live grid of PASS/FAIL badges verifying that the dashboard is activel
 |---|---|---|
 | **High-Rate Software Timing** | **Available** | Directly measured via `std::chrono::high_resolution_clock` / `time.perf_counter()`. |
 | **Dead Reckoning Fusion Path** | **Available** | 15-state ESKF, 3D AI velocity update, ZARU, and ZUPT fully active. |
+| **External IMU Adapter Ingestion** | **Available** | Validated via `ExternalImuReplayAdapter` across 50, 100, and 200 Hz streams. |
 | **Physical FOG Bias Drift** | **N/A (Pending)** | Physical fiber-optic coil hardware not connected to development laptop. |
 | **Physical Temperature Stability** | **N/A (Pending)** | Requires thermal chamber testing on physical sensor chassis. |
 | **CAN / OBD-II Telemetry** | **N/A (Prohibited)** | Excluded by design under PS 26168 non-negotiable constraints. |
+

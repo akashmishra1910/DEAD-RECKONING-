@@ -390,17 +390,27 @@ class EdgeSensorAdapter:
     Adapter normalizing high-rate external / industrial / FOG sensors into Common SensorFrame.
     Applies explicit mounting rotations, scale factors, and bias calibrations.
     """
-    def __init__(self, calib: Optional[EdgeCalibrationConfig] = None, calibration: Optional[EdgeCalibrationConfig] = None):
+    def __init__(
+        self,
+        calib: Optional[EdgeCalibrationConfig] = None,
+        calibration: Optional[EdgeCalibrationConfig] = None,
+        nominal_rate_hz: float = 200.0,
+    ):
         self.calib = calib if calib is not None else (calibration if calibration is not None else EdgeCalibrationConfig())
         self.seq = 0
         self.last_timestamp_s = -1.0
         self.dropped_samples = 0
+        self.gap_count = 0
+        self.rejected_samples = 0
+        self.nominal_dt = 1.0 / max(1.0, float(nominal_rate_hz))
 
     @property
     def diagnostics(self) -> Dict[str, Any]:
         return {
             "total_samples": self.seq,
-            "dropped_packets": self.dropped_samples
+            "dropped_packets": self.dropped_samples,
+            "gap_count": self.gap_count,
+            "rejected_samples": self.rejected_samples,
         }
 
     def adapt_raw_imu(
@@ -422,6 +432,12 @@ class EdgeSensorAdapter:
             self.dropped_samples += 1
             return None  # Drop duplicate or out-of-order packet
 
+        # Gap detection (> 3 * nominal dt)
+        if self.last_timestamp_s >= 0:
+            dt = timestamp_s - self.last_timestamp_s
+            if self.nominal_dt > 0 and dt > 3.0 * self.nominal_dt:
+                self.gap_count += 1
+
         self.last_timestamp_s = timestamp_s
         self.seq += 1
 
@@ -433,6 +449,18 @@ class EdgeSensorAdapter:
         gyro_si = np.asarray(raw_gyro, dtype=float).copy()
         if gyro_in_deg_s:
             gyro_si = np.radians(gyro_si)
+
+        # Sanity check for non-finite values (NaN / Inf)
+        if not (np.all(np.isfinite(accel_si)) and np.all(np.isfinite(gyro_si))):
+            self.dropped_samples += 1
+            self.rejected_samples += 1
+            return None
+
+        # Physical sanity check for extreme values (> 200 m/s^2 or > 50 rad/s)
+        if np.any(np.abs(accel_si) > 200.0) or np.any(np.abs(gyro_si) > 50.0):
+            self.dropped_samples += 1
+            self.rejected_samples += 1
+            return None
 
         # Scale Factor and Bias Calibration
         accel_cal = (accel_si * self.calib.accel_scale_factor) - self.calib.accel_bias_b
@@ -457,7 +485,9 @@ class EdgeSensorAdapter:
             quality_flags={
                 "source": "EXTERNAL_FOG_IMU",
                 "adapter": "EdgeSensorAdapter",
-                "dropped_samples": self.dropped_samples
+                "dropped_samples": self.dropped_samples,
+                "gap_count": self.gap_count,
+                "rejected_samples": self.rejected_samples,
             }
         )
 
@@ -490,10 +520,236 @@ class EdgeSensorAdapter:
         )
 
 
+class ExternalImuReplayAdapter:
+    """
+    Dedicated replay and stream adapter for external / industrial / FOG IMU datasets.
+    Decoupled from smartphone schemas; supports generic external sensor logs:
+    - CSV files (with automatic or custom column mapping)
+    - Raw stream dictionaries or numpy arrays
+    - Optional sensor channels: GNSS, Barometer
+    - Physical unit conversions (g -> m/s^2, deg/s -> rad/s)
+    - Sensor-to-body mounting rotation R_s2b
+    - Scale factor and bias calibration
+    - Streaming to EdgeNavigationEngine via public API
+    - Ingestion quality checks (monotonicity, gaps, sanity clamping)
+    """
+    def __init__(
+        self,
+        calibration: Optional[EdgeCalibrationConfig] = None,
+        nominal_rate_hz: float = 200.0,
+        accel_in_g: bool = False,
+        gyro_in_deg_s: bool = False,
+    ):
+        self.calibration = calibration if calibration is not None else EdgeCalibrationConfig()
+        self.nominal_rate_hz = float(nominal_rate_hz)
+        self.accel_in_g = bool(accel_in_g)
+        self.gyro_in_deg_s = bool(gyro_in_deg_s)
+        self.sensor_adapter = EdgeSensorAdapter(self.calibration, nominal_rate_hz=self.nominal_rate_hz)
+        self.total_rows_read = 0
+        self.valid_frames_generated = 0
+
+    @classmethod
+    def create_fog_adapter(
+        cls,
+        nominal_rate_hz: float = 200.0,
+        R_sensor_to_body: Optional[np.ndarray] = None,
+        accel_in_g: bool = False,
+        gyro_in_deg_s: bool = False,
+    ) -> "ExternalImuReplayAdapter":
+        calib = EdgeCalibrationConfig(
+            R_sensor_to_body=R_sensor_to_body if R_sensor_to_body is not None else np.eye(3),
+        )
+        return cls(
+            calibration=calib,
+            nominal_rate_hz=nominal_rate_hz,
+            accel_in_g=accel_in_g,
+            gyro_in_deg_s=gyro_in_deg_s,
+        )
+
+    def adapt_sample(
+        self,
+        timestamp_s: float,
+        accel: np.ndarray,
+        gyro: np.ndarray,
+        baro_alt: Optional[float] = None,
+        gnss_pos: Optional[np.ndarray] = None,
+        gnss_vel: Optional[np.ndarray] = None,
+        gnss_valid: bool = False,
+        gnss_accuracy_m: float = 1.0,
+        fix_type: GnssFixType = GnssFixType.NO_FIX,
+    ) -> Optional[SensorFrame]:
+        self.total_rows_read += 1
+        frame = self.sensor_adapter.adapt_raw_imu(
+            timestamp_s=timestamp_s,
+            raw_accel=accel,
+            raw_gyro=gyro,
+            accel_in_g=self.accel_in_g,
+            gyro_in_deg_s=self.gyro_in_deg_s,
+            baro_alt=baro_alt,
+            gnss_pos=gnss_pos,
+            gnss_vel=gnss_vel,
+            gnss_valid=gnss_valid,
+            gnss_accuracy_m=gnss_accuracy_m,
+            fix_type=fix_type,
+        )
+        if frame is not None:
+            self.valid_frames_generated += 1
+        return frame
+
+    def load_from_arrays(
+        self,
+        time_s: np.ndarray,
+        accel: np.ndarray,
+        gyro: np.ndarray,
+        gnss_pos: Optional[np.ndarray] = None,
+        gnss_vel: Optional[np.ndarray] = None,
+        gnss_valid: Optional[np.ndarray] = None,
+        gnss_accuracy: Optional[np.ndarray] = None,
+        baro_alt: Optional[np.ndarray] = None,
+    ) -> List[SensorFrame]:
+        frames: List[SensorFrame] = []
+        N = len(time_s)
+        for i in range(N):
+            t = float(time_s[i])
+            a = accel[i]
+            g = gyro[i]
+            gp = gnss_pos[i] if gnss_pos is not None else None
+            gv = gnss_vel[i] if gnss_vel is not None else None
+            gval = bool(gnss_valid[i]) if gnss_valid is not None else False
+            gacc = float(gnss_accuracy[i]) if gnss_accuracy is not None else 1.0
+            ba = float(baro_alt[i]) if baro_alt is not None else None
+
+            frame = self.adapt_sample(
+                timestamp_s=t,
+                accel=a,
+                gyro=g,
+                baro_alt=ba,
+                gnss_pos=gp,
+                gnss_vel=gv,
+                gnss_valid=gval,
+                gnss_accuracy_m=gacc,
+                fix_type=GnssFixType.FIX_3D if gval else GnssFixType.NO_FIX,
+            )
+            if frame is not None:
+                frames.append(frame)
+        return frames
+
+    def load_from_csv(
+        self,
+        csv_path: str,
+        column_mapping: Optional[Dict[str, str]] = None,
+    ) -> List[SensorFrame]:
+        import pandas as pd
+        df = pd.read_csv(csv_path)
+        cols = {c.strip().lower(): c for c in df.columns}
+
+        def find_col(candidates: List[str]) -> Optional[str]:
+            for cand in candidates:
+                if cand.lower() in cols:
+                    return cols[cand.lower()]
+            return None
+
+        mapping = column_mapping or {}
+        time_col = mapping.get("time") or find_col(["timestamp_s", "time_s", "timestamp", "time", "time(s)", "t"])
+        ax_col = mapping.get("ax") or find_col(["accel_x", "ax", "acc_x", "accx(m/s^2)", "linear_acceleration_x"])
+        ay_col = mapping.get("ay") or find_col(["accel_y", "ay", "acc_y", "accy(m/s^2)", "linear_acceleration_y"])
+        az_col = mapping.get("az") or find_col(["accel_z", "az", "acc_z", "accz(m/s^2)", "linear_acceleration_z"])
+        gx_col = mapping.get("gx") or find_col(["gyro_x", "gx", "gyr_x", "gyrox(rad/s)", "angular_velocity_x"])
+        gy_col = mapping.get("gy") or find_col(["gyro_y", "gy", "gyr_y", "gyroy(rad/s)", "angular_velocity_y"])
+        gz_col = mapping.get("gz") or find_col(["gyro_z", "gz", "gyr_z", "gyroz(rad/s)", "angular_velocity_z"])
+
+        if not all([time_col, ax_col, ay_col, az_col, gx_col, gy_col, gz_col]):
+            raise ValueError(f"Missing required IMU columns in {csv_path}. Found columns: {list(df.columns)}")
+
+        pe_col = mapping.get("pos_e") or find_col(["gnss_e", "pos_e", "gnss_x", "gt_pos_e", "x_enu"])
+        pn_col = mapping.get("pos_n") or find_col(["gnss_n", "pos_n", "gnss_y", "gt_pos_n", "y_enu"])
+        pu_col = mapping.get("pos_u") or find_col(["gnss_u", "pos_u", "gnss_z", "gt_pos_u", "z_enu"])
+        ve_col = mapping.get("vel_e") or find_col(["gnss_ve", "vel_e", "gnss_vx", "vx_enu"])
+        vn_col = mapping.get("vel_n") or find_col(["gnss_vn", "vel_n", "gnss_vy", "vy_enu"])
+        vu_col = mapping.get("vel_u") or find_col(["gnss_vu", "vel_u", "gnss_vz", "vz_enu"])
+        val_col = mapping.get("gnss_valid") or find_col(["gnss_valid", "valid", "is_valid"])
+        acc_col = mapping.get("gnss_accuracy") or find_col(["gnss_accuracy_m", "accuracy_m", "accuracy", "hdop"])
+        baro_col = mapping.get("baro_alt") or find_col(["baro_alt_m", "baro_alt", "altitude_m", "altitude", "alt"])
+
+        has_gnss_pos = all([pe_col, pn_col, pu_col])
+        has_gnss_vel = all([ve_col, vn_col, vu_col])
+
+        time_arr = df[time_col].to_numpy(dtype=float)
+        accel_arr = df[[ax_col, ay_col, az_col]].to_numpy(dtype=float)
+        gyro_arr = df[[gx_col, gy_col, gz_col]].to_numpy(dtype=float)
+
+        gnss_pos_arr = df[[pe_col, pn_col, pu_col]].to_numpy(dtype=float) if has_gnss_pos else None
+        gnss_vel_arr = df[[ve_col, vn_col, vu_col]].to_numpy(dtype=float) if has_gnss_vel else None
+        gnss_val_arr = df[val_col].to_numpy(dtype=bool) if val_col else (np.ones(len(df), dtype=bool) if has_gnss_pos else None)
+        gnss_acc_arr = df[acc_col].to_numpy(dtype=float) if acc_col else None
+        baro_arr = df[baro_col].to_numpy(dtype=float) if baro_col else None
+
+        return self.load_from_arrays(
+            time_s=time_arr,
+            accel=accel_arr,
+            gyro=gyro_arr,
+            gnss_pos=gnss_pos_arr,
+            gnss_vel=gnss_vel_arr,
+            gnss_valid=gnss_val_arr,
+            gnss_accuracy=gnss_acc_arr,
+            baro_alt=baro_arr,
+        )
+
+    def stream_to_engine(
+        self,
+        engine: "EdgeNavigationEngine",
+        frames: List[SensorFrame],
+        ai_speed_provider: Optional[Any] = None,
+    ) -> List[NavigationTelemetry]:
+        telemetries: List[NavigationTelemetry] = []
+        for frame in frames:
+            engine.pushImu(frame.timestamp_s, frame.accel_mps2, frame.gyro_rads)
+            if frame.gnss_pos is not None:
+                engine.pushGnss(
+                    timestamp_s=frame.timestamp_s,
+                    pos_enu=frame.gnss_pos,
+                    vel_enu=frame.gnss_vel,
+                    valid=frame.gnss_valid,
+                    accuracy_m=frame.gnss_accuracy_m,
+                    fix_type=frame.gnss_fix_type,
+                )
+            if frame.baro_alt_m is not None:
+                engine.pushBarometer(frame.timestamp_s, frame.baro_alt_m)
+
+            ai_speed = None
+            if callable(ai_speed_provider):
+                ai_speed = ai_speed_provider(frame)
+            elif isinstance(ai_speed_provider, (int, float)):
+                ai_speed = float(ai_speed_provider)
+
+            ok = engine.update(timestamp_s=frame.timestamp_s, ai_speed_mps=ai_speed)
+            if ok:
+                state = engine.getNavigationState()
+                if state is not None:
+                    telemetries.append(state)
+
+        return telemetries
+
+    def get_validation_report(self) -> Dict[str, Any]:
+        return {
+            "total_rows_read": self.total_rows_read,
+            "valid_frames_generated": self.valid_frames_generated,
+            "dropped_samples": self.sensor_adapter.dropped_samples,
+            "gap_count": self.sensor_adapter.gap_count,
+            "rejected_samples": self.sensor_adapter.rejected_samples,
+            "nominal_rate_hz": self.nominal_rate_hz,
+            "accel_unit": "g" if self.accel_in_g else "m/s^2",
+            "gyro_unit": "deg/s" if self.gyro_in_deg_s else "rad/s",
+            "sensor_to_body_is_identity": bool(np.allclose(self.calibration.R_sensor_to_body, np.eye(3))),
+        }
+
+
 @dataclass
 class EdgeEngineDiagnostics:
     total_samples_processed: int = 0
     dropped_samples: int = 0
+    gap_count: int = 0
+    rejected_samples: int = 0
     mean_cycle_time_us: float = 0.0
     max_cycle_time_us: float = 0.0
     sustained_hz: float = 0.0
@@ -703,7 +959,7 @@ class EdgeNavigationEngine:
     def initialize(self, config: NavigationProfileConfig, osm_graph: Optional[OfflineOSMGraph] = None) -> bool:
         """Initializes the Edge Engine with the specified profile configuration."""
         self.config = config
-        self.adapter = EdgeSensorAdapter(config.calibration)
+        self.adapter = EdgeSensorAdapter(config.calibration, nominal_rate_hz=config.imu_sample_rate_hz)
         self.core = CommonNavigationCore(config, osm_graph=osm_graph)
         self.is_initialized = True
         self.cycle_times.clear()
@@ -815,6 +1071,8 @@ class EdgeNavigationEngine:
     def getDiagnostics(self) -> EdgeEngineDiagnostics:
         """Returns engine performance and operational diagnostics."""
         dropped = self.adapter.dropped_samples if self.adapter else 0
+        gaps = self.adapter.gap_count if self.adapter else 0
+        rejections = self.adapter.rejected_samples if self.adapter else 0
         mode_str = self.last_state.mode.value if self.last_state else "INITIALIZING"
         outage = self.last_state.in_outage if self.last_state else False
         p_trace = float(np.trace(self.core.eskf.P)) if self.core else 0.0
@@ -827,6 +1085,8 @@ class EdgeNavigationEngine:
             return EdgeEngineDiagnostics(
                 total_samples_processed=self.total_cycles,
                 dropped_samples=dropped,
+                gap_count=gaps,
+                rejected_samples=rejections,
                 current_mode=mode_str,
                 in_outage=outage,
                 p_trace=p_trace,
@@ -840,6 +1100,8 @@ class EdgeNavigationEngine:
         return EdgeEngineDiagnostics(
             total_samples_processed=self.total_cycles,
             dropped_samples=dropped,
+            gap_count=gaps,
+            rejected_samples=rejections,
             mean_cycle_time_us=mean_us,
             max_cycle_time_us=max_us,
             sustained_hz=sustained_hz,

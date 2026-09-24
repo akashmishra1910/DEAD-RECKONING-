@@ -82,6 +82,24 @@ bool EdgeNavigationEngine::update(std::optional<double> ai_speed) {
         gyro_si = gyro_si * DEG_TO_RAD;
     }
 
+    // Sanity check for non-finite values (NaN / Inf)
+    if (std::isnan(accel_si.x) || std::isnan(accel_si.y) || std::isnan(accel_si.z) ||
+        std::isnan(gyro_si.x) || std::isnan(gyro_si.y) || std::isnan(gyro_si.z) ||
+        std::isinf(accel_si.x) || std::isinf(accel_si.y) || std::isinf(accel_si.z) ||
+        std::isinf(gyro_si.x) || std::isinf(gyro_si.y) || std::isinf(gyro_si.z)) {
+        dropped_samples_++;
+        return false;
+    }
+
+    // Physical sanity check for extreme values (> 200 m/s^2 or > 50 rad/s)
+    constexpr double MAX_ACCEL = 200.0; // m/s^2 (~20g)
+    constexpr double MAX_GYRO = 50.0;   // rad/s (~2860 deg/s)
+    if (std::abs(accel_si.x) > MAX_ACCEL || std::abs(accel_si.y) > MAX_ACCEL || std::abs(accel_si.z) > MAX_ACCEL ||
+        std::abs(gyro_si.x) > MAX_GYRO || std::abs(gyro_si.y) > MAX_GYRO || std::abs(gyro_si.z) > MAX_GYRO) {
+        dropped_samples_++;
+        return false;
+    }
+
     // Scale Factor & Bias Calibration
     Vector3 accel_cal(
         (accel_si.x * config_.calibration.accel_scale.x) - config_.calibration.accel_bias.x,

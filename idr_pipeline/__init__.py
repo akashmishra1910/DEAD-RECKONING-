@@ -42,4 +42,13 @@ from .heading_supervisor import (
     GNSSCourseDeriver
 )
 from .edge_engine import EdgeNavigationEngine, benchmark_edge_throughput, TACTICAL_FOG_CONFIG, SMARTPHONE_MEMS_CONFIG
+from .dual_profile import (
+    SensorFrame,
+    EdgeSensorAdapter,
+    ExternalImuReplayAdapter,
+    EdgeCalibrationConfig,
+    NavigationProfileConfig,
+    ProfileType,
+    GnssFixType,
+)
 

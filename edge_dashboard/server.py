@@ -83,6 +83,9 @@ class EdgeDashboardHandler(BaseHTTPRequestHandler):
             elif action == "rate":
                 mult = float(val) if val is not None else 1.0
                 self.controller.set_replay_speed(mult)
+            elif action == "set_input_profile":
+                prof = str(val) if val is not None else "EDGE_EXTERNAL_IMU"
+                self.controller.set_input_profile(prof)
             else:
                 self._send_json(400, {"error": f"Unknown control action: {action}"})
                 return

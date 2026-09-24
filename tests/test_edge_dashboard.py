@@ -244,12 +244,40 @@ def test_dashboard_http_handler():
     assert h_stop.status_code == 200
     assert ctrl.replay_state == "IDLE"
 
-    # Test POST /api/test (scenario 1)
-    h_test = MockHandler("POST", "/api/test", json.dumps({"scenario": 1}).encode("utf-8"))
-    h_test.do_POST()
-    assert h_test.status_code == 200
-    res = json.loads(h_test.wfile.getvalue().decode("utf-8"))
-    assert res["success"] is True
+    # Test POST /api/control (set_input_profile)
+    h_prof = MockHandler("POST", "/api/control", json.dumps({"action": "set_input_profile", "value": "MOBILE_REPLAY"}).encode("utf-8"))
+    h_prof.do_POST()
+    assert h_prof.status_code == 200
+    assert ctrl.input_profile == "MOBILE_REPLAY"
 
     ctrl.shutdown_engine()
+
+
+def test_input_profile_switching():
+    """Verifies profile toggle between EDGE_EXTERNAL_IMU and MOBILE_REPLAY."""
+    ctrl = EdgeTestController()
+    assert ctrl.input_profile == "EDGE_EXTERNAL_IMU"
+    assert ctrl.coordinate_frame == "body FLU (Forward-Left-Up)"
+
+    snap_edge = ctrl.get_snapshot()
+    assert snap_edge["input_profile"] == "EDGE_EXTERNAL_IMU"
+    assert snap_edge["coordinate_frame"] == "body FLU (Forward-Left-Up)"
+    assert snap_edge["measured_rate_hz"] == 200.0
+
+    # Switch to Mobile
+    ctrl.set_input_profile("MOBILE_REPLAY")
+    assert ctrl.input_profile == "MOBILE_REPLAY"
+    assert ctrl.profile == "MOBILE"
+
+    snap_mob = ctrl.get_snapshot()
+    assert snap_mob["input_profile"] == "MOBILE_REPLAY"
+    assert snap_mob["measured_rate_hz"] == 100.0
+
+    # Switch back to Edge External IMU
+    ctrl.set_input_profile("EDGE_EXTERNAL_IMU")
+    assert ctrl.input_profile == "EDGE_EXTERNAL_IMU"
+    assert ctrl.profile == "EDGE_FOG"
+
+    ctrl.shutdown_engine()
+
 

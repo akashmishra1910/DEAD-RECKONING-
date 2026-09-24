@@ -65,7 +65,7 @@ private val PopularPois = listOf(
 )
 
 /**
- * Screen 6: Map Explorer with working Search, Layer Toggles, and Destination Routing.
+ * Screen 6: Map Explorer & Google Maps-Style Route Trip Planner.
  */
 @Composable
 fun MapExplorerScreen(
@@ -77,6 +77,7 @@ fun MapExplorerScreen(
     onToggleLandmarks: (Boolean) -> Unit,
     onToggleWater: (Boolean) -> Unit,
     onStartNavigationToPoi: ((SearchPoiResult) -> Unit)? = null,
+    onPlanRoute: ((SearchPoiResult, SearchPoiResult?) -> Unit)? = null,
     onZoomIn: (() -> Unit)? = null,
     onZoomOut: (() -> Unit)? = null,
     onToggleNorthUp: (() -> Unit)? = null,
@@ -84,8 +85,10 @@ fun MapExplorerScreen(
     modifier: Modifier = Modifier
 ) {
     var isLayersSheetOpen by remember { mutableStateOf(false) }
+    var isRoutePlannerOpen by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
-    var selectedPoi by remember { mutableStateOf<SearchPoiResult?>(null) }
+    var selectedDestination by remember { mutableStateOf<SearchPoiResult?>(null) }
+    var selectedStart by remember { mutableStateOf<SearchPoiResult?>(null) }
     var isSearchActive by remember { mutableStateOf(false) }
 
     val filteredPois = remember(searchQuery) {
@@ -117,95 +120,163 @@ fun MapExplorerScreen(
             mapStyle = uiState.mapStyle,
             isNorthUp = uiState.isNorthUp,
             userZoomFactor = uiState.mapZoomLevel,
-            targetLatLon = selectedPoi?.let { Pair(it.lat, it.lon) },
+            targetLatLon = selectedDestination?.let { Pair(it.lat, it.lon) },
+            routeWaypoints = uiState.routeWaypoints,
+            deviceHeadingDeg = uiState.deviceHeadingDeg,
+            isStationary = uiState.isStationary,
             onZoomIn = onZoomIn,
             onZoomOut = onZoomOut,
             onToggleNorthUp = onToggleNorthUp,
             onResetMap = {
-                selectedPoi = null
+                selectedDestination = null
                 onResetMap?.invoke()
             },
             modifier = Modifier.fillMaxSize()
         )
 
-        // 2. Top Interactive Search Bar & Suggestions Overlay
+        // 2. Top Interactive Search Bar & Route Planning Overlay
         Column(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .fillMaxWidth()
                 .padding(horizontal = 14.dp, vertical = 12.dp)
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .shadow(12.dp, RoundedCornerShape(24.dp))
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(Color(0xFF0D2238).copy(alpha = 0.96f))
-                    .border(1.2.dp, Color(0xFF1E3A5A), RoundedCornerShape(24.dp))
-                    .padding(horizontal = 14.dp, vertical = 2.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "🔍",
-                    fontSize = 15.sp,
-                    color = Color(0xFF94A3B8)
-                )
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                TextField(
-                    value = searchQuery,
-                    onValueChange = {
-                        searchQuery = it
-                        isSearchActive = true
-                        onSearchQueryChanged(it)
-                    },
-                    placeholder = {
-                        Text(
-                            text = "Search places, roads, landmarks...",
-                            style = IdrTypography.bodyMedium.copy(fontSize = 13.sp),
-                            color = Color(0xFF64748B)
-                        )
-                    },
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = Color.Transparent,
-                        unfocusedContainerColor = Color.Transparent,
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent,
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White
-                    ),
-                    modifier = Modifier.weight(1f)
-                )
-
-                if (searchQuery.isNotEmpty()) {
-                    Text(
-                        text = "✕",
-                        fontSize = 14.sp,
-                        color = Color(0xFF94A3B8),
-                        modifier = Modifier
-                            .clickable {
-                                searchQuery = ""
-                                isSearchActive = false
-                                selectedPoi = null
-                            }
-                            .padding(8.dp)
-                    )
-                }
-
-                Box(
+            if (!isRoutePlannerOpen) {
+                // Single Search Bar
+                Row(
                     modifier = Modifier
-                        .size(32.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFF1688FF).copy(alpha = 0.2f))
-                        .clickable { isLayersSheetOpen = !isLayersSheetOpen },
-                    contentAlignment = Alignment.Center
+                        .fillMaxWidth()
+                        .shadow(12.dp, RoundedCornerShape(24.dp))
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(Color(0xFF0D2238).copy(alpha = 0.96f))
+                        .border(1.2.dp, Color(0xFF1E3A5A), RoundedCornerShape(24.dp))
+                        .padding(horizontal = 14.dp, vertical = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(text = "◫", fontSize = 14.sp, color = Color(0xFF1688FF), fontWeight = FontWeight.Bold)
+                    Text(text = "🔍", fontSize = 15.sp, color = Color(0xFF94A3B8))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    TextField(
+                        value = searchQuery,
+                        onValueChange = {
+                            searchQuery = it
+                            isSearchActive = true
+                            onSearchQueryChanged(it)
+                        },
+                        placeholder = {
+                            Text(
+                                text = "Search places, roads, landmarks...",
+                                style = IdrTypography.bodyMedium.copy(fontSize = 13.sp),
+                                color = Color(0xFF64748B)
+                            )
+                        },
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent,
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White
+                        ),
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    if (searchQuery.isNotEmpty()) {
+                        Text(
+                            text = "✕",
+                            fontSize = 14.sp,
+                            color = Color(0xFF94A3B8),
+                            modifier = Modifier
+                                .clickable {
+                                    searchQuery = ""
+                                    isSearchActive = false
+                                    selectedDestination = null
+                                }
+                                .padding(8.dp)
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF1688FF).copy(alpha = 0.2f))
+                            .clickable { isLayersSheetOpen = !isLayersSheetOpen },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(text = "◫", fontSize = 14.sp, color = Color(0xFF1688FF), fontWeight = FontWeight.Bold)
+                    }
+                }
+            } else {
+                // Route Planner Box: Start + Destination fields (Google Maps Style)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(16.dp, RoundedCornerShape(16.dp))
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color(0xFF0D2238).copy(alpha = 0.98f))
+                        .border(1.2.dp, Color(0xFF1E3A5A), RoundedCornerShape(16.dp))
+                        .padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Set Trip Route",
+                            style = IdrTypography.titleMedium.copy(fontSize = 14.sp, fontWeight = FontWeight.Bold),
+                            color = Color.White
+                        )
+                        Text(
+                            text = "✕ Close",
+                            fontSize = 12.sp,
+                            color = Color(0xFF94A3B8),
+                            modifier = Modifier.clickable { isRoutePlannerOpen = false }
+                        )
+                    }
+
+                    // Start Field
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color(0xFF17324A))
+                            .padding(horizontal = 10.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(text = "🟢", fontSize = 10.sp)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = selectedStart?.title ?: "Your Location (GPS Fix)",
+                            fontSize = 12.sp,
+                            color = Color(0xFFCBD5E1),
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+
+                    // Destination Field
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color(0xFF17324A))
+                            .padding(horizontal = 10.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(text = "🔴", fontSize = 10.sp)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = selectedDestination?.title ?: "Select destination...",
+                            fontSize = 12.sp,
+                            color = if (selectedDestination != null) Color.White else Color(0xFF64748B),
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 }
             }
 
-            // Dropdown search suggestions when typing or active
+            // Dropdown search suggestions when typing
             if (isSearchActive && filteredPois.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(6.dp))
                 LazyColumn(
@@ -222,9 +293,10 @@ fun MapExplorerScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable {
-                                    selectedPoi = poi
+                                    selectedDestination = poi
                                     searchQuery = poi.title
                                     isSearchActive = false
+                                    onStartNavigationToPoi?.invoke(poi)
                                 }
                                 .padding(horizontal = 14.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -263,8 +335,8 @@ fun MapExplorerScreen(
         }
 
         // 3. Destination Bottom Card when a place is selected
-        if (selectedPoi != null && !isLayersSheetOpen) {
-            val poi = selectedPoi!!
+        if (selectedDestination != null && !isLayersSheetOpen) {
+            val poi = selectedDestination!!
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -309,7 +381,7 @@ fun MapExplorerScreen(
                         shape = RoundedCornerShape(10.dp)
                     ) {
                         Text(
-                            text = "NAVIGATE",
+                            text = "START TRIP",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
@@ -351,7 +423,6 @@ fun MapExplorerScreen(
                         )
                     }
 
-                    // Base Map Style Selector
                     Text(
                         text = "BASE MAP STYLE",
                         style = IdrTypography.labelSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.Bold),
@@ -383,7 +454,6 @@ fun MapExplorerScreen(
                         }
                     }
 
-                    // Feature Toggles
                     LayerSwitchRow("Roads & Highways", uiState.showRoadsLayer, onToggleRoads)
                     LayerSwitchRow("3D Buildings", uiState.show3dBuildingsLayer, onToggle3dBuildings)
                     LayerSwitchRow("Rivers & Water", uiState.showRiversWaterLayer, onToggleWater)

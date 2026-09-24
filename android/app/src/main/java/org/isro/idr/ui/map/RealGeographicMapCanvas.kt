@@ -42,7 +42,6 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.input.pointer.pointerInput
@@ -63,16 +62,17 @@ import kotlin.math.floor
 import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.min
-import kotlin.math.tan
+import kotlin.math.pow
+import kotlin.math.sin
 
 /**
- * High-Performance Worldwide Geographic Map Engine.
- * Converts WGS84 Geodetic Coordinates (Lat/Lon) to Global Web Mercator Pixel Space.
+ * High-Performance Worldwide Geographic Map Canvas.
  * Features:
- * - High-visibility prominent vehicle cursor with directional cone of sight and auto-rotation
- * - OpenStreetMap worldwide raster tile integration with offline fallback
- * - Real GPS accuracy halo, multi-color trajectory trails (GNSS, IDR, Map-Matched)
- * - Offline vector roads and 3D buildings from .idrmap dataset
+ * - Continuous exponential Web Mercator scaling ($256 \times 2^z$) for fluid pinch-to-zoom
+ * - High-visibility cursor aligned with physical device orientation
+ * - Standstill lock: prevents random drifting when phone is still
+ * - Active route polyline and turn guidance waypoint rendering
+ * - OpenStreetMap worldwide tile integration with offline fallback
  */
 @Composable
 fun RealGeographicMapCanvas(
@@ -89,6 +89,8 @@ fun RealGeographicMapCanvas(
     userZoomFactor: Float = 1.0f,
     targetLatLon: Pair<Double, Double>? = null,
     routeWaypoints: List<Pair<Double, Double>> = emptyList(),
+    deviceHeadingDeg: Double = 0.0,
+    isStationary: Boolean = true,
     onZoomIn: (() -> Unit)? = null,
     onZoomOut: (() -> Unit)? = null,
     onToggleNorthUp: (() -> Unit)? = null,
@@ -100,18 +102,18 @@ fun RealGeographicMapCanvas(
         TileCacheManager.init(context)
     }
 
-    // Determine current geodetic center:
+    // Determine current geodetic center
     val liveLat = when {
         targetLatLon != null -> targetLatLon.first
         gnssStatus.fixValid && gnssStatus.latitude != 0.0 -> gnssStatus.latitude
         roadMapGraph != null -> roadMapGraph.centerLat
-        else -> 25.4358 // Prayagraj default
+        else -> 25.4331 // Current corridor location
     }
     val liveLon = when {
         targetLatLon != null -> targetLatLon.second
         gnssStatus.fixValid && gnssStatus.longitude != 0.0 -> gnssStatus.longitude
         roadMapGraph != null -> roadMapGraph.centerLon
-        else -> 81.8463
+        else -> 81.8148
     }
 
     // User interaction state
@@ -126,29 +128,34 @@ fun RealGeographicMapCanvas(
         isFollowingVehicle = false
     }
 
-    val rawHeading = telemetry?.headingDeg?.toFloat() ?: gnssStatus.bearingDeg.toFloat()
+    // Effective heading: prefer true physical rotation vector azimuth, fallback to telemetry / GPS bearing
+    val effectiveHeading = when {
+        deviceHeadingDeg > 0.0 -> deviceHeadingDeg.toFloat()
+        telemetry?.headingDeg != null && telemetry.headingDeg > 0.0 -> telemetry.headingDeg.toFloat()
+        gnssStatus.bearingDeg > 0.0 -> gnssStatus.bearingDeg.toFloat()
+        else -> 0f
+    }
+
     val animatedHeading by animateFloatAsState(
-        targetValue = rawHeading,
-        animationSpec = tween(durationMillis = 250),
+        targetValue = effectiveHeading,
+        animationSpec = tween(durationMillis = 200),
         label = "CursorHeading"
     )
 
-    val speedKmh = telemetry?.speedKmh ?: (gnssStatus.speedMps * 3.6)
+    val speedKmh = if (isStationary) 0.0 else (telemetry?.speedKmh ?: (gnssStatus.speedMps * 3.6)).coerceAtLeast(0.0)
     val isDrActive = telemetry?.mode?.isDeadReckoning == true || (!gnssStatus.fixValid && !gnssStatus.isSearching)
 
-    // Pulse animation for cursor halo
     val infiniteTransition = rememberInfiniteTransition(label = "CursorPulse")
     val pulseScale by infiniteTransition.animateFloat(
-        initialValue = 0.90f,
-        targetValue = 1.15f,
+        initialValue = 0.92f,
+        targetValue = 1.12f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1100, easing = FastOutSlowInEasing),
+            animation = tween(1200, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "PulseScale"
     )
 
-    // Reset pan when following vehicle
     if (isFollowingVehicle && targetLatLon == null) {
         panOffsetX = 0f
         panOffsetY = 0f
@@ -159,7 +166,6 @@ fun RealGeographicMapCanvas(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .clip(RoundedCornerShape(0.dp))
             .background(if (mapStyle == MapStyleType.DARK) Color(0xFF06111F) else Color(0xFFF1F5F9))
             .pointerInput(Unit) {
                 detectTransformGestures { _, pan, zoom, _ ->
@@ -176,27 +182,25 @@ fun RealGeographicMapCanvas(
             val centerX = canvasWidth / 2f + panOffsetX
             val centerY = canvasHeight / 2f + panOffsetY
 
-            // 1. Calculate Web Mercator projection parameters
+            // 1. Continuous Web Mercator Projection Calculations
             val intZoom = effectiveZoom.toInt().coerceIn(0, 19)
-            val zoomScale = (1 shl (effectiveZoom.toInt())) * (1f + (effectiveZoom - intZoom))
-            val tileSizePixels = 256f
-
-            // Convert center (liveLat, liveLon) to global pixel space at current zoom
             val centerGlobalPx = latLonToMercatorPixels(liveLat, liveLon, effectiveZoom)
+            val tileSizePixels = (256.0 * (2.0.pow((effectiveZoom - intZoom).toDouble()))).toFloat()
 
             // 2. Render Geographic Raster Tiles
-            val minTileX = floor((centerGlobalPx.x - centerX) / tileSizePixels).toInt()
-            val maxTileX = floor((centerGlobalPx.x + (canvasWidth - centerX)) / tileSizePixels).toInt()
-            val minTileY = floor((centerGlobalPx.y - centerY) / tileSizePixels).toInt()
-            val maxTileY = floor((centerGlobalPx.y + (canvasHeight - centerY)) / tileSizePixels).toInt()
+            val baseCenterPx = latLonToMercatorPixels(liveLat, liveLon, intZoom.toFloat())
+            val minTileX = floor((baseCenterPx.x - (centerX * 256f / tileSizePixels)) / 256f).toInt()
+            val maxTileX = floor((baseCenterPx.x + ((canvasWidth - centerX) * 256f / tileSizePixels)) / 256f).toInt()
+            val minTileY = floor((baseCenterPx.y - (centerY * 256f / tileSizePixels)) / 256f).toInt()
+            val maxTileY = floor((baseCenterPx.y + ((canvasHeight - centerY) * 256f / tileSizePixels)) / 256f).toInt()
 
             val maxTileIndex = (1 shl intZoom) - 1
 
-            for (tx in minTileX..maxTileX) {
-                for (ty in minTileY..maxTileY) {
+            for (tx in (minTileX - 1)..(maxTileX + 1)) {
+                for (ty in (minTileY - 1)..(maxTileY + 1)) {
                     if (tx in 0..maxTileIndex && ty in 0..maxTileIndex) {
-                        val tileScreenX = (tx * tileSizePixels) - centerGlobalPx.x + centerX
-                        val tileScreenY = (ty * tileSizePixels) - centerGlobalPx.y + centerY
+                        val tileScreenX = ((tx * 256f) - baseCenterPx.x) * (tileSizePixels / 256f) + centerX
+                        val tileScreenY = ((ty * 256f) - baseCenterPx.y) * (tileSizePixels / 256f) + centerY
 
                         val tileBitmap: Bitmap? = TileCacheManager.getTile(
                             style = mapStyle,
@@ -210,69 +214,20 @@ fun RealGeographicMapCanvas(
                             drawImage(
                                 image = tileBitmap.asImageBitmap(),
                                 dstOffset = androidx.compose.ui.unit.IntOffset(tileScreenX.toInt(), tileScreenY.toInt()),
-                                dstSize = androidx.compose.ui.unit.IntSize(tileSizePixels.toInt() + 1, tileSizePixels.toInt() + 1)
+                                dstSize = androidx.compose.ui.unit.IntSize(tileSizePixels.toInt() + 2, tileSizePixels.toInt() + 2)
                             )
                         } else {
-                            // Fallback subtle grid tile
                             drawRect(
                                 color = if (mapStyle == MapStyleType.DARK) Color(0xFF0B1B2B) else Color(0xFFE2E8F0),
                                 topLeft = Offset(tileScreenX, tileScreenY),
-                                size = androidx.compose.ui.geometry.Size(tileSizePixels, tileSizePixels)
-                            )
-                            drawRect(
-                                color = if (mapStyle == MapStyleType.DARK) Color(0xFF17324A).copy(alpha = 0.4f) else Color(0xFFCBD5E1).copy(alpha = 0.5f),
-                                topLeft = Offset(tileScreenX, tileScreenY),
-                                size = androidx.compose.ui.geometry.Size(tileSizePixels, tileSizePixels),
-                                style = Stroke(width = 1f)
+                                size = androidx.compose.ui.geometry.Size(tileSizePixels + 1, tileSizePixels + 1)
                             )
                         }
                     }
                 }
             }
 
-            // 3. Render Offline Road Graph (.idrmap vector layer)
-            if (roadMapGraph != null && effectiveZoom >= 13.0f) {
-                roadMapGraph.edges.forEach { edge ->
-                    if (edge.pointsWgs84.size >= 2) {
-                        val roadPath = Path()
-                        var first = true
-
-                        for (pt in edge.pointsWgs84) {
-                            val px = latLonToMercatorPixels(pt.first, pt.second, effectiveZoom)
-                            val sx = px.x - centerGlobalPx.x + centerX
-                            val sy = px.y - centerGlobalPx.y + centerY
-
-                            if (first) {
-                                roadPath.moveTo(sx, sy)
-                                first = false
-                            } else {
-                                roadPath.lineTo(sx, sy)
-                            }
-                        }
-
-                        val roadColor = when {
-                            edge.isTunnel -> Color(0xFF9333EA).copy(alpha = 0.85f)
-                            edge.isBridge -> Color(0xFFFF8A00).copy(alpha = 0.90f)
-                            edge.layer > 0 -> Color(0xFFFFAB40).copy(alpha = 0.90f)
-                            else -> if (mapStyle == MapStyleType.DARK) Color(0xFF475569).copy(alpha = 0.75f) else Color(0xFF94A3B8).copy(alpha = 0.70f)
-                        }
-
-                        val strokeW = when {
-                            edge.roadClass.contains("motorway") || edge.roadClass.contains("trunk") -> 5.5f
-                            edge.roadClass.contains("primary") -> 4.5f
-                            else -> 3.0f
-                        }
-
-                        drawPath(
-                            path = roadPath,
-                            color = roadColor,
-                            style = Stroke(width = strokeW, cap = StrokeCap.Round)
-                        )
-                    }
-                }
-            }
-
-            // 4. Render Active Route Polyline if present
+            // 3. Render Active Route Polyline if present
             if (routeWaypoints.size >= 2) {
                 val routePath = Path()
                 var first = true
@@ -287,25 +242,26 @@ fun RealGeographicMapCanvas(
                         routePath.lineTo(sx, sy)
                     }
                 }
-                // Outer Glow
+
+                // Outer Route Glow
                 drawPath(
                     path = routePath,
-                    color = Color(0xFF1688FF).copy(alpha = 0.4f),
-                    style = Stroke(width = 12f, cap = StrokeCap.Round)
+                    color = Color(0xFF1688FF).copy(alpha = 0.40f),
+                    style = Stroke(width = 14f, cap = StrokeCap.Round)
                 )
-                // Core Route Line
+                // Core Navigation Route
                 drawPath(
                     path = routePath,
                     color = Color(0xFF1688FF),
-                    style = Stroke(width = 6.5f, cap = StrokeCap.Round)
+                    style = Stroke(width = 7.5f, cap = StrokeCap.Round)
                 )
             }
 
-            // 5. Render Trajectory Trails
-            val metersPerPixel = (156543.03392 * cos(liveLat * PI / 180.0) / (1 shl intZoom)).toFloat() / (1f + (effectiveZoom - intZoom))
+            // 4. Render Trajectory Trails (Only when vehicle is in motion or has moved)
+            val metersPerPixel = (156543.03392 * cos(liveLat * PI / 180.0) / (2.0.pow(effectiveZoom.toDouble()))).toFloat()
 
             if (trajectoryMode == TrajectoryDisplayMode.BOTH || trajectoryMode == TrajectoryDisplayMode.GNSS_ONLY) {
-                drawTrajectoryPath(gnssTrajectory, Color(0xFF1688FF), 3.0f, centerX, centerY, metersPerPixel)
+                drawTrajectoryPath(gnssTrajectory, Color(0xFF1688FF), 3.2f, centerX, centerY, metersPerPixel)
             }
             if (trajectoryMode == TrajectoryDisplayMode.BOTH || trajectoryMode == TrajectoryDisplayMode.IDR_ONLY) {
                 drawTrajectoryPath(idrTrajectory, Color(0xFFFF7A00), 4.0f, centerX, centerY, metersPerPixel)
@@ -314,32 +270,32 @@ fun RealGeographicMapCanvas(
                 drawTrajectoryPath(mapAidedTrajectory, Color(0xFF00E5FF), 3.5f, centerX, centerY, metersPerPixel)
             }
 
-            // 6. Prominent High-Visibility Vehicle Cursor with Directional Cone & Pulse Halo
-            val vehicleScreenX = centerX + ((telemetry?.posX ?: 0.0) / metersPerPixel).toFloat()
-            val vehicleScreenY = centerY - ((telemetry?.posY ?: 0.0) / metersPerPixel).toFloat()
+            // 5. Vehicle Position Cursor (Clamped when stationary)
+            val vehicleScreenX = if (isStationary) centerX else centerX + ((telemetry?.posX ?: 0.0) / metersPerPixel).toFloat()
+            val vehicleScreenY = if (isStationary) centerY else centerY - ((telemetry?.posY ?: 0.0) / metersPerPixel).toFloat()
 
             // Accuracy Halo Ring
-            val accuracyRadius = max(24f, ((gnssStatus.accuracyM.coerceIn(2.0, 40.0)) / metersPerPixel).toFloat()) * pulseScale
+            val accuracyRadius = max(28f, ((gnssStatus.accuracyM.coerceIn(2.0, 30.0)) / metersPerPixel).toFloat()) * pulseScale
             drawCircle(
                 color = if (isDrActive) Color(0xFFFF7A00).copy(alpha = 0.16f) else Color(0xFF1688FF).copy(alpha = 0.18f),
                 radius = accuracyRadius,
                 center = Offset(vehicleScreenX, vehicleScreenY)
             )
             drawCircle(
-                color = if (isDrActive) Color(0xFFFF7A00).copy(alpha = 0.70f) else Color(0xFF1688FF).copy(alpha = 0.75f),
+                color = if (isDrActive) Color(0xFFFF7A00).copy(alpha = 0.75f) else Color(0xFF1688FF).copy(alpha = 0.80f),
                 radius = accuracyRadius,
                 center = Offset(vehicleScreenX, vehicleScreenY),
                 style = Stroke(width = 1.8f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 8f), 0f))
             )
 
-            // Dynamic 3D Vehicle Marker with Smooth Heading Rotation
+            // Dynamic Vehicle Marker Rotating with True Device Heading
             rotate(degrees = animatedHeading, pivot = Offset(vehicleScreenX, vehicleScreenY)) {
-                // Forward Illuminating Directional Beam / Sight Cone (45 deg arc)
-                val coneLength = (50f + (speedKmh * 1.8).toFloat()).coerceIn(48f, 130f)
+                // Forward Illuminating Directional Beam Cone
+                val coneLength = (56f + (speedKmh * 1.5).toFloat()).coerceIn(52f, 130f)
                 val conePath = Path().apply {
                     moveTo(vehicleScreenX, vehicleScreenY)
-                    lineTo(vehicleScreenX - 22f, vehicleScreenY - coneLength)
-                    lineTo(vehicleScreenX + 22f, vehicleScreenY - coneLength)
+                    lineTo(vehicleScreenX - 24f, vehicleScreenY - coneLength)
+                    lineTo(vehicleScreenX + 24f, vehicleScreenY - coneLength)
                     close()
                 }
                 drawPath(
@@ -347,37 +303,37 @@ fun RealGeographicMapCanvas(
                     brush = Brush.verticalGradient(
                         colors = listOf(
                             Color.Transparent,
-                            if (isDrActive) Color(0xFFFF8A00).copy(alpha = 0.35f) else Color(0xFF00E5FF).copy(alpha = 0.35f)
+                            if (isDrActive) Color(0xFFFF8A00).copy(alpha = 0.38f) else Color(0xFF00E5FF).copy(alpha = 0.38f)
                         ),
                         startY = vehicleScreenY - coneLength,
                         endY = vehicleScreenY
                     )
                 )
 
-                // High-Visibility 3D Arrow / Chevron (Outer Size ~ 40px × 32px)
+                // High-Visibility 3D Chevron Arrow (~44px × 34px)
                 val chevronPath = Path().apply {
-                    moveTo(vehicleScreenX, vehicleScreenY - 26f) // Tip
-                    lineTo(vehicleScreenX + 16f, vehicleScreenY + 16f) // Bottom Right
-                    lineTo(vehicleScreenX, vehicleScreenY + 8f) // Inner Inset
-                    lineTo(vehicleScreenX - 16f, vehicleScreenY + 16f) // Bottom Left
+                    moveTo(vehicleScreenX, vehicleScreenY - 28f)
+                    lineTo(vehicleScreenX + 18f, vehicleScreenY + 18f)
+                    lineTo(vehicleScreenX, vehicleScreenY + 9f)
+                    lineTo(vehicleScreenX - 18f, vehicleScreenY + 18f)
                     close()
                 }
 
-                // Outer High-Contrast Dark Drop Shadow
+                // Drop Shadow
                 drawPath(
                     path = chevronPath,
                     color = Color.Black.copy(alpha = 0.65f),
-                    style = Stroke(width = 7f, cap = StrokeCap.Round)
+                    style = Stroke(width = 8f, cap = StrokeCap.Round)
                 )
 
-                // Outer Crisp White Border
+                // Crisp White Outer Border
                 drawPath(
                     path = chevronPath,
                     color = Color.White,
-                    style = Stroke(width = 3.5f, cap = StrokeCap.Round)
+                    style = Stroke(width = 4f, cap = StrokeCap.Round)
                 )
 
-                // Vibrant Brand Core (Saffron / Cyan)
+                // Saffron / Cyan Core
                 drawPath(
                     path = chevronPath,
                     brush = Brush.verticalGradient(
@@ -385,52 +341,47 @@ fun RealGeographicMapCanvas(
                             if (isDrActive) Color(0xFFFF8A00) else Color(0xFF1688FF),
                             if (isDrActive) Color(0xFFE65100) else Color(0xFF0D5CB8)
                         ),
-                        startY = vehicleScreenY - 26f,
-                        endY = vehicleScreenY + 16f
+                        startY = vehicleScreenY - 28f,
+                        endY = vehicleScreenY + 18f
                     )
                 )
 
                 // Center Navigation Core Dot
                 drawCircle(
                     color = Color.White,
-                    radius = 4.5f,
+                    radius = 4.8f,
                     center = Offset(vehicleScreenX, vehicleScreenY + 1f)
                 )
             }
 
-            // 7. Drop Pin for Searched Target Location if active
+            // 6. Destination Drop Pin if set
             if (targetLatLon != null) {
                 val targetPx = latLonToMercatorPixels(targetLatLon.first, targetLatLon.second, effectiveZoom)
                 val tx = targetPx.x - centerGlobalPx.x + centerX
                 val ty = targetPx.y - centerGlobalPx.y + centerY
 
-                // Drop Pin Halo
                 drawCircle(
                     color = Color(0xFFFF3B30).copy(alpha = 0.25f),
-                    radius = 22f * pulseScale,
+                    radius = 24f * pulseScale,
                     center = Offset(tx, ty)
                 )
-                // Pin Head
                 drawCircle(
                     color = Color(0xFFFF3B30),
-                    radius = 12f,
+                    radius = 13f,
                     center = Offset(tx, ty - 14f)
                 )
                 drawCircle(
                     color = Color.White,
-                    radius = 4.5f,
+                    radius = 5f,
                     center = Offset(tx, ty - 14f)
                 )
             }
 
-            // 8. Dynamic Geographic Scale Bar
-            drawScaleBar(
-                metersPerPixel = metersPerPixel,
-                canvasHeight = canvasHeight
-            )
+            // 7. Dynamic Geographic Scale Bar
+            drawScaleBar(metersPerPixel = metersPerPixel, canvasHeight = canvasHeight)
         }
 
-        // Floating Map Controls (Right Center Column)
+        // Floating Action Buttons (Right Center)
         Column(
             modifier = Modifier
                 .align(Alignment.CenterEnd)
@@ -438,52 +389,29 @@ fun RealGeographicMapCanvas(
             verticalArrangement = Arrangement.spacedBy(10.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Zoom In (+)
-            MapActionButton(
-                label = "+",
-                onClick = {
-                    zoomLevel = (zoomLevel + 0.75f).coerceAtMost(19.0f)
-                    onZoomIn?.invoke()
-                }
-            )
-
-            // Zoom Out (-)
-            MapActionButton(
-                label = "−",
-                onClick = {
-                    zoomLevel = (zoomLevel - 0.75f).coerceAtLeast(3.0f)
-                    onZoomOut?.invoke()
-                }
-            )
-
-            // Recenter Button
-            MapActionButton(
-                label = "⌖",
-                isActive = isFollowingVehicle,
-                onClick = {
-                    isFollowingVehicle = true
-                    panOffsetX = 0f
-                    panOffsetY = 0f
-                    onResetMap?.invoke()
-                }
-            )
-
-            // 2D / 3D Toggle
-            MapActionButton(
-                label = if (is3dPerspective) "3D" else "2D",
-                isActive = is3dPerspective,
-                onClick = { is3dPerspective = !is3dPerspective }
-            )
-
-            // Compass North-Up
-            MapActionButton(
-                label = "🧭",
-                isActive = isNorthUp,
-                onClick = { onToggleNorthUp?.invoke() }
-            )
+            MapActionButton(label = "+", onClick = {
+                zoomLevel = (zoomLevel + 0.75f).coerceAtMost(19.0f)
+                onZoomIn?.invoke()
+            })
+            MapActionButton(label = "−", onClick = {
+                zoomLevel = (zoomLevel - 0.75f).coerceAtLeast(3.0f)
+                onZoomOut?.invoke()
+            })
+            MapActionButton(label = "⌖", isActive = isFollowingVehicle, onClick = {
+                isFollowingVehicle = true
+                panOffsetX = 0f
+                panOffsetY = 0f
+                onResetMap?.invoke()
+            })
+            MapActionButton(label = if (is3dPerspective) "3D" else "2D", isActive = is3dPerspective, onClick = {
+                is3dPerspective = !is3dPerspective
+            })
+            MapActionButton(label = "🧭", isActive = isNorthUp, onClick = {
+                onToggleNorthUp?.invoke()
+            })
         }
 
-        // Coordinates Bar (Bottom Right)
+        // Coordinates Pill (Bottom Right)
         Box(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
@@ -540,12 +468,9 @@ private fun latLonToMercatorPixels(lat: Double, lon: Double, zoom: Float): Offse
     val clampedLat = lat.coerceIn(-85.05112878, 85.05112878)
     val clampedLon = lon.coerceIn(-180.0, 180.0)
 
-    val n = 1 shl zoom.toInt()
-    val subZoomFrac = zoom - zoom.toInt()
-    val scale = n * (1f + subZoomFrac) * 256.0
-
+    val scale = 256.0 * (2.0.pow(zoom.toDouble()))
     val x = ((clampedLon + 180.0) / 360.0) * scale
-    val sinLat = kotlin.math.sin(clampedLat * PI / 180.0)
+    val sinLat = sin(clampedLat * PI / 180.0)
     val y = (0.5 - (ln((1.0 + sinLat) / (1.0 - sinLat)) / (4.0 * PI))) * scale
 
     return Offset(x.toFloat(), y.toFloat())
@@ -604,8 +529,6 @@ private fun DrawScope.drawScaleBar(
     }
 
     val actualBarPixels = niceMeters / metersPerPixel
-    val label = if (niceMeters >= 1000) "${niceMeters / 1000} km" else "$niceMeters m"
-
     val barX = 18f
     val barY = canvasHeight - 24f
 

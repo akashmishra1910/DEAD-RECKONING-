@@ -10,16 +10,18 @@ import android.os.HandlerThread
 import org.isro.idr.engine.ImuSample
 import org.isro.idr.engine.MagnetometerSample
 import org.isro.idr.engine.Vector3D
+import kotlin.math.atan2
 import kotlin.math.pow
+import kotlin.math.sqrt
 
 /**
  * Thread-Safe Sensor Ingestion Layer for Physical Android Devices.
  * Manages raw Android HAL sensor event callbacks (accelerometer, gyroscope,
- * magnetometer, barometer) on a dedicated high-priority background HandlerThread.
+ * magnetometer, rotation vector, barometer) on a dedicated high-priority background HandlerThread.
  *
  * Implements deterministic phase-accumulator causal rate resampling to downsample
- * raw hardware interrupts (~468.8 Hz on physical devices) down to exactly 100.0 Hz
- * for the dead-reckoning fusion pipeline without phase drift or queue saturation.
+ * raw hardware interrupts down to exactly 100.0 Hz for the dead-reckoning fusion pipeline.
+ * Computes live physical device orientation azimuth and standstill detection.
  */
 class SensorIngestionManager(
     context: Context,
@@ -30,6 +32,7 @@ class SensorIngestionManager(
     private val accelSensor = sensorManager?.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
     private val gyroSensor = sensorManager?.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
     private val magSensor = sensorManager?.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
+    private val rotationVectorSensor = sensorManager?.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
     private val baroSensor = sensorManager?.getDefaultSensor(Sensor.TYPE_PRESSURE)
 
     private var sensorThread: HandlerThread? = null
@@ -64,6 +67,22 @@ class SensorIngestionManager(
     @Volatile
     private var latestBaroAltMeters: Double? = null
 
+    @Volatile
+    var latestDeviceHeadingDeg: Double = 0.0
+        private set
+
+    @Volatile
+    var isDeviceStationary: Boolean = true
+        private set
+
+    // Standstill detector window
+    private val recentAccelNorms = DoubleArray(25)
+    private var accelNormIndex = 0
+    private val rMatrix = FloatArray(9)
+    private val orientationVals = FloatArray(3)
+    private var lastAccelVals = FloatArray(3)
+    private var lastMagVals = FloatArray(3)
+
     val isAccelerometerAvailable: Boolean
         get() = accelSensor != null
 
@@ -78,6 +97,7 @@ class SensorIngestionManager(
 
     var onImuSampleListener: ((ImuSample) -> Unit)? = null
     var onMagSampleListener: ((MagnetometerSample) -> Unit)? = null
+    var onDeviceHeadingListener: ((Double) -> Unit)? = null
 
     fun start(): Boolean {
         if (isRunning || sensorManager == null) return false
@@ -112,6 +132,9 @@ class SensorIngestionManager(
         magSensor?.let {
             sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME, handler)
         }
+        rotationVectorSensor?.let {
+            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME, handler)
+        }
         baroSensor?.let {
             sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL, handler)
         }
@@ -139,15 +162,54 @@ class SensorIngestionManager(
         }
 
         when (event.sensor.type) {
+            Sensor.TYPE_ROTATION_VECTOR -> {
+                SensorManager.getRotationMatrixFromVector(rMatrix, event.values)
+                SensorManager.getOrientation(rMatrix, orientationVals)
+                val azimuthRad = orientationVals[0]
+                val azimuthDeg = ((Math.toDegrees(azimuthRad.toDouble()) + 360.0) % 360.0)
+                latestDeviceHeadingDeg = azimuthDeg
+                onDeviceHeadingListener?.invoke(azimuthDeg)
+            }
+
             Sensor.TYPE_ACCELEROMETER -> {
-                // 1. Ingest raw callback timestamp into policy for rate & monotonicity tracking
+                // 1. Ingest raw callback timestamp into policy
                 if (!accelPolicy.ingestCallback(timestampNanos)) return
+
+                lastAccelVals = event.values.clone()
 
                 val ax = event.values[0].toDouble()
                 val ay = event.values[1].toDouble()
                 val az = event.values[2].toDouble()
+                val norm = sqrt(ax * ax + ay * ay + az * az)
 
-                // 2. Deterministic Phase-Accumulator Causal Rate Resampling (exact 100.0 Hz)
+                // Standstill variance tracking
+                recentAccelNorms[accelNormIndex % recentAccelNorms.size] = norm
+                accelNormIndex++
+
+                var sum = 0.0
+                for (v in recentAccelNorms) sum += v
+                val mean = sum / recentAccelNorms.size
+                var varSum = 0.0
+                for (v in recentAccelNorms) varSum += (v - mean) * (v - mean)
+                val variance = varSum / recentAccelNorms.size
+                val gyroNorm = sqrt(latestGyro.x * latestGyro.x + latestGyro.y * latestGyro.y + latestGyro.z * latestGyro.z)
+
+                // Stationary check: low accel variance and low gyro angular rate
+                isDeviceStationary = (variance < 0.08 && gyroNorm < 0.15)
+
+                // Fallback compass calculation if rotation vector is unavailable
+                if (rotationVectorSensor == null && isMagValid) {
+                    val r = FloatArray(9)
+                    val i = FloatArray(9)
+                    if (SensorManager.getRotationMatrix(r, i, lastAccelVals, lastMagVals)) {
+                        SensorManager.getOrientation(r, orientationVals)
+                        val azDeg = ((Math.toDegrees(orientationVals[0].toDouble()) + 360.0) % 360.0)
+                        latestDeviceHeadingDeg = azDeg
+                        onDeviceHeadingListener?.invoke(azDeg)
+                    }
+                }
+
+                // 2. Deterministic Phase-Accumulator Rate Resampling (exact 100.0 Hz)
                 val isDecimatedEmission: Boolean
                 if (lastCallbackAccelTimestampNanos < 0L) {
                     lastCallbackAccelTimestampNanos = timestampNanos
@@ -165,7 +227,7 @@ class SensorIngestionManager(
                 if (isDecimatedEmission) {
                     accelPhaseAccumulatorNanos -= targetStepPeriodNanos
                     if (accelPhaseAccumulatorNanos > targetStepPeriodNanos) {
-                        accelPhaseAccumulatorNanos = 0L // prevent burst catch-up after sleep
+                        accelPhaseAccumulatorNanos = 0L
                     }
                     lastConsumedAccelTimestampNanos = timestampNanos
                     accelPolicy.recordConsumed(timestampNanos)
@@ -196,11 +258,12 @@ class SensorIngestionManager(
             }
 
             Sensor.TYPE_MAGNETIC_FIELD -> {
+                lastMagVals = event.values.clone()
                 val mx = event.values[0].toDouble()
                 val my = event.values[1].toDouble()
                 val mz = event.values[2].toDouble()
                 latestMag = Vector3D(mx, my, mz)
-                isMagValid = (event.accuracy >= SensorManager.SENSOR_STATUS_ACCURACY_MEDIUM)
+                isMagValid = (event.accuracy >= SensorManager.SENSOR_STATUS_ACCURACY_LOW)
 
                 val timeS = (timestampNanos - baseTimestampNanos).toDouble() / 1_000_000_000.0
                 val magSample = MagnetometerSample(
@@ -223,7 +286,7 @@ class SensorIngestionManager(
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
         if (sensor?.type == Sensor.TYPE_MAGNETIC_FIELD) {
-            isMagValid = (accuracy >= SensorManager.SENSOR_STATUS_ACCURACY_MEDIUM)
+            isMagValid = (accuracy >= SensorManager.SENSOR_STATUS_ACCURACY_LOW)
         }
     }
 }

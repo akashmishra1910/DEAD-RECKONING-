@@ -4,10 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -23,13 +21,9 @@ import org.isro.idr.ui.state.NavigationUiState
 import org.isro.idr.ui.state.TrajectoryDisplayMode
 
 /**
- * Screens 3, 4, 5: Production Navigation Screen.
- * Full-screen real geographic world map dominant navigation supporting:
- * - Redesigned ISRO IDR Top Bar & Status Banner
- * - Screen 3: GNSS Navigation (Green Top Banner)
- * - Screen 4: Dead Reckoning Navigation (Amber/Saffron Top Banner + DR Trail)
- * - Screen 5: GNSS Recovery (Cyan Top Banner + Track Reacquisition)
- * - Non-overlapping layout with floating right controls and clean bottom HUD dock
+ * Screens 3, 4, 5: Production End-to-End Navigation Dashboard.
+ * Dominant full-screen real geographic world map with live turn guidance,
+ * physical phone heading orientation, and standstill drift lock.
  */
 @Composable
 fun MainNavigationScreen(
@@ -42,10 +36,11 @@ fun MainNavigationScreen(
     onOpenDiagnostics: (() -> Unit)? = null,
     onOpenNavicSkyView: (() -> Unit)? = null,
     onSimulateOutageToggle: (() -> Unit)? = null,
+    onEndTrip: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    val speedKmh = (uiState.telemetry?.speedKmh ?: (uiState.gnssStatus.speedMps * 3.6)).coerceAtLeast(0.0)
-    val headingDeg = uiState.telemetry?.headingDeg ?: uiState.gnssStatus.bearingDeg
+    val speedKmh = if (uiState.isStationary) 0.0 else (uiState.telemetry?.speedKmh ?: (uiState.gnssStatus.speedMps * 3.6)).coerceAtLeast(0.0)
+    val headingDeg = if (uiState.deviceHeadingDeg > 0.0) uiState.deviceHeadingDeg else (uiState.telemetry?.headingDeg ?: uiState.gnssStatus.bearingDeg)
     val isSearching = uiState.gnssStatus.isSearching && !uiState.gnssStatus.fixValid
     val isDrMode = uiState.isDrActive || (!uiState.gnssStatus.fixValid && !isSearching)
     val accuracyOrError = if (isDrMode) {
@@ -72,6 +67,9 @@ fun MainNavigationScreen(
             mapStyle = uiState.mapStyle,
             isNorthUp = uiState.isNorthUp,
             userZoomFactor = uiState.mapZoomLevel,
+            routeWaypoints = uiState.routeWaypoints,
+            deviceHeadingDeg = headingDeg,
+            isStationary = uiState.isStationary,
             onZoomIn = onZoomIn,
             onZoomOut = onZoomOut,
             onToggleNorthUp = onToggleNorthUp,
@@ -102,7 +100,7 @@ fun MainNavigationScreen(
             )
         }
 
-        // 3. Bottom Dock: NextTurnCard stacked neatly above SpeedHeadingHud (Zero Overlap)
+        // 3. Bottom Dock: NextTurnCard stacked neatly above SpeedHeadingHud
         Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -110,11 +108,16 @@ fun MainNavigationScreen(
                 .padding(start = 12.dp, end = 12.dp, bottom = 8.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            // Next Turn Guidance Card
+            // Dynamic Next Turn Guidance & Active Trip Card
             NextTurnCard(
                 distanceMeters = uiState.nextTurnDistanceMeters,
                 turnDirection = uiState.nextTurnDirection,
-                roadName = uiState.selectedRoadName
+                roadName = uiState.selectedRoadName,
+                turnIcon = uiState.currentManeuverIcon,
+                isTripActive = uiState.isTripActive,
+                remainingDistanceMeters = uiState.remainingDistanceMeters,
+                estimatedMinutes = uiState.estimatedTimeMinutes,
+                onEndTrip = onEndTrip
             )
 
             // Bottom Instrument Strip

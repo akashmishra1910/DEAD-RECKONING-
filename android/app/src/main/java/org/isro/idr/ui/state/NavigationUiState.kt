@@ -210,6 +210,20 @@ data class NavigationUiState(
     val hypothesisCount: Int = 3,
     val scoreMargin: Double = 0.85,
 
+    // Active End-to-End Trip Navigation State
+    val isTripActive: Boolean = false,
+    val startLocationName: String = "Current Location",
+    val destinationLocationName: String = "",
+    val destinationLatLon: Pair<Double, Double>? = null,
+    val totalRouteDistanceMeters: Double = 0.0,
+    val remainingDistanceMeters: Double = 0.0,
+    val estimatedTimeMinutes: Int = 0,
+    val currentManeuverIcon: String = "⮅",
+    val currentManeuverInstruction: String = "Continue straight",
+    val routeWaypoints: List<Pair<Double, Double>> = emptyList(),
+    val deviceHeadingDeg: Double = 0.0,
+    val isStationary: Boolean = true,
+
     // Map Explorer Layer Toggles & Search
     val explorerSearchQuery: String = "",
     val showRoadsLayer: Boolean = true,

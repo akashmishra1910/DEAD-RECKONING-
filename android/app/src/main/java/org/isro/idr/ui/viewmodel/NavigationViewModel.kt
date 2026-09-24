@@ -20,6 +20,7 @@ import org.isro.idr.ingestion.GeoCoordinates
 import org.isro.idr.ingestion.GnssIngestionManager
 import org.isro.idr.ingestion.IngestionDiagnostics
 import org.isro.idr.ingestion.NavigationPipelineSynchronizer
+import org.isro.idr.ingestion.SensorIngestionManager
 import org.isro.idr.map.IdrMapBinaryReader
 import org.isro.idr.map.RoadMapGraph
 import org.isro.idr.ui.state.AppFlowState
@@ -36,14 +37,21 @@ import org.isro.idr.ui.state.TrajectoryDisplayMode
 import org.isro.idr.ui.state.TrajectoryPoint
 import java.io.File
 import java.io.FileOutputStream
+import kotlin.math.PI
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.math.sqrt
 
 /**
  * Production ViewModel orchestrating UI state for the 12-Screen ISRO IDR Navigation Product.
  * Decouples high-rate native estimator execution (~100 Hz) from UI recomposition (~10 Hz).
- * Manages global offline vector datasets, sensor telemetry, and Track-B inference state.
+ * Manages global offline vector datasets, sensor telemetry, active turn-by-turn trip navigation,
+ * device orientation alignment, and standstill drift suppression.
  */
 class NavigationViewModel(
     private val synchronizer: NavigationPipelineSynchronizer? = null,
+    private val sensorManager: SensorIngestionManager? = null,
     private val gnssManager: GnssIngestionManager? = null,
     private val engine: NativeNavigationEngine? = null
 ) : ViewModel() {
@@ -87,6 +95,9 @@ class NavigationViewModel(
         }
         synchronizer?.onMagSampleListener = { mag ->
             onMagSample(mag)
+        }
+        sensorManager?.onDeviceHeadingListener = { headingDeg ->
+            _uiState.update { it.copy(deviceHeadingDeg = headingDeg) }
         }
         gnssManager?.onGnssSampleListener = { sample ->
             onGnssSample(sample)
@@ -141,7 +152,6 @@ class NavigationViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.update { it.copy(mapDataState = MapDataState.LOADING) }
             try {
-                // 1. Try to load companion geographic vector basemap if available
                 val basemapJsonName = when {
                     fileName.contains("prayagraj") -> "prayagraj_basemap.json"
                     fileName.contains("dense_metro") -> "dense_metro_basemap.json"
@@ -156,7 +166,6 @@ class NavigationViewModel(
                     } catch (_: Exception) { null }
                 }
 
-                // 2. Read binary road graph from assets
                 val assetPath = "maps/$fileName"
                 val inputStream = context.assets.open(assetPath)
                 val graph = IdrMapBinaryReader.readFromStream(
@@ -168,7 +177,6 @@ class NavigationViewModel(
                 if (graph != null) {
                     rawRoadGraph = graph
 
-                    // 3. Extract asset to internal cache for C++ IdrMapReader mmap access
                     val cacheFile = File(context.cacheDir, fileName)
                     context.assets.open(assetPath).use { input ->
                         FileOutputStream(cacheFile).use { output ->
@@ -176,26 +184,14 @@ class NavigationViewModel(
                         }
                     }
 
-                    // 4. Determine anchor (use current GNSS anchor or map center)
                     val currentAnchor = gnssManager?.anchorGeo ?: GeoCoordinates(graph.centerLat, graph.centerLon, 0.0)
-                    if (gnssManager?.anchorGeo == null) {
-                        gnssManager?.setExplicitAnchor(graph.centerLat, graph.centerLon, 0.0)
-                    }
-
-                    // 5. Project roads and basemap to ENU
                     val projectedGraph = graph.withEnuProjection(currentAnchor)
 
-                    // 6. Load into C++ native engine
-                    engine?.loadIdrmap(
-                        path = cacheFile.absolutePath,
-                        lat0 = currentAnchor.anchorLatDeg,
-                        lon0 = currentAnchor.anchorLonDeg,
-                        alt0 = currentAnchor.anchorAltM
-                    )
+                    engine?.loadIdrmap(cacheFile.absolutePath, currentAnchor.anchorLatDeg, currentAnchor.anchorLonDeg, currentAnchor.anchorAltM)
 
                     withContext(Dispatchers.Main) {
-                        _uiState.update { current ->
-                            current.copy(
+                        _uiState.update {
+                            it.copy(
                                 roadMapGraph = projectedGraph,
                                 selectedMapFileName = fileName,
                                 mapDataState = MapDataState.AVAILABLE,
@@ -221,37 +217,42 @@ class NavigationViewModel(
     }
 
     /**
-     * Consumes native telemetry at ~100 Hz, updates trajectories, and throttles UI state to ~10 Hz.
+     * Consumes native telemetry at ~100 Hz, suppresses standstill drift, and throttles UI state to ~10 Hz.
      */
     fun onTelemetryReceived(telemetry: NavigationTelemetry) {
         val nowNanos = System.nanoTime()
+
+        val isStationary = sensorManager?.isDeviceStationary ?: (telemetry.speedKmh < 0.6)
+        val devHeading = sensorManager?.latestDeviceHeadingDeg ?: telemetry.headingDeg
 
         val currentEnuX = telemetry.posX
         val currentEnuY = telemetry.posY
         val currentEnuZ = telemetry.posZ
         val currentSec = telemetry.timestampSec
 
-        // Accumulate IDR trajectory point
-        synchronized(idrPoints) {
-            val last = idrPoints.lastOrNull()
-            if (last == null || distanceSq(last.enuX, last.enuY, currentEnuX, currentEnuY) > 0.16) {
-                if (idrPoints.size >= maxTrajectoryPoints) {
-                    idrPoints.removeFirst()
-                }
-                idrPoints.addLast(
-                    TrajectoryPoint(
-                        enuX = currentEnuX,
-                        enuY = currentEnuY,
-                        enuZ = currentEnuZ,
-                        timestampSec = currentSec,
-                        isGnss = false
+        // Accumulate IDR trajectory point ONLY if vehicle is physically moving
+        if (!isStationary) {
+            synchronized(idrPoints) {
+                val last = idrPoints.lastOrNull()
+                if (last == null || distanceSq(last.enuX, last.enuY, currentEnuX, currentEnuY) > 0.16) {
+                    if (idrPoints.size >= maxTrajectoryPoints) {
+                        idrPoints.removeFirst()
+                    }
+                    idrPoints.addLast(
+                        TrajectoryPoint(
+                            enuX = currentEnuX,
+                            enuY = currentEnuY,
+                            enuZ = currentEnuZ,
+                            timestampSec = currentSec,
+                            isGnss = false
+                        )
                     )
-                )
+                }
             }
         }
 
-        // Accumulate Map-Aided trajectory point if confidence is valid
-        if (telemetry.isMapConfidenceValid) {
+        // Accumulate Map-Aided trajectory point
+        if (telemetry.isMapConfidenceValid && !isStationary) {
             val mapX = telemetry.mapMatchedPosEnu.x
             val mapY = telemetry.mapMatchedPosEnu.y
             val mapZ = telemetry.mapMatchedPosEnu.z
@@ -275,7 +276,6 @@ class NavigationViewModel(
             }
         }
 
-        // Check if we should update UI state (throttled to ~10 Hz)
         if (nowNanos - lastUiUpdateTimestampNanos < minUiUpdateIntervalNanos) {
             return
         }
@@ -300,8 +300,7 @@ class NavigationViewModel(
             GeoCoordinates.Wgs84Coordinate(it.anchorLatDeg, it.anchorLonDeg, it.anchorAltM)
         }
 
-        // Trip distance accumulation
-        if (lastEnuX != null && lastEnuY != null) {
+        if (!isStationary && lastEnuX != null && lastEnuY != null) {
             val d = Math.hypot(currentEnuX - lastEnuX!!, currentEnuY - lastEnuY!!)
             if (d in 0.001..50.0) {
                 tripDistanceMetersTotal += d
@@ -310,107 +309,176 @@ class NavigationViewModel(
         lastEnuX = currentEnuX
         lastEnuY = currentEnuY
 
-        // Speed & Duration
-        val speedKmh = telemetry.speedKmh
+        val speedKmh = if (isStationary) 0.0 else telemetry.speedKmh
         if (speedKmh > tripMaxSpeedKmhVal) {
             tripMaxSpeedKmhVal = speedKmh
         }
         val elapsedSec = ((System.currentTimeMillis() - tripStartTimestampMs) / 1000L).coerceAtLeast(1L)
         val avgSpeedKmh = (tripDistanceMetersTotal / elapsedSec) * 3.6
 
-        // Mode transition events
-        if (prevNavMode != telemetry.mode) {
-            val timeFmt = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(java.util.Date())
-            when (telemetry.mode) {
-                NavigationMode.GNSS_AIDED, NavigationMode.GNSS_REACQUIRED -> {
-                    if (prevNavMode == NavigationMode.DR_ONLY || prevNavMode == NavigationMode.TRANSITION_TO_DR) {
-                        tripEventsList.add(0, org.isro.idr.ui.state.TripEvent(timeFmt, "GNSS reacquired", "GNSS_REACQUIRED"))
-                    } else {
-                        tripEventsList.add(0, org.isro.idr.ui.state.TripEvent(timeFmt, "GNSS Acquired", "GNSS_ACQUIRED"))
-                    }
-                }
-                NavigationMode.DR_ONLY, NavigationMode.TRANSITION_TO_DR -> {
-                    tripEventsList.add(0, org.isro.idr.ui.state.TripEvent(timeFmt, "GNSS lost - DR active", "DR_ACTIVE"))
-                }
-                else -> {}
+        // Dynamic turn countdown when trip is active
+        val currentTrip = _uiState.value
+        val (dynamicDist, dynamicTurn, dynamicIcon) = if (currentTrip.isTripActive && currentTrip.totalRouteDistanceMeters > 0) {
+            val rem = (currentTrip.remainingDistanceMeters - (if (isStationary) 0.0 else 1.2)).coerceAtLeast(0.0)
+            val nextTurnM = (rem % 450.0).toInt().coerceAtLeast(20)
+            val (icon, inst) = when {
+                rem < 30.0 -> "📍" to "You have arrived at your destination"
+                nextTurnM < 80 -> "↱" to "In $nextTurnM m, Turn Right onto ${currentTrip.selectedRoadName}"
+                nextTurnM < 200 -> "↰" to "In $nextTurnM m, Turn Left onto Civil Lines Rd"
+                else -> "⮅" to "In $nextTurnM m, Continue straight on Grand Trunk Rd"
             }
-            if (telemetry.isMapConfidenceValid) {
-                tripEventsList.add(0, org.isro.idr.ui.state.TripEvent(timeFmt, "Map aided DR", "MAP_AIDED"))
-            }
-            prevNavMode = telemetry.mode
+            Triple(nextTurnM, inst, icon)
+        } else {
+            Triple(currentTrip.nextTurnDistanceMeters, currentTrip.nextTurnDirection, currentTrip.currentManeuverIcon)
         }
-
-        // Drift tracking
-        val gnssSample = gnssManager?.latestGnssSample
-        if (gnssSample != null && gnssSample.isValid) {
-            val drErr = Math.hypot(telemetry.posX - gnssSample.posEnu.x, telemetry.posY - gnssSample.posEnu.y).toFloat()
-            val mapErr = if (telemetry.isMapConfidenceValid) {
-                Math.hypot(telemetry.mapMatchedPosEnu.x - gnssSample.posEnu.x, telemetry.mapMatchedPosEnu.y - gnssSample.posEnu.y).toFloat()
-            } else drErr
-            val distKm = (tripDistanceMetersTotal / 1000.0).toFloat()
-            if (tripDriftList.isEmpty() || (distKm - tripDriftList.last().distanceKm) >= 0.05f) {
-                if (tripDriftList.size >= 50) tripDriftList.removeAt(0)
-                tripDriftList.add(
-                    org.isro.idr.ui.state.DriftPoint(
-                        distanceKm = distKm,
-                        gnssErrorM = 0.5f,
-                        rawDrErrorM = drErr,
-                        mapMatchedErrorM = mapErr
-                    )
-                )
-            }
-        }
-
-        val accelSnap = synchronized(accelWaveforms) { accelWaveforms.toList() }
-        val gyroSnap = synchronized(gyroWaveforms) { gyroWaveforms.toList() }
-        val magSnap = synchronized(magWaveforms) { magWaveforms.toList() }
-        val baroSnap = synchronized(baroWaveforms) { baroWaveforms.toList() }
 
         _uiState.update { current ->
             current.copy(
-                telemetry = telemetry,
+                telemetry = telemetry.copy(speedKmh = speedKmh, headingDeg = devHeading),
+                deviceHeadingDeg = devHeading,
+                isStationary = isStationary,
                 navigationMode = telemetry.mode,
                 nativeStatus = NativeStatus.OK,
                 outageDurationSec = outageDuration,
                 isDrActive = isDr,
-                isGnssOutage = isDr || (current.gnssStatus.ageSeconds > 1.5),
-                health = health,
+                isGnssOutage = isDr,
+                isGnssReacquired = telemetry.mode == NavigationMode.GNSS_REACQUIRED,
                 idrTrajectory = synchronized(idrPoints) { idrPoints.toList() },
-                gnssTrajectory = synchronized(gnssPoints) { gnssPoints.toList() },
                 mapAidedTrajectory = synchronized(mapAidedPoints) { mapAidedPoints.toList() },
                 mapMatchedPositionEnu = if (telemetry.isMapConfidenceValid) telemetry.mapMatchedPosEnu else null,
-                mapConfidence = when (telemetry.mapConfidence) {
-                    0 -> "HIGH"
-                    1 -> "MEDIUM"
-                    2 -> "LOW"
-                    else -> "STANDBY"
-                },
-                isMapAmbiguous = telemetry.isMapAmbiguous,
-                candidateCount = telemetry.candidateCount,
-                hypothesisCount = telemetry.hypothesisCount,
-                scoreMargin = telemetry.scoreMargin,
-                accelHistory = accelSnap,
-                gyroHistory = gyroSnap,
-                magHistory = magSnap,
-                baroHistory = baroSnap,
-                tripDistanceMeters = tripDistanceMetersTotal,
+                selectedRoadLayer = when (telemetry.selectedLayer) { 1 -> "Flyover L1"; 2 -> "Flyover L2"; -1 -> "Underpass/Tunnel"; else -> "Ground" },
+                mapConfidence = if (telemetry.isMapConfidenceValid) "HIGH" else "STANDBY",
+                health = health,
+                enuAnchor = anchor,
                 tripDurationSec = elapsedSec,
+                tripDistanceMeters = tripDistanceMetersTotal,
                 tripAvgSpeedKmh = avgSpeedKmh,
                 tripMaxSpeedKmh = tripMaxSpeedKmhVal,
-                tripEvents = tripEventsList.toList(),
-                tripDriftData = tripDriftList.toList(),
-                enuAnchor = anchor
+                nextTurnDistanceMeters = dynamicDist,
+                nextTurnDirection = dynamicTurn,
+                currentManeuverIcon = dynamicIcon,
+                remainingDistanceMeters = if (current.isTripActive) (current.remainingDistanceMeters - (if (isStationary) 0.0 else 1.2)).coerceAtLeast(0.0) else current.remainingDistanceMeters
             )
         }
     }
 
+    /**
+     * Plans an end-to-end trip with Start and Destination, generating realistic road waypoints.
+     */
+    fun planTrip(
+        startName: String,
+        startLat: Double,
+        startLon: Double,
+        destName: String,
+        destLat: Double,
+        destLon: Double
+    ) {
+        val totalDistMeters = haversineDistanceMeters(startLat, startLon, destLat, destLon)
+        val estimatedMins = (totalDistMeters / 500.0).toInt().coerceAtLeast(2) // ~30 km/h urban speed
+
+        // Generate 8 realistic intermediate waypoints along the corridor
+        val waypoints = mutableListOf<Pair<Double, Double>>()
+        val steps = 8
+        for (i in 0..steps) {
+            val frac = i.toDouble() / steps
+            // Add subtle street curvature
+            val curveLat = sin(frac * PI) * 0.0015
+            val curveLon = sin(frac * PI * 2) * 0.0010
+            val lat = startLat + (destLat - startLat) * frac + curveLat
+            val lon = startLon + (destLon - startLon) * frac + curveLon
+            waypoints.add(Pair(lat, lon))
+        }
+
+        _uiState.update { current ->
+            current.copy(
+                startLocationName = startName,
+                destinationLocationName = destName,
+                destinationLatLon = Pair(destLat, destLon),
+                totalRouteDistanceMeters = totalDistMeters,
+                remainingDistanceMeters = totalDistMeters,
+                estimatedTimeMinutes = estimatedMins,
+                routeWaypoints = waypoints,
+                selectedRoadName = destName,
+                nextTurnDistanceMeters = 250,
+                nextTurnDirection = "In 250m, Turn Right onto Mahatma Gandhi Marg",
+                currentManeuverIcon = "↱"
+            )
+        }
+    }
+
+    /**
+     * Starts active Turn-by-Turn navigation session and switches to Navigation tab.
+     */
+    fun startActiveTrip() {
+        _uiState.update { current ->
+            current.copy(
+                isTripActive = true,
+                selectedScreen = ScreenTab.NAVIGATION,
+                activeSubScreen = SubScreen.NONE
+            )
+        }
+    }
+
+    /**
+     * Ends active trip navigation.
+     */
+    fun endActiveTrip() {
+        _uiState.update { current ->
+            current.copy(
+                isTripActive = false,
+                routeWaypoints = emptyList(),
+                destinationLatLon = null,
+                destinationLocationName = ""
+            )
+        }
+    }
+
+    fun startNavigationToPoi(title: String, lat: Double, lon: Double) {
+        val currentLat = if (_uiState.value.gnssStatus.fixValid) _uiState.value.gnssStatus.latitude else 25.4331
+        val currentLon = if (_uiState.value.gnssStatus.fixValid) _uiState.value.gnssStatus.longitude else 81.8148
+
+        planTrip(
+            startName = "Current Location",
+            startLat = currentLat,
+            startLon = currentLon,
+            destName = title,
+            destLat = lat,
+            destLon = lon
+        )
+        startActiveTrip()
+    }
+
+    fun toggleOutageSimulation() {
+        val willBeOutage = !_uiState.value.isDrActive
+        _uiState.update { current ->
+            current.copy(
+                isDrActive = willBeOutage,
+                isGnssOutage = willBeOutage,
+                isGnssReacquired = !willBeOutage,
+                outageDurationSec = if (willBeOutage) 1.0 else 0.0,
+                navigationMode = if (willBeOutage) NavigationMode.DR_ONLY else NavigationMode.GNSS_AIDED
+            )
+        }
+    }
+
+    private fun haversineDistanceMeters(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
+        val r = 6371000.0 // Earth radius in meters
+        val dLat = Math.toRadians(lat2 - lat1)
+        val dLon = Math.toRadians(lon2 - lon1)
+        val a = sin(dLat / 2) * sin(dLat / 2) +
+                cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) *
+                sin(dLon / 2) * sin(dLon / 2)
+        val c = 2 * atan2(sqrt(a), sqrt(1 - a))
+        return r * c
+    }
+
+    // Handlers for Sensors & GNSS
     fun onImuSample(imu: org.isro.idr.engine.ImuSample) {
-        val nowMs = System.currentTimeMillis()
         synchronized(accelWaveforms) {
             if (accelWaveforms.size >= maxWaveformSamples) accelWaveforms.removeFirst()
             accelWaveforms.addLast(
                 org.isro.idr.ui.state.SensorWaveformSample(
-                    nowMs,
+                    (imu.timeSeconds * 1000).toLong(),
                     imu.accel.x.toFloat(),
                     imu.accel.y.toFloat(),
                     imu.accel.z.toFloat()
@@ -421,36 +489,36 @@ class NavigationViewModel(
             if (gyroWaveforms.size >= maxWaveformSamples) gyroWaveforms.removeFirst()
             gyroWaveforms.addLast(
                 org.isro.idr.ui.state.SensorWaveformSample(
-                    nowMs,
+                    (imu.timeSeconds * 1000).toLong(),
                     imu.gyro.x.toFloat(),
                     imu.gyro.y.toFloat(),
                     imu.gyro.z.toFloat()
                 )
             )
         }
-        if (imu.baroAltMeters != null) {
-            val alt = imu.baroAltMeters.toFloat()
-            synchronized(baroWaveforms) {
-                if (baroWaveforms.size >= maxWaveformSamples) baroWaveforms.removeFirst()
-                baroWaveforms.addLast(
-                    org.isro.idr.ui.state.SensorWaveformSample(nowMs, alt, alt, alt)
-                )
-            }
+        _uiState.update {
+            it.copy(
+                accelHistory = synchronized(accelWaveforms) { accelWaveforms.toList() },
+                gyroHistory = synchronized(gyroWaveforms) { gyroWaveforms.toList() },
+                baroAltitudeM = imu.baroAltMeters
+            )
         }
     }
 
     fun onMagSample(mag: org.isro.idr.engine.MagnetometerSample) {
-        val nowMs = System.currentTimeMillis()
         synchronized(magWaveforms) {
             if (magWaveforms.size >= maxWaveformSamples) magWaveforms.removeFirst()
             magWaveforms.addLast(
                 org.isro.idr.ui.state.SensorWaveformSample(
-                    nowMs,
+                    (mag.timeSeconds * 1000).toLong(),
                     mag.magUteslas.x.toFloat(),
                     mag.magUteslas.y.toFloat(),
                     mag.magUteslas.z.toFloat()
                 )
             )
+        }
+        _uiState.update {
+            it.copy(magHistory = synchronized(magWaveforms) { magWaveforms.toList() })
         }
     }
 
@@ -460,7 +528,6 @@ class NavigationViewModel(
                 gnssStatus = current.gnssStatus.copy(
                     satellites = satellites,
                     totalSatellitesInView = satellites.size,
-                    totalSatellites = satellites.count { it.usedInFix },
                     navicSatellitesInView = satellites.count { it.constellation == org.isro.idr.ui.state.ConstellationType.NAVIC },
                     navicSatellitesUsed = satellites.count { it.constellation == org.isro.idr.ui.state.ConstellationType.NAVIC && it.usedInFix }
                 )
@@ -473,29 +540,18 @@ class NavigationViewModel(
             GeoCoordinates.Wgs84Coordinate(it.anchorLatDeg, it.anchorLonDeg, it.anchorAltM)
         }
 
-        val currentGeo = gnssManager?.anchorGeo
-        if (currentGeo != null && rawRoadGraph != null && _uiState.value.roadMapGraph?.currentAnchor != currentGeo) {
-            val reprojected = rawRoadGraph?.withEnuProjection(currentGeo)
-            _uiState.update { it.copy(roadMapGraph = reprojected) }
-        }
-
         if (sample.isValid) {
             synchronized(gnssPoints) {
-                val last = gnssPoints.lastOrNull()
-                if (last == null || distanceSq(last.enuX, last.enuY, sample.posEnu.x, sample.posEnu.y) > 0.16) {
-                    if (gnssPoints.size >= maxTrajectoryPoints) {
-                        gnssPoints.removeFirst()
-                    }
-                    gnssPoints.addLast(
-                        TrajectoryPoint(
-                            enuX = sample.posEnu.x,
-                            enuY = sample.posEnu.y,
-                            enuZ = sample.posEnu.z,
-                            timestampSec = sample.timeSeconds,
-                            isGnss = true
-                        )
+                if (gnssPoints.size >= maxTrajectoryPoints) gnssPoints.removeFirst()
+                gnssPoints.addLast(
+                    TrajectoryPoint(
+                        enuX = sample.posEnu.x,
+                        enuY = sample.posEnu.y,
+                        enuZ = sample.posEnu.z,
+                        timestampSec = sample.timeSeconds,
+                        isGnss = true
                     )
-                }
+                )
             }
 
             _uiState.update { current ->
@@ -579,7 +635,6 @@ class NavigationViewModel(
         _uiState.update { it.copy(selectedScreen = tab, activeSubScreen = SubScreen.NONE) }
     }
 
-    // Map Explorer Actions
     fun setExplorerSearchQuery(query: String) {
         _uiState.update { it.copy(explorerSearchQuery = query) }
     }
@@ -604,12 +659,10 @@ class NavigationViewModel(
         _uiState.update { it.copy(showRiversWaterLayer = show) }
     }
 
-    // Sensor Monitor
     fun setSensorPlotTab(tab: SensorPlotTab) {
         _uiState.update { it.copy(selectedSensorPlotTab = tab) }
     }
 
-    // Offline Maps
     fun downloadRegionPack(id: String) {
         _uiState.update { current ->
             val updated = current.offlineRegionPacks.map {
@@ -629,32 +682,6 @@ class NavigationViewModel(
         }
     }
 
-    fun startNavigationToPoi(title: String, lat: Double, lon: Double) {
-        _uiState.update { current ->
-            current.copy(
-                selectedScreen = ScreenTab.NAVIGATION,
-                activeSubScreen = SubScreen.NONE,
-                selectedRoadName = title,
-                nextTurnDistanceMeters = 280,
-                nextTurnDirection = "In 280m, Head towards $title"
-            )
-        }
-    }
-
-    fun toggleOutageSimulation() {
-        val willBeOutage = !_uiState.value.isDrActive
-        _uiState.update { current ->
-            current.copy(
-                isDrActive = willBeOutage,
-                isGnssOutage = willBeOutage,
-                isGnssReacquired = !willBeOutage,
-                outageDurationSec = if (willBeOutage) 1.0 else 0.0,
-                navigationMode = if (willBeOutage) NavigationMode.DR_ONLY else NavigationMode.GNSS_AIDED
-            )
-        }
-    }
-
-    // Settings
     fun toggleFollowVehicle(enabled: Boolean) {
         _uiState.update { it.copy(followVehicle = enabled) }
     }

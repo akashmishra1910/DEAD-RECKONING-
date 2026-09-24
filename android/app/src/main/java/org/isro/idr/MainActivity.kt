@@ -86,6 +86,7 @@ class MainActivity : ComponentActivity() {
 
         val vm = NavigationViewModel(
             synchronizer = synchronizer,
+            sensorManager = localSensors,
             gnssManager = gnssManager,
             engine = localEngine
         )
@@ -245,7 +246,8 @@ private fun MainApplicationShell(
                                 onResetMap = { viewModel.resetMap() },
                                 onOpenDiagnostics = { viewModel.setSelectedScreen(ScreenTab.DIAGNOSTICS) },
                                 onOpenNavicSkyView = { viewModel.openSubScreen(SubScreen.GNSS_NAVIC_SKYVIEW) },
-                                onSimulateOutageToggle = { viewModel.toggleOutageSimulation() }
+                                onSimulateOutageToggle = { viewModel.toggleOutageSimulation() },
+                                onEndTrip = { viewModel.endActiveTrip() }
                             )
                         }
                         ScreenTab.MAP_EXPLORER -> {

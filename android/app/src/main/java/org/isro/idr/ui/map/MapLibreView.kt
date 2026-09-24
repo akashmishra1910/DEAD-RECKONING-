@@ -19,18 +19,32 @@ fun MapContainerView(
     telemetry: NavigationTelemetry?,
     idrTrajectory: List<TrajectoryPoint>,
     gnssTrajectory: List<TrajectoryPoint>,
+    mapAidedTrajectory: List<TrajectoryPoint> = emptyList(),
     trajectoryMode: TrajectoryDisplayMode,
     mapDataState: MapDataState,
+    isNorthUp: Boolean = true,
+    userZoomFactor: Float = 1.0f,
+    onZoomIn: (() -> Unit)? = null,
+    onZoomOut: (() -> Unit)? = null,
+    onToggleNorthUp: (() -> Unit)? = null,
+    onResetMap: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Box(modifier = modifier.fillMaxSize()) {
-        // High-performance offline Tactical Grid Map Canvas
+        // High-performance offline Tactical Grid Map Canvas in modern light styling
         TacticalGridMapCanvas(
             telemetry = telemetry,
             idrTrajectory = idrTrajectory,
             gnssTrajectory = gnssTrajectory,
+            mapAidedTrajectory = mapAidedTrajectory,
             trajectoryMode = trajectoryMode,
             mapDataState = mapDataState,
+            isNorthUp = isNorthUp,
+            userZoomFactor = userZoomFactor,
+            onZoomIn = onZoomIn,
+            onZoomOut = onZoomOut,
+            onToggleNorthUp = onToggleNorthUp,
+            onResetMap = onResetMap,
             modifier = Modifier.fillMaxSize()
         )
     }

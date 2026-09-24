@@ -135,6 +135,18 @@ class NativeNavigationEngine private constructor(
         return NativeStatus.fromCode(statusCode)
     }
 
+    fun loadIdrmap(path: String, lat0: Double, lon0: Double, alt0: Double): Boolean = synchronized(lock) {
+        if (!isValid) return false
+        val rc = nativeLoadIdrmap(nativeHandle, path, lat0, lon0, alt0)
+        return rc == 0
+    }
+
+    fun reset(): Boolean = synchronized(lock) {
+        if (!isValid) return false
+        val rc = nativeReset(nativeHandle)
+        return rc == 0
+    }
+
     /**
      * OSM Road Graph topological management.
      */
@@ -315,97 +327,6 @@ class NativeNavigationEngine private constructor(
             directByteBuffer: ByteBuffer
         ): Int
 
-    fun loadIdrmap(path: String, lat0: Double, lon0: Double, alt0: Double): Boolean = synchronized(lock) {
-        if (!isValid) return false
-        val rc = nativeLoadIdrmap(nativeHandle, path, lat0, lon0, alt0)
-        return rc == 0
-    }
-
-    fun reset(): Boolean = synchronized(lock) {
-        if (!isValid) return false
-        val rc = nativeReset(nativeHandle)
-        return rc == 0
-    }
-
-    companion object {
-        init {
-            try {
-                System.loadLibrary("idr-jni")
-            } catch (e: UnsatisfiedLinkError) {
-                System.err.println("Failed to load native library idr-jni: ${e.message}")
-            }
-        }
-
-        @JvmStatic private external fun nativeApiVersion(): Int
-        @JvmStatic private external fun nativeApiVersionString(): String
-        @JvmStatic private external fun nativeStatusToString(statusCode: Int): String
-        @JvmStatic private external fun nativeNavModeToString(modeCode: Int): String
-
-        @JvmStatic private external fun nativeCreate(dt: Double): Long
-        @JvmStatic private external fun nativeCreateWithState(
-            dt: Double,
-            posX: Double, posY: Double, posZ: Double,
-            velX: Double, velY: Double, velZ: Double,
-            eulerRoll: Double, eulerPitch: Double, eulerYaw: Double
-        ): Long
-        @JvmStatic private external fun nativeCreateFull(
-            dt: Double,
-            posX: Double, posY: Double, posZ: Double,
-            velX: Double, velY: Double, velZ: Double,
-            eulerRoll: Double, eulerPitch: Double, eulerYaw: Double,
-            enableHeading: Int,
-            enableMap: Int,
-            enableSpeedCalib: Int,
-            enableLongConstraint: Int
-        ): Long
-
-        @JvmStatic private external fun nativeDestroy(handle: Long)
-
-        @JvmStatic private external fun nativeProcessStep(
-            handle: Long,
-            timeS: Double,
-            ax: Double, ay: Double, az: Double,
-            gx: Double, gy: Double, gz: Double,
-            baroAlt: Double,
-            gnssValid: Int,
-            gnssPosX: Double, gnssPosY: Double, gnssPosZ: Double,
-            gnssVelX: Double, gnssVelY: Double, gnssVelZ: Double,
-            aiSpeed: Double,
-            outTelemBuffer: DoubleArray
-        ): Int
-
-        @JvmStatic private external fun nativeProcessStepExt(
-            handle: Long,
-            timeS: Double,
-            ax: Double, ay: Double, az: Double,
-            gx: Double, gy: Double, gz: Double,
-            baroAlt: Double,
-            gnssValid: Int,
-            gnssPosX: Double, gnssPosY: Double, gnssPosZ: Double,
-            gnssVelX: Double, gnssVelY: Double, gnssVelZ: Double,
-            aiSpeed: Double,
-            magValid: Int,
-            magX: Double, magY: Double, magZ: Double,
-            enableRoadConstraints: Int,
-            outTelemBuffer: DoubleArray
-        ): Int
-
-        @JvmStatic private external fun nativeProcessStepDirectBuffer(
-            handle: Long,
-            timeS: Double,
-            ax: Double, ay: Double, az: Double,
-            gx: Double, gy: Double, gz: Double,
-            baroAlt: Double,
-            gnssValid: Int,
-            gnssPosX: Double, gnssPosY: Double, gnssPosZ: Double,
-            gnssVelX: Double, gnssVelY: Double, gnssVelZ: Double,
-            aiSpeed: Double,
-            magValid: Int,
-            magX: Double, magY: Double, magZ: Double,
-            enableRoadConstraints: Int,
-            directByteBuffer: ByteBuffer
-        ): Int
-
         @JvmStatic private external fun nativeClearOsmGraph(handle: Long)
         @JvmStatic private external fun nativeAddOsmNode(
             handle: Long,
@@ -438,4 +359,3 @@ class NativeNavigationEngine private constructor(
         @JvmStatic private external fun nativeReset(handle: Long): Int
     }
 }
-

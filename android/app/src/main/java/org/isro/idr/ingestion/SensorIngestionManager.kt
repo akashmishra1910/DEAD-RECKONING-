@@ -5,6 +5,8 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.os.Handler
+import android.os.HandlerThread
 import org.isro.idr.engine.ImuSample
 import org.isro.idr.engine.MagnetometerSample
 import org.isro.idr.engine.Vector3D
@@ -12,7 +14,8 @@ import kotlin.math.pow
 
 /**
  * Android IMU & Environmental Sensor Ingestion Manager.
- * Subscribes to hardware sensors, normalizes units/coordinate frames, and feeds bounded queues.
+ * Subscribes to hardware sensors on a dedicated HandlerThread, normalizes units/coordinate frames,
+ * tracks live hardware sample rates, and feeds bounded queues.
  */
 class SensorIngestionManager(
     private val context: Context,
@@ -25,6 +28,9 @@ class SensorIngestionManager(
     private val gyroSensor: Sensor? = sensorManager?.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
     private val magSensor: Sensor? = sensorManager?.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
     private val baroSensor: Sensor? = sensorManager?.getDefaultSensor(Sensor.TYPE_PRESSURE)
+
+    private var sensorThread: HandlerThread? = null
+    private var sensorHandler: Handler? = null
 
     val accelPolicy = TimestampPolicy("Accelerometer", nominalRateHz = 100.0)
     val gyroPolicy = TimestampPolicy("Gyroscope", nominalRateHz = 100.0)
@@ -54,25 +60,35 @@ class SensorIngestionManager(
     fun start(): Boolean {
         if (isRunning || sensorManager == null) return false
 
+        // Start dedicated background HandlerThread
+        if (sensorThread == null) {
+            val thread = HandlerThread("SensorIngestionThread", android.os.Process.THREAD_PRIORITY_URGENT_DISPLAY)
+            thread.start()
+            sensorThread = thread
+            sensorHandler = Handler(thread.looper)
+        }
+
         accelPolicy.reset()
         gyroPolicy.reset()
         imuQueue.clear()
         baseTimestampNanos = -1L
 
+        val handler = sensorHandler
         var registeredAny = false
+
         accelSensor?.let {
-            sensorManager.registerListener(this, it, targetDelayUs)
+            sensorManager.registerListener(this, it, targetDelayUs, handler)
             registeredAny = true
         }
         gyroSensor?.let {
-            sensorManager.registerListener(this, it, targetDelayUs)
+            sensorManager.registerListener(this, it, targetDelayUs, handler)
             registeredAny = true
         }
         magSensor?.let {
-            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME)
+            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME, handler)
         }
         baroSensor?.let {
-            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL)
+            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL, handler)
         }
 
         isRunning = registeredAny
@@ -83,6 +99,10 @@ class SensorIngestionManager(
         if (!isRunning) return
         sensorManager?.unregisterListener(this)
         isRunning = false
+
+        sensorThread?.quitSafely()
+        sensorThread = null
+        sensorHandler = null
     }
 
     override fun onSensorChanged(event: SensorEvent?) {
@@ -143,9 +163,8 @@ class SensorIngestionManager(
             }
 
             Sensor.TYPE_PRESSURE -> {
-                // Barometric pressure in hPa converted to altitude (meters)
                 val pressureHpa = event.values[0].toDouble()
-                if (pressureHpa > 300.0 && pressureHpa < 1200.0) {
+                if (pressureHpa in 300.0..1200.0) {
                     latestBaroAltMeters = 44330.0 * (1.0 - (pressureHpa / 1013.25).pow(0.190295))
                 }
             }

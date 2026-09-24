@@ -3,15 +3,29 @@ package org.isro.idr.ui.map
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -19,6 +33,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -28,43 +43,59 @@ import org.isro.idr.theme.IdrTypography
 import org.isro.idr.ui.state.MapDataState
 import org.isro.idr.ui.state.TrajectoryDisplayMode
 import org.isro.idr.ui.state.TrajectoryPoint
-import kotlin.math.cos
-import kotlin.math.sin
 
 /**
  * Tactical Grid Map Canvas.
- * Provides high-performance, deterministic, zero-network local ENU map rendering.
+ * Provides high-performance, deterministic, zero-network local ENU map rendering in modern light styling.
  * Draws metric grid, measured GNSS trajectory, estimated IDR dead-reckoning trajectory,
- * and live vehicle marker rotated by telemetry azimuth.
+ * map-aided snapped position, and live vehicle marker rotated by telemetry azimuth.
  */
 @Composable
 fun TacticalGridMapCanvas(
     telemetry: NavigationTelemetry?,
     idrTrajectory: List<TrajectoryPoint>,
     gnssTrajectory: List<TrajectoryPoint>,
+    mapAidedTrajectory: List<TrajectoryPoint> = emptyList(),
     trajectoryMode: TrajectoryDisplayMode,
     mapDataState: MapDataState,
+    isNorthUp: Boolean = true,
+    userZoomFactor: Float = 1.0f,
+    onZoomIn: (() -> Unit)? = null,
+    onZoomOut: (() -> Unit)? = null,
+    onToggleNorthUp: (() -> Unit)? = null,
+    onResetMap: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val vehicleX = telemetry?.posX ?: 0.0
     val vehicleY = telemetry?.posY ?: 0.0
-    val vehicleHeadingDeg = telemetry?.azimuthDeg?.toFloat() ?: 0.0f
+    val vehicleHeadingDeg = telemetry?.headingDeg?.toFloat() ?: 0.0f
+
+    // Pan offsets in pixels
+    var panOffsetX by remember { mutableFloatStateOf(0f) }
+    var panOffsetY by remember { mutableFloatStateOf(0f) }
 
     Box(
         modifier = modifier
             .fillMaxSize()
-            .clip(RoundedCornerShape(8.dp))
-            .background(IdrColors.NavyDarkest)
-            .border(1.dp, IdrColors.NavyCardBorder, RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(12.dp))
+            .background(IdrColors.MapCanvasBg)
+            .border(1.dp, IdrColors.CardBorder, RoundedCornerShape(12.dp))
+            .pointerInput(Unit) {
+                detectDragGestures { change, dragAmount ->
+                    change.consume()
+                    panOffsetX += dragAmount.x
+                    panOffsetY += dragAmount.y
+                }
+            }
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             val canvasWidth = size.width
             val canvasHeight = size.height
-            val centerX = canvasWidth / 2f
-            val centerY = canvasHeight / 2f
+            val centerX = canvasWidth / 2f + panOffsetX
+            val centerY = canvasHeight / 2f + panOffsetY
 
-            // Auto-scale pixels per meter based on trajectory bounds
-            val scale = calculateScale(
+            // Calculate scale with user zoom multiplier
+            val baseScale = calculateScale(
                 vehicleX = vehicleX,
                 vehicleY = vehicleY,
                 idrTrajectory = idrTrajectory,
@@ -72,73 +103,168 @@ fun TacticalGridMapCanvas(
                 canvasWidth = canvasWidth,
                 canvasHeight = canvasHeight
             )
+            val scale = (baseScale * userZoomFactor).coerceIn(0.05f, 50.0f)
 
-            // 1. Draw Grid Lines & Axes
-            drawMetricGrid(centerX, centerY, vehicleX, vehicleY, scale, canvasWidth, canvasHeight)
+            // Rotation angle: 0 for North-up, or -vehicleHeadingDeg for Heading-up
+            val mapRotationDeg = if (isNorthUp) 0f else -vehicleHeadingDeg
 
-            // 2. Draw GNSS Trajectory (Cyan) if enabled
-            if (trajectoryMode == TrajectoryDisplayMode.BOTH || trajectoryMode == TrajectoryDisplayMode.GNSS_ONLY) {
-                drawTrajectoryPath(
-                    points = gnssTrajectory,
-                    vehicleX = vehicleX,
-                    vehicleY = vehicleY,
+            rotate(degrees = mapRotationDeg, pivot = Offset(centerX, centerY)) {
+                // 1. Draw Grid Lines & Axes
+                drawMetricGrid(centerX, centerY, vehicleX, vehicleY, scale, canvasWidth * 2f, canvasHeight * 2f)
+
+                // 2. Draw GNSS Trajectory (Electric Blue) if enabled
+                if (trajectoryMode == TrajectoryDisplayMode.BOTH || trajectoryMode == TrajectoryDisplayMode.GNSS_ONLY) {
+                    drawTrajectoryPath(
+                        points = gnssTrajectory,
+                        vehicleX = vehicleX,
+                        vehicleY = vehicleY,
+                        centerX = centerX,
+                        centerY = centerY,
+                        scale = scale,
+                        color = IdrColors.TrajectoryGnss,
+                        strokeWidth = 3.5f,
+                        drawDots = true
+                    )
+                }
+
+                // 3. Draw IDR Trajectory (Vivid Saffron) if enabled
+                if (trajectoryMode == TrajectoryDisplayMode.BOTH || trajectoryMode == TrajectoryDisplayMode.IDR_ONLY) {
+                    drawTrajectoryPath(
+                        points = idrTrajectory,
+                        vehicleX = vehicleX,
+                        vehicleY = vehicleY,
+                        centerX = centerX,
+                        centerY = centerY,
+                        scale = scale,
+                        color = IdrColors.TrajectoryIdr,
+                        strokeWidth = 4.5f,
+                        drawDots = false
+                    )
+                }
+
+                // 4. Draw Map-Aided Trajectory (Royal Purple) if enabled
+                if (trajectoryMode == TrajectoryDisplayMode.BOTH || trajectoryMode == TrajectoryDisplayMode.MAP_AIDED) {
+                    drawTrajectoryPath(
+                        points = mapAidedTrajectory,
+                        vehicleX = vehicleX,
+                        vehicleY = vehicleY,
+                        centerX = centerX,
+                        centerY = centerY,
+                        scale = scale,
+                        color = IdrColors.TrajectoryMap,
+                        strokeWidth = 3.5f,
+                        drawDots = false
+                    )
+                }
+
+                // 5. Draw Vehicle Marker (Chevron rotated to azimuth)
+                drawVehicleMarker(
                     centerX = centerX,
                     centerY = centerY,
-                    scale = scale,
-                    color = IdrColors.TrajectoryGnss,
-                    strokeWidth = 3f,
-                    drawDots = true
+                    headingDeg = if (isNorthUp) vehicleHeadingDeg else 0f
                 )
             }
 
-            // 3. Draw IDR Trajectory (Orange/Saffron) if enabled
-            if (trajectoryMode == TrajectoryDisplayMode.BOTH || trajectoryMode == TrajectoryDisplayMode.IDR_ONLY) {
-                drawTrajectoryPath(
-                    points = idrTrajectory,
-                    vehicleX = vehicleX,
-                    vehicleY = vehicleY,
-                    centerX = centerX,
-                    centerY = centerY,
-                    scale = scale,
-                    color = IdrColors.TrajectoryIdr,
-                    strokeWidth = 4f,
-                    drawDots = false
-                )
-            }
-
-            // 4. Draw Vehicle Marker (Chevron rotated to azimuth)
-            drawVehicleMarker(
-                centerX = centerX,
-                centerY = centerY,
-                headingDeg = vehicleHeadingDeg
+            // 6. Draw North Arrow in top-right corner
+            drawNorthIndicator(
+                posX = canvasWidth - 36.dp.toPx(),
+                posY = 36.dp.toPx(),
+                rotationDeg = if (isNorthUp) 0f else -vehicleHeadingDeg
             )
 
-            // 5. Draw North Arrow in top-right corner
-            drawNorthIndicator(canvasWidth - 32.dp.toPx(), 32.dp.toPx())
+            // 7. Draw Distance Scale Bar at bottom right
+            drawScaleBar(
+                posX = canvasWidth - 110.dp.toPx(),
+                posY = canvasHeight - 20.dp.toPx(),
+                scale = scale
+            )
         }
 
-        // Offline Map Status Overlay Banner
+        // Top Left Status Badge
         Box(
             modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(8.dp)
-                .clip(RoundedCornerShape(4.dp))
-                .background(IdrColors.NavySurface.copy(alpha = 0.85f))
-                .border(1.dp, IdrColors.NavyCardBorder, RoundedCornerShape(4.dp))
+                .align(Alignment.TopStart)
+                .padding(10.dp)
+                .shadow(2.dp, RoundedCornerShape(6.dp))
+                .clip(RoundedCornerShape(6.dp))
+                .background(IdrColors.SurfaceElevated.copy(alpha = 0.92f))
+                .border(1.dp, IdrColors.CardBorder, RoundedCornerShape(6.dp))
                 .padding(horizontal = 8.dp, vertical = 4.dp)
         ) {
-            Text(
-                text = when (mapDataState) {
-                    MapDataState.AVAILABLE -> "MAP LAYER: LOCAL OSM ACTIVE"
-                    MapDataState.LOADING -> "MAP LAYER: LOADING TILES..."
-                    MapDataState.UNAVAILABLE -> "OFFLINE MAP DATA NOT INSTALLED"
-                    MapDataState.OFFLINE -> "OFFLINE TACTICAL GRID (LOCAL ENU)"
-                },
-                style = IdrTypography.labelSmall.copy(fontSize = 9.sp),
-                color = if (mapDataState == MapDataState.AVAILABLE) IdrColors.StatusGreen else IdrColors.TextSecondary,
-                fontWeight = FontWeight.Bold
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(7.dp)
+                        .clip(CircleShape)
+                        .background(if (mapDataState == MapDataState.AVAILABLE || mapDataState == MapDataState.READY) IdrColors.StatusGreen else IdrColors.NavBlue)
+                )
+                Spacer(modifier = Modifier.width(5.dp))
+                Text(
+                    text = when (mapDataState) {
+                        MapDataState.READY, MapDataState.AVAILABLE -> "LOCAL OSM GRAPH ACTIVE"
+                        MapDataState.LOADING -> "LOADING GRAPH..."
+                        MapDataState.UNAVAILABLE -> "OFFLINE ENU GRID"
+                        MapDataState.OFFLINE -> "OFFLINE TACTICAL GRID"
+                    },
+                    style = IdrTypography.labelSmall.copy(fontSize = 10.sp),
+                    color = IdrColors.TextPrimary,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+
+        // Floating Interactive Map Controls (Zoom +, Zoom -, Recenter, Compass)
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 10.dp, bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            FloatingMapButton(
+                text = "+",
+                onClick = { onZoomIn?.invoke() }
+            )
+            FloatingMapButton(
+                text = "−",
+                onClick = { onZoomOut?.invoke() }
+            )
+            FloatingMapButton(
+                text = if (isNorthUp) "N" else "H",
+                onClick = { onToggleNorthUp?.invoke() }
+            )
+            FloatingMapButton(
+                text = "⌖",
+                onClick = {
+                    panOffsetX = 0f
+                    panOffsetY = 0f
+                    onResetMap?.invoke()
+                }
             )
         }
+    }
+}
+
+@Composable
+private fun FloatingMapButton(
+    text: String,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(34.dp)
+            .shadow(3.dp, CircleShape)
+            .clip(CircleShape)
+            .background(IdrColors.SurfaceElevated)
+            .border(1.dp, IdrColors.CardBorder, CircleShape)
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = text,
+            style = IdrTypography.titleMedium.copy(fontSize = 15.sp),
+            color = IdrColors.NavyDarkest,
+            fontWeight = FontWeight.Bold
+        )
     }
 }
 
@@ -163,17 +289,20 @@ private fun DrawScope.drawMetricGrid(
     val originScreenX = centerX - (vehicleX * scale).toFloat()
     val originScreenY = centerY + (vehicleY * scale).toFloat() // North is Up (-Y in screen coords)
 
-    val gridColor = IdrColors.NavyCardBorder.copy(alpha = 0.5f)
-    val axisColor = IdrColors.TextTertiary.copy(alpha = 0.7f)
+    val gridColor = IdrColors.GridLineColor
+    val axisColor = IdrColors.GridAxisColor
+
+    val halfW = width
+    val halfH = height
 
     // Vertical grid lines (Constant East)
     var x = originScreenX % gridPx
-    if (x < 0) x += gridPx
-    while (x < width) {
+    while (x > -halfW) x -= gridPx
+    while (x < halfW * 2) {
         drawLine(
             color = gridColor,
-            start = Offset(x, 0f),
-            end = Offset(x, height),
+            start = Offset(x, -halfH),
+            end = Offset(x, halfH * 2),
             strokeWidth = 1f
         )
         x += gridPx
@@ -181,34 +310,30 @@ private fun DrawScope.drawMetricGrid(
 
     // Horizontal grid lines (Constant North)
     var y = originScreenY % gridPx
-    if (y < 0) y += gridPx
-    while (y < height) {
+    while (y > -halfH) y -= gridPx
+    while (y < halfH * 2) {
         drawLine(
             color = gridColor,
-            start = Offset(0f, y),
-            end = Offset(width, y),
+            start = Offset(-halfW, y),
+            end = Offset(halfW * 2, y),
             strokeWidth = 1f
         )
         y += gridPx
     }
 
     // Major origin axes
-    if (originScreenX in 0f..width) {
-        drawLine(
-            color = axisColor,
-            start = Offset(originScreenX, 0f),
-            end = Offset(originScreenX, height),
-            strokeWidth = 1.5f
-        )
-    }
-    if (originScreenY in 0f..height) {
-        drawLine(
-            color = axisColor,
-            start = Offset(0f, originScreenY),
-            end = Offset(width, originScreenY),
-            strokeWidth = 1.5f
-        )
-    }
+    drawLine(
+        color = axisColor,
+        start = Offset(originScreenX, -halfH),
+        end = Offset(originScreenX, halfH * 2),
+        strokeWidth = 1.5f
+    )
+    drawLine(
+        color = axisColor,
+        start = Offset(-halfW, originScreenY),
+        end = Offset(halfW * 2, originScreenY),
+        strokeWidth = 1.5f
+    )
 }
 
 private fun DrawScope.drawTrajectoryPath(
@@ -241,7 +366,7 @@ private fun DrawScope.drawTrajectoryPath(
         if (drawDots) {
             drawCircle(
                 color = color,
-                radius = 2.5f,
+                radius = 3.0f,
                 center = Offset(screenX, screenY)
             )
         }
@@ -260,6 +385,18 @@ private fun DrawScope.drawVehicleMarker(
     headingDeg: Float
 ) {
     rotate(degrees = headingDeg, pivot = Offset(centerX, centerY)) {
+        // Heading beam cone
+        val conePath = Path().apply {
+            moveTo(centerX, centerY)
+            lineTo(centerX - 18f, centerY - 50f)
+            lineTo(centerX + 18f, centerY - 50f)
+            close()
+        }
+        drawPath(
+            path = conePath,
+            color = IdrColors.SaffronPrimary.copy(alpha = 0.15f)
+        )
+
         // Vehicle Chevron / Arrow
         val chevronPath = Path().apply {
             moveTo(centerX, centerY - 18f)        // Tip pointing up (North)
@@ -271,7 +408,7 @@ private fun DrawScope.drawVehicleMarker(
 
         // Glow ring
         drawCircle(
-            color = IdrColors.SaffronAccent.copy(alpha = 0.25f),
+            color = IdrColors.SaffronPrimary.copy(alpha = 0.30f),
             radius = 24f,
             center = Offset(centerX, centerY)
         )
@@ -283,25 +420,78 @@ private fun DrawScope.drawVehicleMarker(
         )
         drawPath(
             path = chevronPath,
-            color = IdrColors.NavyDarkest,
-            style = Stroke(width = 1.5f)
+            color = IdrColors.VehicleOutline,
+            style = Stroke(width = 2.0f)
         )
     }
 }
 
 private fun DrawScope.drawNorthIndicator(
     posX: Float,
-    posY: Float
+    posY: Float,
+    rotationDeg: Float
 ) {
-    val arrowSize = 16f
-    val path = Path().apply {
-        moveTo(posX, posY - arrowSize)
-        lineTo(posX + 6f, posY + arrowSize * 0.5f)
-        lineTo(posX, posY)
-        lineTo(posX - 6f, posY + arrowSize * 0.5f)
-        close()
+    rotate(degrees = rotationDeg, pivot = Offset(posX, posY)) {
+        val arrowSize = 14f
+        val pathNorth = Path().apply {
+            moveTo(posX, posY - arrowSize)
+            lineTo(posX + 5f, posY)
+            lineTo(posX, posY - 3f)
+            close()
+        }
+        val pathSouth = Path().apply {
+            moveTo(posX, posY + arrowSize)
+            lineTo(posX - 5f, posY)
+            lineTo(posX, posY + 3f)
+            close()
+        }
+        drawPath(path = pathNorth, color = IdrColors.StatusRed)
+        drawPath(path = pathSouth, color = IdrColors.SlateMuted)
     }
-    drawPath(path = path, color = IdrColors.StatusRed)
+}
+
+private fun DrawScope.drawScaleBar(
+    posX: Float,
+    posY: Float,
+    scale: Float
+) {
+    // Determine appropriate scale bar length in meters
+    val targetMeters = when {
+        scale > 10f -> 5f
+        scale > 3f -> 20f
+        scale > 1f -> 50f
+        scale > 0.3f -> 100f
+        else -> 500f
+    }
+    val barWidthPx = targetMeters * scale
+    if (barWidthPx in 20f..250f) {
+        // Background container
+        drawRect(
+            color = IdrColors.SurfaceElevated.copy(alpha = 0.85f),
+            topLeft = Offset(posX - 4f, posY - 10f),
+            size = androidx.compose.ui.geometry.Size(barWidthPx + 8f, 16f)
+        )
+        // Scale Bar Line
+        drawLine(
+            color = IdrColors.NavyDarkest,
+            start = Offset(posX, posY),
+            end = Offset(posX + barWidthPx, posY),
+            strokeWidth = 2.5f
+        )
+        // End ticks
+        drawLine(
+            color = IdrColors.NavyDarkest,
+            start = Offset(posX, posY - 4f),
+            end = Offset(posX, posY + 4f),
+            strokeWidth = 2f
+        )
+        drawLine(
+            color = IdrColors.NavyDarkest,
+            start = Offset(posX + barWidthPx, posY - 4f),
+            end = Offset(posX + barWidthPx, posY + 4f),
+            strokeWidth = 2f
+        )
+    }
 }
 
 private fun calculateScale(
@@ -330,5 +520,5 @@ private fun calculateScale(
     val scaleX = (canvasWidth * 0.7f) / spanX.toFloat()
     val scaleY = (canvasHeight * 0.7f) / spanY.toFloat()
 
-    return minOf(scaleX, scaleY).coerceIn(0.05f, 20.0f)
+    return minOf(scaleX, scaleY).coerceIn(0.1f, 15.0f)
 }

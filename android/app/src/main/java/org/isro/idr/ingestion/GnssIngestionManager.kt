@@ -29,6 +29,8 @@ class GnssIngestionManager(
     @Volatile var isRunning: Boolean = false
         private set
 
+    @Volatile var isPermissionGranted: Boolean = false
+
     @Volatile var latestGnssSample: GnssSample? = null
         private set
 
@@ -37,8 +39,12 @@ class GnssIngestionManager(
 
     @Volatile var navicSatCount: Int = 0
         private set
+    @Volatile var navicInViewCount: Int = 0
+        private set
 
     @Volatile var totalSatCount: Int = 0
+        private set
+    @Volatile var totalInViewCount: Int = 0
         private set
 
     var onGnssSampleListener: ((GnssSample) -> Unit)? = null
@@ -48,35 +54,64 @@ class GnssIngestionManager(
             it.isValid && (SystemClock.elapsedRealtime() - (it.timestampNanos / 1_000_000L) < 2000L)
         } ?: false
 
+    val isSearchingFix: Boolean
+        get() = isRunning && !isGnssAvailable
+
     @SuppressLint("MissingPermission")
     fun start(): Boolean {
         if (isRunning || locationManager == null) return false
 
         try {
-            locationManager.requestLocationUpdates(
-                LocationManager.GPS_PROVIDER,
-                minUpdateIntervalMs,
-                minUpdateDistanceM,
-                this
-            )
+            isPermissionGranted = true
+            // Request updates from GPS Provider
+            if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+                locationManager.requestLocationUpdates(
+                    LocationManager.GPS_PROVIDER,
+                    minUpdateIntervalMs,
+                    minUpdateDistanceM,
+                    this
+                )
+            }
+
+            // Fallback request from Network Provider for instant coarse fix while GPS locks
+            if (locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
+                try {
+                    locationManager.requestLocationUpdates(
+                        LocationManager.NETWORK_PROVIDER,
+                        minUpdateIntervalMs,
+                        minUpdateDistanceM,
+                        this
+                    )
+                } catch (_: Exception) {}
+            }
 
             // Register GnssStatus callback for satellite tracking and NavIC detection
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                 gnssStatusCallback = object : GnssStatus.Callback() {
                     override fun onSatelliteStatusChanged(status: GnssStatus) {
-                        var total = 0
-                        var navic = 0
+                        var totalUsed = 0
+                        var navicUsed = 0
+                        var totalInView = 0
+                        var navicInView = 0
+
                         val count = status.satelliteCount
                         for (i in 0 until count) {
+                            totalInView++
+                            val isNavic = status.getConstellationType(i) == GnssStatus.CONSTELLATION_IRNSS
+                            if (isNavic) {
+                                navicInView++
+                            }
                             if (status.usedInFix(i)) {
-                                total++
-                                if (status.getConstellationType(i) == GnssStatus.CONSTELLATION_IRNSS) {
-                                    navic++
+                                totalUsed++
+                                if (isNavic) {
+                                    navicUsed++
                                 }
                             }
                         }
-                        totalSatCount = total
-                        navicSatCount = navic
+                        totalSatCount = totalUsed
+                        totalInViewCount = totalInView
+                        navicSatCount = navicUsed
+                        navicInViewCount = navicInView
                     }
                 }
                 locationManager.registerGnssStatusCallback(gnssStatusCallback!!, null)
@@ -85,6 +120,7 @@ class GnssIngestionManager(
             isRunning = true
             return true
         } catch (e: SecurityException) {
+            isPermissionGranted = false
             isRunning = false
             return false
         }
@@ -118,8 +154,8 @@ class GnssIngestionManager(
         } else 0.0f
 
         // Validation gate
-        val isValid = (accuracy <= 25.0f) && (lat >= -90.0 && lat <= 90.0) &&
-                      (lon >= -180.0 && lon <= 180.0) && (speed >= 0.0 && speed <= 150.0)
+        val isValid = (accuracy <= 35.0f) && (lat in -90.0..90.0) &&
+                      (lon in -180.0..180.0) && (speed in 0.0..150.0)
 
         // Establish or query local tangent ENU anchor
         var anchor = anchorGeo

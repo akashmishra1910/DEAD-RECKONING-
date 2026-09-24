@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -33,14 +34,15 @@ fun SystemHealthBar(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(IdrColors.NavySurface)
-            .border(1.dp, IdrColors.NavyCardBorder, RoundedCornerShape(8.dp))
-            .padding(horizontal = 8.dp, vertical = 6.dp)
+            .shadow(2.dp, RoundedCornerShape(10.dp))
+            .clip(RoundedCornerShape(10.dp))
+            .background(IdrColors.SurfaceElevated)
+            .border(1.dp, IdrColors.CardBorder, RoundedCornerShape(10.dp))
+            .padding(horizontal = 10.dp, vertical = 7.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             HealthChip(label = "IMU", status = health.imuStatus)
@@ -59,9 +61,12 @@ fun HealthChip(
     status: HealthStatus
 ) {
     val (dotColor, textColor) = when (status) {
-        HealthStatus.HEALTHY -> Pair(IdrColors.StatusGreen, IdrColors.TextPrimary)
-        HealthStatus.DEGRADED -> Pair(IdrColors.StatusAmber, IdrColors.StatusAmber)
-        HealthStatus.UNAVAILABLE -> Pair(IdrColors.StatusRed, IdrColors.TextTertiary)
+        HealthStatus.HEALTHY -> Pair(IdrColors.StatusGreen, IdrColors.StatusGreenDark)
+        HealthStatus.SEARCHING -> Pair(IdrColors.NavBlue, IdrColors.NavBlueDark)
+        HealthStatus.DEGRADED -> Pair(IdrColors.StatusAmber, IdrColors.StatusAmberDark)
+        HealthStatus.OFFLINE -> Pair(IdrColors.SlateMuted, IdrColors.TextTertiary)
+        HealthStatus.UNAVAILABLE -> Pair(IdrColors.SlateMuted, IdrColors.TextTertiary)
+        HealthStatus.ERROR -> Pair(IdrColors.StatusRed, IdrColors.StatusRed)
     }
 
     Row(
@@ -76,7 +81,7 @@ fun HealthChip(
         Spacer(modifier = Modifier.width(4.dp))
         Text(
             text = label,
-            style = IdrTypography.labelSmall.copy(fontSize = 10.sp),
+            style = IdrTypography.labelSmall.copy(fontSize = 11.sp),
             color = textColor,
             fontWeight = FontWeight.Bold
         )

@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Root directory of idr-core
-set(IDR_CORE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../../../idr-core)
+set(IDR_CORE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../../../../idr-core)
 
 include_directories(
     ${IDR_CORE_DIR}/include

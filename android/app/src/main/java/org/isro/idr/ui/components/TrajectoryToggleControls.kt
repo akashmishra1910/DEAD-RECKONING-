@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -31,6 +32,7 @@ fun TrajectoryToggleControls(
     currentMode: TrajectoryDisplayMode,
     idrPointCount: Int,
     gnssPointCount: Int,
+    mapAidedPointCount: Int = 0,
     onModeSelected: (TrajectoryDisplayMode) -> Unit,
     onClearClicked: () -> Unit,
     modifier: Modifier = Modifier
@@ -38,9 +40,10 @@ fun TrajectoryToggleControls(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(IdrColors.NavySurface)
-            .border(1.dp, IdrColors.NavyCardBorder, RoundedCornerShape(8.dp))
+            .shadow(2.dp, RoundedCornerShape(10.dp))
+            .clip(RoundedCornerShape(10.dp))
+            .background(IdrColors.SurfaceElevated)
+            .border(1.dp, IdrColors.CardBorder, RoundedCornerShape(10.dp))
             .padding(horizontal = 8.dp, vertical = 6.dp)
     ) {
         Row(
@@ -55,20 +58,20 @@ fun TrajectoryToggleControls(
             ) {
                 Text(
                     text = "LAYERS:",
-                    style = IdrTypography.labelSmall,
+                    style = IdrTypography.labelSmall.copy(fontSize = 10.sp),
                     color = IdrColors.TextSecondary,
-                    modifier = Modifier.padding(end = 4.dp)
+                    modifier = Modifier.padding(end = 2.dp)
                 )
 
                 TrajectoryChip(
-                    label = "BOTH",
+                    label = "ALL",
                     isSelected = currentMode == TrajectoryDisplayMode.BOTH,
-                    accentColor = IdrColors.TextPrimary,
+                    accentColor = IdrColors.NavyDarkest,
                     onClick = { onModeSelected(TrajectoryDisplayMode.BOTH) }
                 )
 
                 TrajectoryChip(
-                    label = "IDR ($idrPointCount)",
+                    label = "DR ($idrPointCount)",
                     isSelected = currentMode == TrajectoryDisplayMode.IDR_ONLY,
                     accentColor = IdrColors.TrajectoryIdr,
                     onClick = { onModeSelected(TrajectoryDisplayMode.IDR_ONLY) }
@@ -82,9 +85,16 @@ fun TrajectoryToggleControls(
                 )
 
                 TrajectoryChip(
+                    label = "MAP ($mapAidedPointCount)",
+                    isSelected = currentMode == TrajectoryDisplayMode.MAP_AIDED,
+                    accentColor = IdrColors.TrajectoryMap,
+                    onClick = { onModeSelected(TrajectoryDisplayMode.MAP_AIDED) }
+                )
+
+                TrajectoryChip(
                     label = "OFF",
                     isSelected = currentMode == TrajectoryDisplayMode.OFF,
-                    accentColor = IdrColors.TextTertiary,
+                    accentColor = IdrColors.SlateMuted,
                     onClick = { onModeSelected(TrajectoryDisplayMode.OFF) }
                 )
             }
@@ -92,11 +102,11 @@ fun TrajectoryToggleControls(
             // Reset / Clear Button
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(IdrColors.NavyCard)
-                    .border(1.dp, IdrColors.NavyCardBorder, RoundedCornerShape(4.dp))
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(IdrColors.StatusRedBg)
+                    .border(1.dp, IdrColors.StatusRed.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
                     .clickable { onClearClicked() }
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                    .padding(horizontal = 7.dp, vertical = 4.dp)
             ) {
                 Text(
                     text = "CLEAR",
@@ -118,12 +128,12 @@ fun TrajectoryChip(
 ) {
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(4.dp))
-            .background(if (isSelected) IdrColors.NavyCard else Color.Transparent)
+            .clip(RoundedCornerShape(6.dp))
+            .background(if (isSelected) IdrColors.SurfaceSubtle else Color.Transparent)
             .border(
                 1.dp,
                 if (isSelected) accentColor else Color.Transparent,
-                RoundedCornerShape(4.dp)
+                RoundedCornerShape(6.dp)
             )
             .clickable { onClick() }
             .padding(horizontal = 6.dp, vertical = 4.dp)
@@ -138,12 +148,12 @@ fun TrajectoryChip(
                         .clip(CircleShape)
                         .background(accentColor)
                 )
-                Spacer(modifier = Modifier.width(4.dp))
+                Spacer(modifier = Modifier.width(3.dp))
             }
             Text(
                 text = label,
                 style = IdrTypography.labelSmall.copy(fontSize = 9.sp),
-                color = if (isSelected) IdrColors.TextPrimary else IdrColors.TextTertiary,
+                color = if (isSelected) IdrColors.TextPrimary else IdrColors.TextSecondary,
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
             )
         }

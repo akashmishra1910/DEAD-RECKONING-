@@ -38,6 +38,10 @@ build/
 local.properties
 */local.properties
 *.iml
+.cxx/
+*/.cxx/
+*/*/.cxx/
+
 
 
 

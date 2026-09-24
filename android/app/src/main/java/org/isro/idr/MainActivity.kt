@@ -34,7 +34,8 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         val fineLocationGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
-        if (fineLocationGranted) {
+        val coarseLocationGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] ?: false
+        if (fineLocationGranted || coarseLocationGranted) {
             gnssManager?.start()
         }
     }
@@ -45,7 +46,7 @@ class MainActivity : ComponentActivity() {
         // Keep screen on during navigation experiments
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
-        // Initialize native navigation engine
+        // Initialize native navigation engine (100 Hz dt = 0.01s)
         engine = NativeNavigationEngine.create(0.01)
 
         // Initialize ingestion layer
@@ -69,14 +70,15 @@ class MainActivity : ComponentActivity() {
             gnssManager = gnssManager
         )
 
-        // Request location permissions
+        // Request location permissions and auto-start pipeline
         checkAndRequestPermissions()
+        startNavigationPipeline()
 
         setContent {
             IdrNavigationTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = IdrColors.NavyDarkest
+                    color = IdrColors.Background
                 ) {
                     val localVm = viewModel
                     if (localVm != null) {
@@ -92,7 +94,11 @@ class MainActivity : ComponentActivity() {
                                 } else {
                                     startNavigationPipeline()
                                 }
-                            }
+                            },
+                            onZoomIn = { localVm.zoomIn() },
+                            onZoomOut = { localVm.zoomOut() },
+                            onToggleNorthUp = { localVm.toggleNorthUp() },
+                            onResetMap = { localVm.resetMap() }
                         )
                     }
                 }
@@ -134,13 +140,13 @@ class MainActivity : ComponentActivity() {
         if (viewModel?.uiState?.value?.isRunning == true) {
             sensorManager?.start()
             gnssManager?.start()
+            synchronizer?.start()
         }
     }
 
     override fun onPause() {
         super.onPause()
-        sensorManager?.stop()
-        gnssManager?.stop()
+        // Allow background updates if required or conserve power
     }
 
     override fun onDestroy() {

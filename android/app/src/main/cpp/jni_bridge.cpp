@@ -198,9 +198,9 @@ static inline void serialize_telemetry_to_flat_array(
     dst[13] = telem.base.accel_bias.x;
     dst[14] = telem.base.accel_bias.y;
     dst[15] = telem.base.accel_bias.z;
-    dst[16] = telem.gyro_bias.x;
-    dst[17] = telem.gyro_bias.y;
-    dst[18] = telem.gyro_bias.z;
+    dst[16] = telem.base.gyro_bias.x;
+    dst[17] = telem.base.gyro_bias.y;
+    dst[18] = telem.base.gyro_bias.z;
     dst[19] = telem.base.outage_duration_s;
     dst[20] = telem.base.outage_dist_traveled_m;
     dst[21] = static_cast<jdouble>(telem.base.gnss_valid);

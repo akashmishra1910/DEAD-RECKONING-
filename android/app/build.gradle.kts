@@ -5,7 +5,9 @@ plugins {
 
 android {
     namespace = "org.isro.idr"
-    compileSdk = 34
+    compileSdk = 35
+    buildToolsVersion = "36.0.0"
+    ndkVersion = "25.1.8937393"
 
     defaultConfig {
         applicationId = "org.isro.idr"

@@ -2,17 +2,19 @@ package org.isro.idr.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import org.isro.idr.engine.GnssSample
 import org.isro.idr.engine.NativeStatus
 import org.isro.idr.engine.NavigationMode
 import org.isro.idr.engine.NavigationTelemetry
+import org.isro.idr.ingestion.GeoCoordinates
 import org.isro.idr.ingestion.GnssIngestionManager
-import org.isro.idr.ingestion.GnssSample
-import org.isro.idr.ingestion.IngestionHealthSnapshot
+import org.isro.idr.ingestion.IngestionDiagnostics
 import org.isro.idr.ingestion.NavigationPipelineSynchronizer
 import org.isro.idr.ui.state.GnssStatusState
 import org.isro.idr.ui.state.HealthStatus
@@ -26,17 +28,17 @@ import org.isro.idr.ui.state.TrajectoryPoint
 /**
  * ViewModel orchestrating UI state for the ISRO IDR Navigation application.
  * Decouples high-rate native estimator execution (~100 Hz) from UI recomposition (~10 Hz).
- * Strictly consumes immutable NavigationTelemetry without modifying navigation mathematics.
+ * Periodically polls hardware ingestion diagnostics and manages seamless navigation presentation.
  */
 class NavigationViewModel(
     private val synchronizer: NavigationPipelineSynchronizer? = null,
     private val gnssManager: GnssIngestionManager? = null
-) : ViewModel(), NavigationPipelineSynchronizer.TelemetryListener, GnssIngestionManager.GnssListener {
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(NavigationUiState())
     val uiState: StateFlow<NavigationUiState> = _uiState.asStateFlow()
 
-    private val maxTrajectoryPoints = 1000
+    private val maxTrajectoryPoints = 1200
     private var lastUiUpdateTimestampNanos = 0L
     private val minUiUpdateIntervalNanos = 100_000_000L // 100ms = 10 Hz UI rate
 
@@ -49,15 +51,32 @@ class NavigationViewModel(
     private val mapAidedPoints = ArrayDeque<TrajectoryPoint>(maxTrajectoryPoints)
 
     init {
-        synchronizer?.setTelemetryListener(this)
-        gnssManager?.addListener(this)
+        synchronizer?.onTelemetryListener = { telemetry ->
+            onTelemetryReceived(telemetry)
+        }
+        gnssManager?.onGnssSampleListener = { sample ->
+            onGnssSample(sample)
+        }
+
+        // Periodic 10 Hz Diagnostics Ticker
+        viewModelScope.launch {
+            while (true) {
+                delay(100)
+                try {
+                    synchronizer?.let { sync ->
+                        val diag = sync.getDiagnosticsSnapshot()
+                        updateDiagnostics(diag)
+                    }
+                } catch (_: Exception) {}
+            }
+        }
     }
 
     /**
      * Consumes native telemetry at native rate (~100 Hz), buffers trajectory,
      * and publishes throttled UI updates at ~10 Hz.
      */
-    override fun onTelemetryReceived(telemetry: NavigationTelemetry) {
+    fun onTelemetryReceived(telemetry: NavigationTelemetry) {
         val nowNanos = System.nanoTime()
 
         // Accumulate IDR trajectory point (with distance decimation to prevent clutter)
@@ -68,7 +87,7 @@ class NavigationViewModel(
 
         synchronized(idrPoints) {
             val last = idrPoints.lastOrNull()
-            if (last == null || distanceSq(last.enuX, last.enuY, currentEnuX, currentEnuY) > 0.25) { // >= 0.5m
+            if (last == null || distanceSq(last.enuX, last.enuY, currentEnuX, currentEnuY) > 0.16) { // >= 0.4m
                 if (idrPoints.size >= maxTrajectoryPoints) {
                     idrPoints.removeFirst()
                 }
@@ -91,7 +110,7 @@ class NavigationViewModel(
             val mapZ = telemetry.mapMatchedPosEnu.z
             synchronized(mapAidedPoints) {
                 val last = mapAidedPoints.lastOrNull()
-                if (last == null || distanceSq(last.enuX, last.enuY, mapX, mapY) > 0.25) {
+                if (last == null || distanceSq(last.enuX, last.enuY, mapX, mapY) > 0.16) {
                     if (mapAidedPoints.size >= maxTrajectoryPoints) {
                         mapAidedPoints.removeFirst()
                     }
@@ -130,13 +149,17 @@ class NavigationViewModel(
         }
 
         // Derive health states
-        val health = deriveHealthState(telemetry)
+        val currentDiag = _uiState.value.diagnostics
+        val health = deriveHealthState(telemetry, currentDiag)
+        val anchor = gnssManager?.anchorGeo?.let {
+            GeoCoordinates.Wgs84Coordinate(it.anchorLatDeg, it.anchorLonDeg, it.anchorAltM)
+        }
 
         _uiState.update { current ->
             current.copy(
                 telemetry = telemetry,
                 navigationMode = telemetry.mode,
-                nativeStatus = NativeStatus.SUCCESS,
+                nativeStatus = NativeStatus.OK,
                 outageDurationSec = outageDuration,
                 isDrActive = isDr,
                 isGnssOutage = isDr || (current.gnssStatus.ageSeconds > 1.5),
@@ -149,32 +172,35 @@ class NavigationViewModel(
                     0 -> "HIGH"
                     1 -> "MEDIUM"
                     2 -> "LOW"
-                    else -> "INVALID"
+                    else -> "STANDBY"
                 },
                 isMapAmbiguous = telemetry.isMapAmbiguous,
                 candidateCount = telemetry.candidateCount,
                 hypothesisCount = telemetry.hypothesisCount,
                 scoreMargin = telemetry.scoreMargin,
-                enuAnchor = gnssManager?.getAnchorCoordinate()
+                enuAnchor = anchor
             )
         }
     }
 
+    fun onGnssSample(sample: GnssSample) {
+        val anchor = gnssManager?.anchorGeo?.let {
+            GeoCoordinates.Wgs84Coordinate(it.anchorLatDeg, it.anchorLonDeg, it.anchorAltM)
+        }
 
-    override fun onGnssSample(sample: GnssSample) {
         if (sample.isValid) {
             synchronized(gnssPoints) {
                 val last = gnssPoints.lastOrNull()
-                if (last == null || distanceSq(last.enuX, last.enuY, sample.enuX, sample.enuY) > 0.25) {
+                if (last == null || distanceSq(last.enuX, last.enuY, sample.posEnu.x, sample.posEnu.y) > 0.16) {
                     if (gnssPoints.size >= maxTrajectoryPoints) {
                         gnssPoints.removeFirst()
                     }
                     gnssPoints.addLast(
                         TrajectoryPoint(
-                            enuX = sample.enuX,
-                            enuY = sample.enuY,
-                            enuZ = sample.enuZ,
-                            timestampSec = sample.timestampSec,
+                            enuX = sample.posEnu.x,
+                            enuY = sample.posEnu.y,
+                            enuZ = sample.posEnu.z,
+                            timestampSec = sample.timeSeconds,
                             isGnss = true
                         )
                     )
@@ -182,23 +208,26 @@ class NavigationViewModel(
             }
 
             _uiState.update { current ->
-                val currentSec = current.telemetry?.timestampSec ?: sample.timestampSec
-                val age = (currentSec - sample.timestampSec).coerceAtLeast(0.0)
+                val currentSec = current.telemetry?.timestampSec ?: sample.timeSeconds
+                val age = (currentSec - sample.timeSeconds).coerceAtLeast(0.0)
                 current.copy(
                     gnssStatus = GnssStatusState(
                         fixValid = true,
-                        latitude = sample.latitude,
-                        longitude = sample.longitude,
-                        altitude = sample.altitude,
-                        speedMps = sample.speedMps,
-                        bearingDeg = sample.bearingDeg,
-                        accuracyM = sample.accuracyM,
+                        isSearching = false,
+                        isPermissionGranted = true,
+                        latitude = sample.latitudeDeg,
+                        longitude = sample.longitudeDeg,
+                        altitude = sample.altitudeM,
+                        speedMps = sample.groundSpeedMps,
+                        bearingDeg = sample.courseDeg,
+                        accuracyM = sample.horizontalAccuracyMeters.toDouble(),
                         ageSeconds = age,
-                        totalSatellites = sample.totalSatellites,
-                        navicSatellitesInView = sample.navicSatellitesInView,
-                        navicSatellitesUsed = sample.navicSatellitesUsed
+                        totalSatellites = sample.totalSatelliteCount,
+                        totalSatellitesInView = gnssManager?.totalInViewCount ?: sample.totalSatelliteCount,
+                        navicSatellitesInView = gnssManager?.navicInViewCount ?: sample.navicSatelliteCount,
+                        navicSatellitesUsed = sample.navicSatelliteCount
                     ),
-                    enuAnchor = gnssManager?.getAnchorCoordinate()
+                    enuAnchor = anchor
                 )
             }
         } else {
@@ -206,19 +235,43 @@ class NavigationViewModel(
                 current.copy(
                     gnssStatus = current.gnssStatus.copy(
                         fixValid = false,
-                        totalSatellites = sample.totalSatellites,
-                        navicSatellitesInView = sample.navicSatellitesInView,
-                        navicSatellitesUsed = sample.navicSatellitesUsed
-                    )
+                        isSearching = gnssManager?.isRunning == true,
+                        isPermissionGranted = gnssManager?.isPermissionGranted ?: true,
+                        totalSatellites = sample.totalSatelliteCount,
+                        totalSatellitesInView = gnssManager?.totalInViewCount ?: sample.totalSatelliteCount,
+                        navicSatellitesInView = gnssManager?.navicInViewCount ?: sample.navicSatelliteCount,
+                        navicSatellitesUsed = sample.navicSatelliteCount
+                    ),
+                    enuAnchor = anchor
                 )
             }
         }
     }
 
-    fun updateDiagnostics(snapshot: IngestionHealthSnapshot) {
+    fun updateDiagnostics(snapshot: IngestionDiagnostics) {
+        val health = deriveHealthState(_uiState.value.telemetry, snapshot)
         _uiState.update { current ->
-            current.copy(diagnostics = snapshot)
+            current.copy(
+                diagnostics = snapshot,
+                health = health
+            )
         }
+    }
+
+    fun toggleNorthUp() {
+        _uiState.update { it.copy(isNorthUp = !it.isNorthUp) }
+    }
+
+    fun zoomIn() {
+        _uiState.update { it.copy(mapZoomLevel = (it.mapZoomLevel * 1.35f).coerceAtMost(8.0f)) }
+    }
+
+    fun zoomOut() {
+        _uiState.update { it.copy(mapZoomLevel = (it.mapZoomLevel / 1.35f).coerceAtLeast(0.25f)) }
+    }
+
+    fun resetMap() {
+        _uiState.update { it.copy(mapZoomLevel = 1.0f, isNorthUp = true) }
     }
 
     fun setTrajectoryMode(mode: TrajectoryDisplayMode) {
@@ -236,10 +289,12 @@ class NavigationViewModel(
     fun clearTrajectories() {
         synchronized(idrPoints) { idrPoints.clear() }
         synchronized(gnssPoints) { gnssPoints.clear() }
+        synchronized(mapAidedPoints) { mapAidedPoints.clear() }
         _uiState.update {
             it.copy(
                 idrTrajectory = emptyList(),
-                gnssTrajectory = emptyList()
+                gnssTrajectory = emptyList(),
+                mapAidedTrajectory = emptyList()
             )
         }
     }
@@ -252,34 +307,55 @@ class NavigationViewModel(
         _uiState.update { it.copy(errorMessage = message) }
     }
 
-    private fun deriveHealthState(telemetry: NavigationTelemetry): SystemHealthState {
-        val navHealth = when (telemetry.status) {
-            NativeStatus.SUCCESS.code -> HealthStatus.HEALTHY
-            NativeStatus.INITIALIZATION_FAILED.code,
-            NativeStatus.INTERNAL_FAILURE.code,
-            NativeStatus.NUMERICAL_FAILURE.code -> HealthStatus.UNAVAILABLE
-            else -> HealthStatus.DEGRADED
+    private fun deriveHealthState(
+        telemetry: NavigationTelemetry?,
+        diag: IngestionDiagnostics?
+    ): SystemHealthState {
+        // IMU Health: Active when measured rate > 30 Hz
+        val imuHealth = when {
+            diag != null && diag.accelMeasuredHz > 40.0 && diag.gyroMeasuredHz > 40.0 -> HealthStatus.HEALTHY
+            diag != null && (diag.isAccelerometerAvailable || diag.isGyroscopeAvailable) -> HealthStatus.SEARCHING
+            diag == null && telemetry != null -> HealthStatus.HEALTHY
+            else -> HealthStatus.SEARCHING
         }
 
-        val gnssHealth = if (telemetry.gnssValid) {
-            HealthStatus.HEALTHY
-        } else {
-            HealthStatus.DEGRADED
+        // GNSS Health: Active when valid fix; Searching when listening without fix
+        val gnssHealth = when {
+            telemetry?.gnssValid == true || _uiState.value.gnssStatus.fixValid -> HealthStatus.HEALTHY
+            gnssManager?.isPermissionGranted == false -> HealthStatus.UNAVAILABLE
+            gnssManager?.isRunning == true -> HealthStatus.SEARCHING
+            else -> HealthStatus.SEARCHING
         }
 
-        val navicHealth = if (telemetry.navicSatellitesUsedInFix > 0) {
-            HealthStatus.HEALTHY
-        } else if (telemetry.navicSatellitesInView > 0) {
-            HealthStatus.DEGRADED
-        } else {
-            HealthStatus.UNAVAILABLE
+        // Nav Health: Active when filter is updating; Searching when initializing
+        val navHealth = when {
+            telemetry != null && telemetry.pTrace.isFinite() && telemetry.mode != NavigationMode.INITIALIZING -> HealthStatus.HEALTHY
+            telemetry?.mode == NavigationMode.INITIALIZING || _uiState.value.isRunning -> HealthStatus.SEARCHING
+            else -> HealthStatus.SEARCHING
+        }
+
+        // NavIC Health: Active when used in fix; Searching when in view or acquiring
+        val navicUsed = gnssManager?.navicSatCount ?: _uiState.value.gnssStatus.navicSatellitesUsed
+        val navicInView = gnssManager?.navicInViewCount ?: _uiState.value.gnssStatus.navicSatellitesInView
+        val navicHealth = when {
+            navicUsed > 0 -> HealthStatus.HEALTHY
+            navicInView > 0 -> HealthStatus.SEARCHING
+            gnssManager?.isRunning == true -> HealthStatus.SEARCHING
+            else -> HealthStatus.SEARCHING
+        }
+
+        // Map Health: Ready / Active when map is available
+        val mapHealth = when {
+            telemetry?.mapAvailable == true -> HealthStatus.HEALTHY
+            _uiState.value.mapDataState == MapDataState.AVAILABLE || _uiState.value.mapDataState == MapDataState.READY -> HealthStatus.HEALTHY
+            else -> HealthStatus.OFFLINE
         }
 
         return SystemHealthState(
-            imuStatus = HealthStatus.HEALTHY,
+            imuStatus = imuHealth,
             gnssStatus = gnssHealth,
             navStatus = navHealth,
-            mapStatus = HealthStatus.UNAVAILABLE, // Phase 11.4 baseline
+            mapStatus = mapHealth,
             navicStatus = navicHealth,
             jniStatus = HealthStatus.HEALTHY
         )
@@ -293,7 +369,7 @@ class NavigationViewModel(
 
     override fun onCleared() {
         super.onCleared()
-        synchronizer?.setTelemetryListener(null)
-        gnssManager?.removeListener(this)
+        synchronizer?.onTelemetryListener = null
+        gnssManager?.onGnssSampleListener = null
     }
 }

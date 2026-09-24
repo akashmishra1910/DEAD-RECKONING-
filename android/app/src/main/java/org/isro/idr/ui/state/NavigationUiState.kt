@@ -5,6 +5,7 @@ import org.isro.idr.engine.NavigationMode
 import org.isro.idr.engine.NavigationTelemetry
 import org.isro.idr.ingestion.GeoCoordinates
 import org.isro.idr.ingestion.IngestionDiagnostics
+import org.isro.idr.map.RoadMapGraph
 
 enum class TrajectoryDisplayMode(val displayName: String) {
     BOTH("ALL TRACKS"),
@@ -51,6 +52,7 @@ data class GnssStatusState(
     val fixValid: Boolean = false,
     val isSearching: Boolean = true,
     val isPermissionGranted: Boolean = true,
+    val fixState: String = "SEARCHING", // SEARCHING, FIXED, STALE, OUTAGE
     val latitude: Double = 0.0,
     val longitude: Double = 0.0,
     val altitude: Double = 0.0,
@@ -82,6 +84,9 @@ data class NavigationUiState(
     val isDrActive: Boolean = false,
     val isGnssOutage: Boolean = false,
     val mapDataState: MapDataState = MapDataState.OFFLINE,
+    val roadMapGraph: RoadMapGraph? = null,
+    val selectedMapFileName: String = "sample_prayagraj.idrmap",
+    val availableMapNames: List<String> = emptyList(),
     val trajectoryMode: TrajectoryDisplayMode = TrajectoryDisplayMode.BOTH,
     val isNorthUp: Boolean = true,
     val mapZoomLevel: Float = 1.0f,

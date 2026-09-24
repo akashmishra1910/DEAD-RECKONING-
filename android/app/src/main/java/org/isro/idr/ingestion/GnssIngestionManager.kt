@@ -8,6 +8,8 @@ import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.os.SystemClock
 import org.isro.idr.engine.GnssSample
 import org.isro.idr.engine.Vector3D
@@ -15,7 +17,7 @@ import org.isro.idr.engine.Vector3D
 /**
  * Android GNSS / Location Ingestion Manager.
  * Preserves platform GNSS measurement provenance, tracks NavIC/IRNSS satellites,
- * and projects geodetic fixes into local tangent ENU coordinates.
+ * coordinates geodetic fixes, and projects geodetic fixes into local tangent ENU coordinates.
  */
 class GnssIngestionManager(
     private val context: Context,
@@ -25,6 +27,7 @@ class GnssIngestionManager(
 
     private val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
     private var gnssStatusCallback: GnssStatus.Callback? = null
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     @Volatile var isRunning: Boolean = false
         private set
@@ -63,29 +66,32 @@ class GnssIngestionManager(
 
         try {
             isPermissionGranted = true
-            // Request updates from GPS Provider
+
+            // 1. Request updates from GPS Provider on Main Looper
             if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
                 locationManager.requestLocationUpdates(
                     LocationManager.GPS_PROVIDER,
                     minUpdateIntervalMs,
                     minUpdateDistanceM,
-                    this
+                    this,
+                    Looper.getMainLooper()
                 )
             }
 
-            // Fallback request from Network Provider for instant coarse fix while GPS locks
+            // 2. Fallback request from Network Provider for coarse fix while GPS locks
             if (locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
                 try {
                     locationManager.requestLocationUpdates(
                         LocationManager.NETWORK_PROVIDER,
                         minUpdateIntervalMs,
                         minUpdateDistanceM,
-                        this
+                        this,
+                        Looper.getMainLooper()
                     )
                 } catch (_: Exception) {}
             }
 
-            // Register GnssStatus callback for satellite tracking and NavIC detection
+            // 3. Register GnssStatus callback for satellite tracking and NavIC / IRNSS detection
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                 gnssStatusCallback = object : GnssStatus.Callback() {
                     override fun onSatelliteStatusChanged(status: GnssStatus) {
@@ -114,7 +120,19 @@ class GnssIngestionManager(
                         navicInViewCount = navicInView
                     }
                 }
-                locationManager.registerGnssStatusCallback(gnssStatusCallback!!, null)
+                locationManager.registerGnssStatusCallback(gnssStatusCallback!!, mainHandler)
+            }
+
+            // 4. Poll last known location for instant anchoring
+            val lastGps = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+            val lastNet = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
+            val bestLast = when {
+                lastGps != null && lastNet != null -> if (lastGps.time >= lastNet.time) lastGps else lastNet
+                lastGps != null -> lastGps
+                else -> lastNet
+            }
+            if (bestLast != null && latestGnssSample == null) {
+                onLocationChanged(bestLast)
             }
 
             isRunning = true
@@ -154,7 +172,7 @@ class GnssIngestionManager(
         } else 0.0f
 
         // Validation gate
-        val isValid = (accuracy <= 35.0f) && (lat in -90.0..90.0) &&
+        val isValid = (accuracy <= 40.0f) && (lat in -90.0..90.0) &&
                       (lon in -180.0..180.0) && (speed in 0.0..150.0)
 
         // Establish or query local tangent ENU anchor

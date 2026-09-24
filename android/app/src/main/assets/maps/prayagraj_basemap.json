@@ -1,0 +1,1340 @@
+{
+  "dataset_name": "Prayagraj Urban Navigation Corridor",
+  "bounds": [
+    25.41,
+    81.82,
+    25.47,
+    81.89
+  ],
+  "roads": [
+    {
+      "id": 101,
+      "name": "Mahatma Gandhi Marg",
+      "class": "primary",
+      "layer": 0,
+      "is_bridge": false,
+      "is_tunnel": false,
+      "coordinates": [
+        [
+          25.435,
+          81.828
+        ],
+        [
+          25.435,
+          81.8315
+        ],
+        [
+          25.435,
+          81.835
+        ],
+        [
+          25.435,
+          81.8385
+        ],
+        [
+          25.435,
+          81.842
+        ],
+        [
+          25.435,
+          81.8455
+        ],
+        [
+          25.435,
+          81.849
+        ],
+        [
+          25.435,
+          81.8525
+        ],
+        [
+          25.435,
+          81.856
+        ],
+        [
+          25.435,
+          81.8595
+        ],
+        [
+          25.435,
+          81.863
+        ],
+        [
+          25.435,
+          81.8665
+        ],
+        [
+          25.435,
+          81.87
+        ]
+      ],
+      "lanes": 4,
+      "speed_kmh": 50
+    },
+    {
+      "id": 102,
+      "name": "Sardar Patel Marg",
+      "class": "primary",
+      "layer": 0,
+      "is_bridge": false,
+      "is_tunnel": false,
+      "coordinates": [
+        [
+          25.418,
+          81.85
+        ],
+        [
+          25.422,
+          81.85
+        ],
+        [
+          25.426,
+          81.85
+        ],
+        [
+          25.43,
+          81.85
+        ],
+        [
+          25.434,
+          81.85
+        ],
+        [
+          25.438,
+          81.85
+        ],
+        [
+          25.442,
+          81.85
+        ],
+        [
+          25.446,
+          81.85
+        ],
+        [
+          25.45,
+          81.85
+        ],
+        [
+          25.454,
+          81.85
+        ],
+        [
+          25.458,
+          81.85
+        ],
+        [
+          25.462,
+          81.85
+        ]
+      ],
+      "lanes": 4,
+      "speed_kmh": 50
+    },
+    {
+      "id": 103,
+      "name": "Grand Trunk Road (NH-19)",
+      "class": "motorway",
+      "layer": 0,
+      "is_bridge": false,
+      "is_tunnel": false,
+      "coordinates": [
+        [
+          25.452,
+          81.82
+        ],
+        [
+          25.449,
+          81.83
+        ],
+        [
+          25.4465,
+          81.84
+        ],
+        [
+          25.444,
+          81.85
+        ],
+        [
+          25.442,
+          81.86
+        ],
+        [
+          25.4395,
+          81.87
+        ],
+        [
+          25.437,
+          81.88
+        ],
+        [
+          25.434,
+          81.89
+        ]
+      ],
+      "lanes": 6,
+      "speed_kmh": 70
+    },
+    {
+      "id": 104,
+      "name": "Shastri Bridge (Ganga River)",
+      "class": "motorway",
+      "layer": 1,
+      "is_bridge": true,
+      "is_tunnel": false,
+      "coordinates": [
+        [
+          25.438,
+          81.872
+        ],
+        [
+          25.438,
+          81.878
+        ],
+        [
+          25.438,
+          81.884
+        ],
+        [
+          25.438,
+          81.89
+        ]
+      ],
+      "lanes": 4,
+      "speed_kmh": 60
+    },
+    {
+      "id": 105,
+      "name": "New Yamuna Cable Bridge",
+      "class": "motorway",
+      "layer": 1,
+      "is_bridge": true,
+      "is_tunnel": false,
+      "coordinates": [
+        [
+          25.42,
+          81.84
+        ],
+        [
+          25.42,
+          81.85
+        ],
+        [
+          25.42,
+          81.86
+        ],
+        [
+          25.42,
+          81.87
+        ]
+      ],
+      "lanes": 4,
+      "speed_kmh": 60
+    },
+    {
+      "id": 106,
+      "name": "Sangam Marg",
+      "class": "secondary",
+      "layer": 0,
+      "is_bridge": false,
+      "is_tunnel": false,
+      "coordinates": [
+        [
+          25.435,
+          81.86
+        ],
+        [
+          25.43,
+          81.868
+        ],
+        [
+          25.425,
+          81.876
+        ],
+        [
+          25.421,
+          81.884
+        ],
+        [
+          25.419,
+          81.89
+        ]
+      ],
+      "lanes": 2,
+      "speed_kmh": 40
+    },
+    {
+      "id": 107,
+      "name": "Stanley Road",
+      "class": "secondary",
+      "layer": 0,
+      "is_bridge": false,
+      "is_tunnel": false,
+      "coordinates": [
+        [
+          25.424,
+          81.842
+        ],
+        [
+          25.43,
+          81.842
+        ],
+        [
+          25.436,
+          81.842
+        ],
+        [
+          25.442,
+          81.842
+        ],
+        [
+          25.448,
+          81.842
+        ]
+      ],
+      "lanes": 2,
+      "speed_kmh": 40
+    },
+    {
+      "id": 108,
+      "name": "Clive Road",
+      "class": "secondary",
+      "layer": 0,
+      "is_bridge": false,
+      "is_tunnel": false,
+      "coordinates": [
+        [
+          25.442,
+          81.834
+        ],
+        [
+          25.442,
+          81.842
+        ],
+        [
+          25.442,
+          81.85
+        ],
+        [
+          25.442,
+          81.858
+        ],
+        [
+          25.442,
+          81.866
+        ]
+      ],
+      "lanes": 2,
+      "speed_kmh": 40
+    },
+    {
+      "id": 109,
+      "name": "University Road",
+      "class": "primary",
+      "layer": 0,
+      "is_bridge": false,
+      "is_tunnel": false,
+      "coordinates": [
+        [
+          25.448,
+          81.85
+        ],
+        [
+          25.453,
+          81.855
+        ],
+        [
+          25.458,
+          81.86
+        ],
+        [
+          25.464,
+          81.865
+        ]
+      ],
+      "lanes": 4,
+      "speed_kmh": 45
+    },
+    {
+      "id": 110,
+      "name": "Railway Underpass Tunnel",
+      "class": "secondary",
+      "layer": -1,
+      "is_bridge": false,
+      "is_tunnel": true,
+      "coordinates": [
+        [
+          25.432,
+          81.843
+        ],
+        [
+          25.432,
+          81.847
+        ],
+        [
+          25.432,
+          81.851
+        ]
+      ],
+      "lanes": 2,
+      "speed_kmh": 30
+    },
+    {
+      "id": 200,
+      "name": "Civil Lines Sector 1 Avenue",
+      "class": "residential",
+      "layer": 0,
+      "is_bridge": false,
+      "is_tunnel": false,
+      "coordinates": [
+        [
+          25.426,
+          81.832
+        ],
+        [
+          25.426,
+          81.8375
+        ],
+        [
+          25.426,
+          81.843
+        ],
+        [
+          25.426,
+          81.8485
+        ],
+        [
+          25.426,
+          81.854
+        ],
+        [
+          25.426,
+          81.8595
+        ],
+        [
+          25.426,
+          81.865
+        ],
+        [
+          25.426,
+          81.8705
+        ]
+      ],
+      "lanes": 2,
+      "speed_kmh": 30
+    },
+    {
+      "id": 201,
+      "name": "Civil Lines Sector 2 Avenue",
+      "class": "residential",
+      "layer": 0,
+      "is_bridge": false,
+      "is_tunnel": false,
+      "coordinates": [
+        [
+          25.4305,
+          81.832
+        ],
+        [
+          25.4305,
+          81.8375
+        ],
+        [
+          25.4305,
+          81.843
+        ],
+        [
+          25.4305,
+          81.8485
+        ],
+        [
+          25.4305,
+          81.854
+        ],
+        [
+          25.4305,
+          81.8595
+        ],
+        [
+          25.4305,
+          81.865
+        ],
+        [
+          25.4305,
+          81.8705
+        ]
+      ],
+      "lanes": 2,
+      "speed_kmh": 30
+    },
+    {
+      "id": 202,
+      "name": "Civil Lines Sector 3 Avenue",
+      "class": "residential",
+      "layer": 0,
+      "is_bridge": false,
+      "is_tunnel": false,
+      "coordinates": [
+        [
+          25.435,
+          81.832
+        ],
+        [
+          25.435,
+          81.8375
+        ],
+        [
+          25.435,
+          81.843
+        ],
+        [
+          25.435,
+          81.8485
+        ],
+        [
+          25.435,
+          81.854
+        ],
+        [
+          25.435,
+          81.8595
+        ],
+        [
+          25.435,
+          81.865
+        ],
+        [
+          25.435,
+          81.8705
+        ]
+      ],
+      "lanes": 2,
+      "speed_kmh": 30
+    },
+    {
+      "id": 203,
+      "name": "Civil Lines Sector 4 Avenue",
+      "class": "residential",
+      "layer": 0,
+      "is_bridge": false,
+      "is_tunnel": false,
+      "coordinates": [
+        [
+          25.4395,
+          81.832
+        ],
+        [
+          25.4395,
+          81.8375
+        ],
+        [
+          25.4395,
+          81.843
+        ],
+        [
+          25.4395,
+          81.8485
+        ],
+        [
+          25.4395,
+          81.854
+        ],
+        [
+          25.4395,
+          81.8595
+        ],
+        [
+          25.4395,
+          81.865
+        ],
+        [
+          25.4395,
+          81.8705
+        ]
+      ],
+      "lanes": 2,
+      "speed_kmh": 30
+    },
+    {
+      "id": 204,
+      "name": "Civil Lines Sector 5 Avenue",
+      "class": "residential",
+      "layer": 0,
+      "is_bridge": false,
+      "is_tunnel": false,
+      "coordinates": [
+        [
+          25.444,
+          81.832
+        ],
+        [
+          25.444,
+          81.8375
+        ],
+        [
+          25.444,
+          81.843
+        ],
+        [
+          25.444,
+          81.8485
+        ],
+        [
+          25.444,
+          81.854
+        ],
+        [
+          25.444,
+          81.8595
+        ],
+        [
+          25.444,
+          81.865
+        ],
+        [
+          25.444,
+          81.8705
+        ]
+      ],
+      "lanes": 2,
+      "speed_kmh": 30
+    },
+    {
+      "id": 205,
+      "name": "Civil Lines Sector 6 Avenue",
+      "class": "residential",
+      "layer": 0,
+      "is_bridge": false,
+      "is_tunnel": false,
+      "coordinates": [
+        [
+          25.4485,
+          81.832
+        ],
+        [
+          25.4485,
+          81.8375
+        ],
+        [
+          25.4485,
+          81.843
+        ],
+        [
+          25.4485,
+          81.8485
+        ],
+        [
+          25.4485,
+          81.854
+        ],
+        [
+          25.4485,
+          81.8595
+        ],
+        [
+          25.4485,
+          81.865
+        ],
+        [
+          25.4485,
+          81.8705
+        ]
+      ],
+      "lanes": 2,
+      "speed_kmh": 30
+    },
+    {
+      "id": 206,
+      "name": "Civil Lines Sector 7 Avenue",
+      "class": "residential",
+      "layer": 0,
+      "is_bridge": false,
+      "is_tunnel": false,
+      "coordinates": [
+        [
+          25.453,
+          81.832
+        ],
+        [
+          25.453,
+          81.8375
+        ],
+        [
+          25.453,
+          81.843
+        ],
+        [
+          25.453,
+          81.8485
+        ],
+        [
+          25.453,
+          81.854
+        ],
+        [
+          25.453,
+          81.8595
+        ],
+        [
+          25.453,
+          81.865
+        ],
+        [
+          25.453,
+          81.8705
+        ]
+      ],
+      "lanes": 2,
+      "speed_kmh": 30
+    },
+    {
+      "id": 300,
+      "name": "Kutchery Link Lane 1",
+      "class": "residential",
+      "layer": 0,
+      "is_bridge": false,
+      "is_tunnel": false,
+      "coordinates": [
+        [
+          25.424,
+          81.835
+        ],
+        [
+          25.429,
+          81.835
+        ],
+        [
+          25.434,
+          81.835
+        ],
+        [
+          25.439,
+          81.835
+        ],
+        [
+          25.444,
+          81.835
+        ],
+        [
+          25.449,
+          81.835
+        ],
+        [
+          25.454,
+          81.835
+        ]
+      ],
+      "lanes": 2,
+      "speed_kmh": 30
+    },
+    {
+      "id": 301,
+      "name": "Kutchery Link Lane 2",
+      "class": "residential",
+      "layer": 0,
+      "is_bridge": false,
+      "is_tunnel": false,
+      "coordinates": [
+        [
+          25.424,
+          81.8405
+        ],
+        [
+          25.429,
+          81.8405
+        ],
+        [
+          25.434,
+          81.8405
+        ],
+        [
+          25.439,
+          81.8405
+        ],
+        [
+          25.444,
+          81.8405
+        ],
+        [
+          25.449,
+          81.8405
+        ],
+        [
+          25.454,
+          81.8405
+        ]
+      ],
+      "lanes": 2,
+      "speed_kmh": 30
+    },
+    {
+      "id": 302,
+      "name": "Kutchery Link Lane 3",
+      "class": "residential",
+      "layer": 0,
+      "is_bridge": false,
+      "is_tunnel": false,
+      "coordinates": [
+        [
+          25.424,
+          81.846
+        ],
+        [
+          25.429,
+          81.846
+        ],
+        [
+          25.434,
+          81.846
+        ],
+        [
+          25.439,
+          81.846
+        ],
+        [
+          25.444,
+          81.846
+        ],
+        [
+          25.449,
+          81.846
+        ],
+        [
+          25.454,
+          81.846
+        ]
+      ],
+      "lanes": 2,
+      "speed_kmh": 30
+    },
+    {
+      "id": 303,
+      "name": "Kutchery Link Lane 4",
+      "class": "residential",
+      "layer": 0,
+      "is_bridge": false,
+      "is_tunnel": false,
+      "coordinates": [
+        [
+          25.424,
+          81.8515
+        ],
+        [
+          25.429,
+          81.8515
+        ],
+        [
+          25.434,
+          81.8515
+        ],
+        [
+          25.439,
+          81.8515
+        ],
+        [
+          25.444,
+          81.8515
+        ],
+        [
+          25.449,
+          81.8515
+        ],
+        [
+          25.454,
+          81.8515
+        ]
+      ],
+      "lanes": 2,
+      "speed_kmh": 30
+    },
+    {
+      "id": 304,
+      "name": "Kutchery Link Lane 5",
+      "class": "residential",
+      "layer": 0,
+      "is_bridge": false,
+      "is_tunnel": false,
+      "coordinates": [
+        [
+          25.424,
+          81.857
+        ],
+        [
+          25.429,
+          81.857
+        ],
+        [
+          25.434,
+          81.857
+        ],
+        [
+          25.439,
+          81.857
+        ],
+        [
+          25.444,
+          81.857
+        ],
+        [
+          25.449,
+          81.857
+        ],
+        [
+          25.454,
+          81.857
+        ]
+      ],
+      "lanes": 2,
+      "speed_kmh": 30
+    },
+    {
+      "id": 305,
+      "name": "Kutchery Link Lane 6",
+      "class": "residential",
+      "layer": 0,
+      "is_bridge": false,
+      "is_tunnel": false,
+      "coordinates": [
+        [
+          25.424,
+          81.8625
+        ],
+        [
+          25.429,
+          81.8625
+        ],
+        [
+          25.434,
+          81.8625
+        ],
+        [
+          25.439,
+          81.8625
+        ],
+        [
+          25.444,
+          81.8625
+        ],
+        [
+          25.449,
+          81.8625
+        ],
+        [
+          25.454,
+          81.8625
+        ]
+      ],
+      "lanes": 2,
+      "speed_kmh": 30
+    },
+    {
+      "id": 306,
+      "name": "Kutchery Link Lane 7",
+      "class": "residential",
+      "layer": 0,
+      "is_bridge": false,
+      "is_tunnel": false,
+      "coordinates": [
+        [
+          25.424,
+          81.868
+        ],
+        [
+          25.429,
+          81.868
+        ],
+        [
+          25.434,
+          81.868
+        ],
+        [
+          25.439,
+          81.868
+        ],
+        [
+          25.444,
+          81.868
+        ],
+        [
+          25.449,
+          81.868
+        ],
+        [
+          25.454,
+          81.868
+        ]
+      ],
+      "lanes": 2,
+      "speed_kmh": 30
+    }
+  ],
+  "buildings_3d": [
+    {
+      "id": "b1",
+      "name": "High Court of Allahabad Complex",
+      "height_m": 28.0,
+      "min_height_m": 0.0,
+      "levels": 6,
+      "type": "civic",
+      "coordinates": [
+        [
+          25.437,
+          81.836
+        ],
+        [
+          25.44,
+          81.836
+        ],
+        [
+          25.44,
+          81.841
+        ],
+        [
+          25.437,
+          81.841
+        ]
+      ]
+    },
+    {
+      "id": "b2",
+      "name": "Prayagraj Junction Main Terminal",
+      "height_m": 22.0,
+      "min_height_m": 0.0,
+      "levels": 4,
+      "type": "transit",
+      "coordinates": [
+        [
+          25.442,
+          81.83
+        ],
+        [
+          25.445,
+          81.83
+        ],
+        [
+          25.445,
+          81.834
+        ],
+        [
+          25.442,
+          81.834
+        ]
+      ]
+    },
+    {
+      "id": "b3",
+      "name": "Civil Lines Commercial Plaza Tower",
+      "height_m": 35.0,
+      "min_height_m": 0.0,
+      "levels": 9,
+      "type": "commercial",
+      "coordinates": [
+        [
+          25.4335,
+          81.848
+        ],
+        [
+          25.4365,
+          81.848
+        ],
+        [
+          25.4365,
+          81.852
+        ],
+        [
+          25.4335,
+          81.852
+        ]
+      ]
+    },
+    {
+      "id": "b4",
+      "name": "All Saints' Cathedral (Patthar Girja)",
+      "height_m": 31.0,
+      "min_height_m": 0.0,
+      "levels": 5,
+      "type": "historic",
+      "coordinates": [
+        [
+          25.436,
+          81.844
+        ],
+        [
+          25.4385,
+          81.844
+        ],
+        [
+          25.4385,
+          81.8475
+        ],
+        [
+          25.436,
+          81.8475
+        ]
+      ]
+    },
+    {
+      "id": "b5",
+      "name": "University of Allahabad Senate Hall",
+      "height_m": 24.0,
+      "min_height_m": 0.0,
+      "levels": 4,
+      "type": "university",
+      "coordinates": [
+        [
+          25.452,
+          81.851
+        ],
+        [
+          25.455,
+          81.851
+        ],
+        [
+          25.455,
+          81.856
+        ],
+        [
+          25.452,
+          81.856
+        ]
+      ]
+    },
+    {
+      "id": "b6",
+      "name": "MNNIT Central Computing & Admin Tower",
+      "height_m": 32.0,
+      "min_height_m": 0.0,
+      "levels": 8,
+      "type": "university",
+      "coordinates": [
+        [
+          25.462,
+          81.858
+        ],
+        [
+          25.466,
+          81.858
+        ],
+        [
+          25.466,
+          81.864
+        ],
+        [
+          25.462,
+          81.864
+        ]
+      ]
+    },
+    {
+      "id": "b7",
+      "name": "George Town Residential Towers A-D",
+      "height_m": 26.0,
+      "min_height_m": 0.0,
+      "levels": 7,
+      "type": "residential",
+      "coordinates": [
+        [
+          25.438,
+          81.861
+        ],
+        [
+          25.441,
+          81.861
+        ],
+        [
+          25.441,
+          81.865
+        ],
+        [
+          25.438,
+          81.865
+        ]
+      ]
+    }
+  ],
+  "water_bodies": [
+    {
+      "id": "w1",
+      "name": "River Ganga (Ganges)",
+      "type": "river",
+      "width_meters": 350.0,
+      "coordinates": [
+        [
+          25.468,
+          81.82
+        ],
+        [
+          25.465,
+          81.835
+        ],
+        [
+          25.46,
+          81.85
+        ],
+        [
+          25.45,
+          81.865
+        ],
+        [
+          25.438,
+          81.88
+        ],
+        [
+          25.425,
+          81.888
+        ],
+        [
+          25.41,
+          81.89
+        ]
+      ]
+    },
+    {
+      "id": "w2",
+      "name": "River Yamuna",
+      "type": "river",
+      "width_meters": 280.0,
+      "coordinates": [
+        [
+          25.415,
+          81.82
+        ],
+        [
+          25.418,
+          81.835
+        ],
+        [
+          25.42,
+          81.85
+        ],
+        [
+          25.422,
+          81.865
+        ],
+        [
+          25.422,
+          81.882
+        ],
+        [
+          25.419,
+          81.89
+        ]
+      ]
+    }
+  ],
+  "landuse": [
+    {
+      "id": "l1",
+      "name": "Chandra Shekhar Azad Park (Alfred Park)",
+      "type": "park",
+      "coordinates": [
+        [
+          25.443,
+          81.848
+        ],
+        [
+          25.4485,
+          81.848
+        ],
+        [
+          25.4485,
+          81.856
+        ],
+        [
+          25.443,
+          81.856
+        ]
+      ]
+    },
+    {
+      "id": "l2",
+      "name": "MNNIT Allahabad Campus Grounds",
+      "type": "university",
+      "coordinates": [
+        [
+          25.46,
+          81.855
+        ],
+        [
+          25.468,
+          81.855
+        ],
+        [
+          25.468,
+          81.868
+        ],
+        [
+          25.46,
+          81.868
+        ]
+      ]
+    },
+    {
+      "id": "l3",
+      "name": "University of Allahabad Senate Campus",
+      "type": "university",
+      "coordinates": [
+        [
+          25.45,
+          81.85
+        ],
+        [
+          25.456,
+          81.85
+        ],
+        [
+          25.456,
+          81.858
+        ],
+        [
+          25.45,
+          81.858
+        ]
+      ]
+    }
+  ],
+  "landmarks": [
+    {
+      "name": "Civil Lines Center",
+      "lat": 25.435,
+      "lon": 81.85,
+      "category": "district"
+    },
+    {
+      "name": "Triveni Sangam (Holy Confluence)",
+      "lat": 25.419,
+      "lon": 81.89,
+      "category": "confluence"
+    },
+    {
+      "name": "Prayagraj Junction",
+      "lat": 25.443,
+      "lon": 81.832,
+      "category": "transit"
+    },
+    {
+      "name": "High Court of Allahabad",
+      "lat": 25.438,
+      "lon": 81.838,
+      "category": "civic"
+    },
+    {
+      "name": "Alfred Park",
+      "lat": 25.445,
+      "lon": 81.852,
+      "category": "park"
+    },
+    {
+      "name": "Shastri Bridge",
+      "lat": 25.438,
+      "lon": 81.882,
+      "category": "bridge"
+    },
+    {
+      "name": "New Yamuna Bridge",
+      "lat": 25.42,
+      "lon": 81.855,
+      "category": "bridge"
+    }
+  ]
+}

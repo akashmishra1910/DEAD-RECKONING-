@@ -7,8 +7,8 @@ import java.util.concurrent.atomic.AtomicLong
 
 /**
  * Causal Sensor and GNSS Navigation Pipeline Synchronizer.
- * Ingests high-rate IMU samples, checks latest GNSS validity, executes native ESKF steps,
- * and publishes real-time navigation telemetry and ingestion diagnostics.
+ * Ingests rate-controlled IMU samples (~100 Hz), coordinates with latest GNSS fix,
+ * executes native ESKF steps, and publishes real-time navigation telemetry and diagnostics.
  */
 class NavigationPipelineSynchronizer(
     val engine: NativeNavigationEngine,
@@ -29,6 +29,8 @@ class NavigationPipelineSynchronizer(
         // Hook direct listeners
         sensorManager.onImuSampleListener = { imuSample ->
             if (isRunning.get()) {
+                // Dequeue from imuQueue so the bounded queue stays clean (0..1 occupancy)
+                sensorManager.imuQueue.poll()
                 processSingleImuSample(imuSample)
             }
         }
@@ -47,7 +49,7 @@ class NavigationPipelineSynchronizer(
         val sensorStarted = sensorManager.start()
         val gnssStarted = gnssManager.start()
 
-        return sensorStarted
+        return sensorStarted && gnssStarted
     }
 
     fun stop() {
@@ -114,24 +116,41 @@ class NavigationPipelineSynchronizer(
             maxOf(0L, (nowNanos - gnss.timestampNanos) / 1_000_000L)
         } else -1L
 
+        val fixState = when {
+            gnss == null || !gnss.isValid -> if (gnssManager.isRunning) "SEARCHING" else "STANDBY"
+            fixAgeMs in 0..1500 -> "FIXED"
+            fixAgeMs in 1501..5000 -> "STALE"
+            else -> "OUTAGE"
+        }
+
         return IngestionDiagnostics(
             isAccelerometerAvailable = sensorManager.isAccelerometerAvailable,
             isGyroscopeAvailable = sensorManager.isGyroscopeAvailable,
             isMagnetometerAvailable = sensorManager.isMagnetometerAvailable,
             isBarometerAvailable = sensorManager.isBarometerAvailable,
 
-            accelMeasuredHz = sensorManager.accelPolicy.measuredHz,
-            gyroMeasuredHz = sensorManager.gyroPolicy.measuredHz,
-            accelSampleCount = sensorManager.accelPolicy.sampleCount,
-            gyroSampleCount = sensorManager.gyroPolicy.sampleCount,
+            accelCallbackHz = sensorManager.accelPolicy.callbackHz,
+            gyroCallbackHz = sensorManager.gyroPolicy.callbackHz,
+            accelCallbackCount = sensorManager.accelPolicy.callbackCount,
+            gyroCallbackCount = sensorManager.gyroPolicy.callbackCount,
+
+            accelConsumedHz = sensorManager.accelPolicy.consumedHz,
+            gyroConsumedHz = sensorManager.gyroPolicy.consumedHz,
+            accelConsumedCount = sensorManager.accelPolicy.consumedCount,
+            gyroConsumedCount = sensorManager.gyroPolicy.consumedCount,
+
             accelDroppedCount = sensorManager.accelPolicy.duplicateTimestampCount + sensorManager.accelPolicy.backwardsTimestampCount,
             gyroDroppedCount = sensorManager.gyroPolicy.duplicateTimestampCount + sensorManager.gyroPolicy.backwardsTimestampCount,
             accelLargeGapCount = sensorManager.accelPolicy.largeGapCount,
             gyroLargeGapCount = sensorManager.gyroPolicy.largeGapCount,
             accelMeanDtMs = sensorManager.accelPolicy.meanDtMs,
             gyroMeanDtMs = sensorManager.gyroPolicy.meanDtMs,
+            accelMinDtMs = sensorManager.accelPolicy.minDtMs,
+            accelMaxDtMs = sensorManager.accelPolicy.maxDtMs,
+            accelP95DtMs = sensorManager.accelPolicy.p95DtMs,
 
             isGnssAvailable = gnssManager.isGnssAvailable,
+            gnssFixState = fixState,
             gnssFixAgeMs = fixAgeMs,
             latitudeDeg = gnss?.latitudeDeg ?: 0.0,
             longitudeDeg = gnss?.longitudeDeg ?: 0.0,
@@ -139,7 +158,9 @@ class NavigationPipelineSynchronizer(
             horizontalAccuracyM = gnss?.horizontalAccuracyMeters ?: 0.0f,
             groundSpeedMps = gnss?.groundSpeedMps ?: 0.0,
             navicSatCount = gnssManager.navicSatCount,
+            navicInViewCount = gnssManager.navicInViewCount,
             totalSatCount = gnssManager.totalSatCount,
+            totalInViewCount = gnssManager.totalInViewCount,
 
             queueOccupancy = sensorManager.imuQueue.size,
             queueCapacity = sensorManager.imuQueue.capacity,

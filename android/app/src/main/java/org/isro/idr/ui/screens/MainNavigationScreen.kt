@@ -52,6 +52,7 @@ fun MainNavigationScreen(
     onZoomOut: (() -> Unit)? = null,
     onToggleNorthUp: (() -> Unit)? = null,
     onResetMap: (() -> Unit)? = null,
+    onMapSelected: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val configuration = LocalConfiguration.current
@@ -61,7 +62,7 @@ fun MainNavigationScreen(
         modifier = modifier
             .fillMaxSize()
             .background(IdrColors.Background)
-            .padding(8.dp)
+            .padding(6.dp)
     ) {
         // App Header / Navigation Bar
         AppHeader(
@@ -71,7 +72,7 @@ fun MainNavigationScreen(
             onToggleRunning = onToggleRunning
         )
 
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height(4.dp))
 
         when (uiState.selectedScreen) {
             ScreenTab.NAVIGATION -> {
@@ -105,7 +106,8 @@ fun MainNavigationScreen(
             }
             ScreenTab.MAP_DATA -> {
                 MapDataScreen(
-                    mapDataState = uiState.mapDataState,
+                    uiState = uiState,
+                    onMapSelected = onMapSelected,
                     modifier = Modifier.fillMaxSize()
                 )
             }
@@ -131,12 +133,12 @@ private fun LandscapeLayout(
 ) {
     Row(
         modifier = Modifier.fillMaxSize(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        // Left Column: Dominant Map Area (60% width)
+        // Left Column: Dominant Map Area (65% width)
         Box(
             modifier = Modifier
-                .weight(1.5f)
+                .weight(1.6f)
                 .fillMaxHeight()
         ) {
             MapContainerView(
@@ -144,6 +146,7 @@ private fun LandscapeLayout(
                 idrTrajectory = uiState.idrTrajectory,
                 gnssTrajectory = uiState.gnssTrajectory,
                 mapAidedTrajectory = uiState.mapAidedTrajectory,
+                roadMapGraph = uiState.roadMapGraph,
                 trajectoryMode = uiState.trajectoryMode,
                 mapDataState = uiState.mapDataState,
                 isNorthUp = uiState.isNorthUp,
@@ -156,7 +159,7 @@ private fun LandscapeLayout(
             )
         }
 
-        // Right Column: Instrument Telemetry Dashboard (40% width)
+        // Right Column: Instrument Telemetry Dashboard (35% width)
         Column(
             modifier = Modifier
                 .weight(1.0f)
@@ -208,11 +211,10 @@ private fun PortraitLayout(
     onResetMap: (() -> Unit)?
 ) {
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
+        // 1. Top HUD Mode & Outage Banner
         TopStatusBanner(
             mode = uiState.navigationMode,
             outageDurationSec = uiState.outageDurationSec,
@@ -220,16 +222,18 @@ private fun PortraitLayout(
             isSearchingFix = uiState.gnssStatus.isSearching
         )
 
+        // 2. Dominant Geographic Map Canvas (Fills majority of screen)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(300.dp)
+                .weight(1f)
         ) {
             MapContainerView(
                 telemetry = uiState.telemetry,
                 idrTrajectory = uiState.idrTrajectory,
                 gnssTrajectory = uiState.gnssTrajectory,
                 mapAidedTrajectory = uiState.mapAidedTrajectory,
+                roadMapGraph = uiState.roadMapGraph,
                 trajectoryMode = uiState.trajectoryMode,
                 mapDataState = uiState.mapDataState,
                 isNorthUp = uiState.isNorthUp,
@@ -242,28 +246,40 @@ private fun PortraitLayout(
             )
         }
 
-        TelemetryPanel(
-            telemetry = uiState.telemetry,
-            enuAnchor = uiState.enuAnchor,
-            gnssAccuracyM = uiState.gnssStatus.accuracyM
-        )
+        // 3. Compact Instrument HUD: Speed, Heading, Confidence, Trajectory Toggles
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            TelemetryPanel(
+                telemetry = uiState.telemetry,
+                enuAnchor = uiState.enuAnchor,
+                gnssAccuracyM = uiState.gnssStatus.accuracyM
+            )
 
-        NavicStatusBadge(
-            totalSatellites = uiState.gnssStatus.totalSatellites,
-            navicInView = uiState.gnssStatus.navicSatellitesInView,
-            navicUsed = uiState.gnssStatus.navicSatellitesUsed
-        )
-
-        TrajectoryToggleControls(
-            currentMode = uiState.trajectoryMode,
-            idrPointCount = uiState.idrTrajectory.size,
-            gnssPointCount = uiState.gnssTrajectory.size,
-            mapAidedPointCount = uiState.mapAidedTrajectory.size,
-            onModeSelected = onTrajectoryModeChanged,
-            onClearClicked = onClearTrajectories
-        )
-
-        SystemHealthBar(health = uiState.health)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Box(modifier = Modifier.weight(1f)) {
+                    NavicStatusBadge(
+                        totalSatellites = uiState.gnssStatus.totalSatellites,
+                        navicInView = uiState.gnssStatus.navicSatellitesInView,
+                        navicUsed = uiState.gnssStatus.navicSatellitesUsed
+                    )
+                }
+                Box(modifier = Modifier.weight(1.3f)) {
+                    TrajectoryToggleControls(
+                        currentMode = uiState.trajectoryMode,
+                        idrPointCount = uiState.idrTrajectory.size,
+                        gnssPointCount = uiState.gnssTrajectory.size,
+                        mapAidedPointCount = uiState.mapAidedTrajectory.size,
+                        onModeSelected = onTrajectoryModeChanged,
+                        onClearClicked = onClearTrajectories
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -277,11 +293,11 @@ fun AppHeader(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(2.dp, RoundedCornerShape(10.dp))
-            .clip(RoundedCornerShape(10.dp))
+            .shadow(2.dp, RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(8.dp))
             .background(IdrColors.SurfaceElevated)
-            .border(1.dp, IdrColors.CardBorder, RoundedCornerShape(10.dp))
-            .padding(horizontal = 10.dp, vertical = 6.dp)
+            .border(1.dp, IdrColors.CardBorder, RoundedCornerShape(8.dp))
+            .padding(horizontal = 8.dp, vertical = 5.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -291,16 +307,16 @@ fun AppHeader(
             // App Title & Tabs
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
                     text = "ISRO IDR",
-                    style = IdrTypography.headlineMedium.copy(fontSize = 15.sp),
+                    style = IdrTypography.headlineMedium.copy(fontSize = 14.sp),
                     color = IdrColors.SaffronPrimary,
                     fontWeight = FontWeight.Bold
                 )
 
-                Spacer(modifier = Modifier.width(6.dp))
+                Spacer(modifier = Modifier.width(4.dp))
 
                 TabItem(
                     title = "NAV",
@@ -356,15 +372,15 @@ fun TabItem(
 ) {
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(6.dp))
+            .clip(RoundedCornerShape(4.dp))
             .background(if (isSelected) IdrColors.SurfaceSubtle else Color.Transparent)
             .border(
                 1.dp,
                 if (isSelected) IdrColors.SaffronPrimary else Color.Transparent,
-                RoundedCornerShape(6.dp)
+                RoundedCornerShape(4.dp)
             )
             .clickable { onClick() }
-            .padding(horizontal = 7.dp, vertical = 4.dp)
+            .padding(horizontal = 6.dp, vertical = 3.dp)
     ) {
         Text(
             text = title,

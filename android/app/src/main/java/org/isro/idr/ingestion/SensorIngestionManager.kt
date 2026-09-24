@@ -13,44 +13,66 @@ import org.isro.idr.engine.Vector3D
 import kotlin.math.pow
 
 /**
- * Android IMU & Environmental Sensor Ingestion Manager.
- * Subscribes to hardware sensors on a dedicated HandlerThread, normalizes units/coordinate frames,
- * tracks live hardware sample rates, and feeds bounded queues.
+ * Thread-Safe Sensor Ingestion Layer for Physical Android Devices.
+ * Manages raw Android HAL sensor event callbacks (accelerometer, gyroscope,
+ * magnetometer, barometer) on a dedicated high-priority background HandlerThread.
+ *
+ * Implements deterministic phase-accumulator causal rate resampling to downsample
+ * raw hardware interrupts (~468.8 Hz on physical devices) down to exactly 100.0 Hz
+ * for the dead-reckoning fusion pipeline without phase drift or queue saturation.
  */
 class SensorIngestionManager(
-    private val context: Context,
-    val queueCapacity: Int = 500,
-    val targetDelayUs: Int = SensorManager.SENSOR_DELAY_FASTEST
+    context: Context,
+    private val targetDelayUs: Int = SensorManager.SENSOR_DELAY_FASTEST
 ) : SensorEventListener {
 
     private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as? SensorManager
-    private val accelSensor: Sensor? = sensorManager?.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
-    private val gyroSensor: Sensor? = sensorManager?.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
-    private val magSensor: Sensor? = sensorManager?.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
-    private val baroSensor: Sensor? = sensorManager?.getDefaultSensor(Sensor.TYPE_PRESSURE)
+    private val accelSensor = sensorManager?.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+    private val gyroSensor = sensorManager?.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
+    private val magSensor = sensorManager?.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
+    private val baroSensor = sensorManager?.getDefaultSensor(Sensor.TYPE_PRESSURE)
 
     private var sensorThread: HandlerThread? = null
     private var sensorHandler: Handler? = null
 
-    val accelPolicy = TimestampPolicy("Accelerometer", nominalRateHz = 100.0)
-    val gyroPolicy = TimestampPolicy("Gyroscope", nominalRateHz = 100.0)
-    val imuQueue = BoundedSensorQueue<ImuSample>(queueCapacity)
+    val accelPolicy = TimestampPolicy(sensorName = "accel", nominalRateHz = 100.0)
+    val gyroPolicy = TimestampPolicy(sensorName = "gyro", nominalRateHz = 100.0)
 
-    @Volatile private var latestBaroAltMeters: Double = 0.0
-    @Volatile private var latestGyro = Vector3D(0.0, 0.0, 0.0)
-    @Volatile private var latestMag = Vector3D(0.0, 0.0, 0.0)
-    @Volatile private var isMagValid = false
-    @Volatile private var baseTimestampNanos: Long = -1L
+    val imuQueue = BoundedSensorQueue<ImuSample>(capacity = 500)
 
-    @Volatile var isRunning: Boolean = false
+    @Volatile
+    var isRunning: Boolean = false
         private set
+
+    private var baseTimestampNanos: Long = -1L
+    private var lastConsumedAccelTimestampNanos: Long = -1L
+    private var lastCallbackAccelTimestampNanos: Long = -1L
+    private var accelPhaseAccumulatorNanos: Long = 0L
+
+    // Nominal 100 Hz step period: 10,000,000 ns = 10.0 ms
+    private val targetStepPeriodNanos = 10_000_000L
+
+    @Volatile
+    private var latestGyro: Vector3D = Vector3D(0.0, 0.0, 0.0)
+
+    @Volatile
+    private var latestMag: Vector3D = Vector3D(0.0, 0.0, 0.0)
+
+    @Volatile
+    private var isMagValid: Boolean = false
+
+    @Volatile
+    private var latestBaroAltMeters: Double? = null
 
     val isAccelerometerAvailable: Boolean
         get() = accelSensor != null
+
     val isGyroscopeAvailable: Boolean
         get() = gyroSensor != null
+
     val isMagnetometerAvailable: Boolean
         get() = magSensor != null
+
     val isBarometerAvailable: Boolean
         get() = baroSensor != null
 
@@ -60,7 +82,7 @@ class SensorIngestionManager(
     fun start(): Boolean {
         if (isRunning || sensorManager == null) return false
 
-        // Start dedicated background HandlerThread
+        // Dedicated background HandlerThread with high priority
         if (sensorThread == null) {
             val thread = HandlerThread("SensorIngestionThread", android.os.Process.THREAD_PRIORITY_URGENT_DISPLAY)
             thread.start()
@@ -72,6 +94,9 @@ class SensorIngestionManager(
         gyroPolicy.reset()
         imuQueue.clear()
         baseTimestampNanos = -1L
+        lastConsumedAccelTimestampNanos = -1L
+        lastCallbackAccelTimestampNanos = -1L
+        accelPhaseAccumulatorNanos = 0L
 
         val handler = sensorHandler
         var registeredAny = false
@@ -115,29 +140,54 @@ class SensorIngestionManager(
 
         when (event.sensor.type) {
             Sensor.TYPE_ACCELEROMETER -> {
-                if (!accelPolicy.ingestTimestamp(timestampNanos)) return
+                // 1. Ingest raw callback timestamp into policy for rate & monotonicity tracking
+                if (!accelPolicy.ingestCallback(timestampNanos)) return
 
-                val timeS = (timestampNanos - baseTimestampNanos).toDouble() / 1_000_000_000.0
-                // Android coordinates: X right, Y up, Z out of screen (m/s^2)
                 val ax = event.values[0].toDouble()
                 val ay = event.values[1].toDouble()
                 val az = event.values[2].toDouble()
 
-                val sample = ImuSample(
-                    timestampNanos = timestampNanos,
-                    timeSeconds = timeS,
-                    accel = Vector3D(ax, ay, az),
-                    gyro = latestGyro,
-                    baroAltMeters = latestBaroAltMeters
-                )
+                // 2. Deterministic Phase-Accumulator Causal Rate Resampling (exact 100.0 Hz)
+                val isDecimatedEmission: Boolean
+                if (lastCallbackAccelTimestampNanos < 0L) {
+                    lastCallbackAccelTimestampNanos = timestampNanos
+                    accelPhaseAccumulatorNanos = targetStepPeriodNanos
+                    isDecimatedEmission = true
+                } else {
+                    val dtNanos = timestampNanos - lastCallbackAccelTimestampNanos
+                    lastCallbackAccelTimestampNanos = timestampNanos
+                    if (dtNanos > 0L) {
+                        accelPhaseAccumulatorNanos += dtNanos
+                    }
+                    isDecimatedEmission = (accelPhaseAccumulatorNanos >= targetStepPeriodNanos)
+                }
 
-                imuQueue.push(sample)
-                onImuSampleListener?.invoke(sample)
+                if (isDecimatedEmission) {
+                    accelPhaseAccumulatorNanos -= targetStepPeriodNanos
+                    if (accelPhaseAccumulatorNanos > targetStepPeriodNanos) {
+                        accelPhaseAccumulatorNanos = 0L // prevent burst catch-up after sleep
+                    }
+                    lastConsumedAccelTimestampNanos = timestampNanos
+                    accelPolicy.recordConsumed(timestampNanos)
+                    gyroPolicy.recordConsumed(timestampNanos)
+
+                    val timeS = (timestampNanos - baseTimestampNanos).toDouble() / 1_000_000_000.0
+
+                    val sample = ImuSample(
+                        timestampNanos = timestampNanos,
+                        timeSeconds = timeS,
+                        accel = Vector3D(ax, ay, az),
+                        gyro = latestGyro,
+                        baroAltMeters = latestBaroAltMeters ?: 0.0
+                    )
+
+                    imuQueue.push(sample)
+                    onImuSampleListener?.invoke(sample)
+                }
             }
 
             Sensor.TYPE_GYROSCOPE -> {
-                if (!gyroPolicy.ingestTimestamp(timestampNanos)) return
-                // Android coordinates: rad/s around axes
+                if (!gyroPolicy.ingestCallback(timestampNanos)) return
                 latestGyro = Vector3D(
                     event.values[0].toDouble(),
                     event.values[1].toDouble(),

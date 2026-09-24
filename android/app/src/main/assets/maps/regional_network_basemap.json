@@ -1,0 +1,78 @@
+{
+  "name": "Regional Expressway Corridor",
+  "bounds": [
+    28.4,
+    76.9,
+    28.8,
+    77.5
+  ],
+  "water_bodies": [
+    {
+      "name": "River Yamuna Regional Reach",
+      "type": "river",
+      "coordinates": [
+        [
+          28.8,
+          77.25
+        ],
+        [
+          28.65,
+          77.23
+        ],
+        [
+          28.5,
+          77.3
+        ],
+        [
+          28.4,
+          77.35
+        ]
+      ],
+      "width_meters": 400.0
+    }
+  ],
+  "landuse_polygons": [
+    {
+      "name": "Aravalli Biodiversity Forest",
+      "type": "park",
+      "coordinates": [
+        [
+          28.45,
+          77.05
+        ],
+        [
+          28.52,
+          77.05
+        ],
+        [
+          28.52,
+          77.12
+        ],
+        [
+          28.45,
+          77.12
+        ]
+      ]
+    }
+  ],
+  "landmarks": [
+    {
+      "name": "Interchange Alpha",
+      "lat": 28.55,
+      "lon": 77.15,
+      "category": "junction"
+    },
+    {
+      "name": "Toll Plaza North",
+      "lat": 28.7,
+      "lon": 77.2,
+      "category": "toll"
+    },
+    {
+      "name": "Expressway Rest Area 1",
+      "lat": 28.48,
+      "lon": 77.1,
+      "category": "service"
+    }
+  ]
+}

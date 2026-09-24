@@ -1,14 +1,18 @@
 package org.isro.idr.ui.viewmodel
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.isro.idr.engine.GnssSample
+import org.isro.idr.engine.NativeNavigationEngine
 import org.isro.idr.engine.NativeStatus
 import org.isro.idr.engine.NavigationMode
 import org.isro.idr.engine.NavigationTelemetry
@@ -16,6 +20,8 @@ import org.isro.idr.ingestion.GeoCoordinates
 import org.isro.idr.ingestion.GnssIngestionManager
 import org.isro.idr.ingestion.IngestionDiagnostics
 import org.isro.idr.ingestion.NavigationPipelineSynchronizer
+import org.isro.idr.map.IdrMapBinaryReader
+import org.isro.idr.map.RoadMapGraph
 import org.isro.idr.ui.state.GnssStatusState
 import org.isro.idr.ui.state.HealthStatus
 import org.isro.idr.ui.state.MapDataState
@@ -24,31 +30,36 @@ import org.isro.idr.ui.state.ScreenTab
 import org.isro.idr.ui.state.SystemHealthState
 import org.isro.idr.ui.state.TrajectoryDisplayMode
 import org.isro.idr.ui.state.TrajectoryPoint
+import java.io.File
+import java.io.FileOutputStream
 
 /**
  * ViewModel orchestrating UI state for the ISRO IDR Navigation application.
  * Decouples high-rate native estimator execution (~100 Hz) from UI recomposition (~10 Hz).
- * Periodically polls hardware ingestion diagnostics and manages seamless navigation presentation.
+ * Manages offline .idrmap geographic road datasets and live telemetry.
  */
 class NavigationViewModel(
     private val synchronizer: NavigationPipelineSynchronizer? = null,
-    private val gnssManager: GnssIngestionManager? = null
+    private val gnssManager: GnssIngestionManager? = null,
+    private val engine: NativeNavigationEngine? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(NavigationUiState())
     val uiState: StateFlow<NavigationUiState> = _uiState.asStateFlow()
 
-    private val maxTrajectoryPoints = 1200
+    private val maxTrajectoryPoints = 1500
     private var lastUiUpdateTimestampNanos = 0L
     private val minUiUpdateIntervalNanos = 100_000_000L // 100ms = 10 Hz UI rate
 
     // Outage duration tracking
     private var outageStartSec: Double? = null
 
-    // Bounded mutable lists for trajectories (synced on copy)
+    // Bounded mutable lists for trajectories
     private val idrPoints = ArrayDeque<TrajectoryPoint>(maxTrajectoryPoints)
     private val gnssPoints = ArrayDeque<TrajectoryPoint>(maxTrajectoryPoints)
     private val mapAidedPoints = ArrayDeque<TrajectoryPoint>(maxTrajectoryPoints)
+
+    private var rawRoadGraph: RoadMapGraph? = null
 
     init {
         synchronizer?.onTelemetryListener = { telemetry ->
@@ -73,21 +84,106 @@ class NavigationViewModel(
     }
 
     /**
-     * Consumes native telemetry at native rate (~100 Hz), buffers trajectory,
-     * and publishes throttled UI updates at ~10 Hz.
+     * Loads an offline .idrmap dataset from assets into memory and the C++ native engine.
+     */
+    fun loadOfflineMap(context: Context, fileName: String = "prayagraj_corridor.idrmap") {
+        viewModelScope.launch(Dispatchers.IO) {
+            _uiState.update { it.copy(mapDataState = MapDataState.LOADING) }
+            try {
+                // 1. Try to load companion geographic vector basemap if available
+                val basemapJsonName = when {
+                    fileName.contains("prayagraj") -> "prayagraj_basemap.json"
+                    fileName.contains("dense_metro") -> "dense_metro_basemap.json"
+                    fileName.contains("regional") -> "regional_network_basemap.json"
+                    else -> null
+                }
+                val companionBasemap = basemapJsonName?.let { bName ->
+                    try {
+                        context.assets.open("maps/$bName").use { bStream ->
+                            IdrMapBinaryReader.readBasemapFromJsonStream(bStream)
+                        }
+                    } catch (_: Exception) { null }
+                }
+
+                // 2. Read binary road graph from assets
+                val assetPath = "maps/$fileName"
+                val inputStream = context.assets.open(assetPath)
+                val graph = IdrMapBinaryReader.readFromStream(
+                    stream = inputStream,
+                    mapName = fileName.removeSuffix(".idrmap"),
+                    basemap = companionBasemap
+                )
+
+                if (graph != null) {
+                    rawRoadGraph = graph
+
+                    // 3. Extract asset to internal cache for C++ IdrMapReader mmap access
+                    val cacheFile = File(context.cacheDir, fileName)
+                    context.assets.open(assetPath).use { input ->
+                        FileOutputStream(cacheFile).use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+
+                    // 4. Determine anchor (use current GNSS anchor or map center)
+                    val currentAnchor = gnssManager?.anchorGeo ?: GeoCoordinates(graph.centerLat, graph.centerLon, 0.0)
+                    if (gnssManager?.anchorGeo == null) {
+                        gnssManager?.setExplicitAnchor(graph.centerLat, graph.centerLon, 0.0)
+                    }
+
+                    // 5. Project roads and basemap to ENU
+                    val projectedGraph = graph.withEnuProjection(currentAnchor)
+
+                    // 6. Load into C++ native engine
+                    val status = engine?.loadIdrmap(
+                        path = cacheFile.absolutePath,
+                        lat0 = currentAnchor.anchorLatDeg,
+                        lon0 = currentAnchor.anchorLonDeg,
+                        alt0 = currentAnchor.anchorAltM
+                    )
+
+                    withContext(Dispatchers.Main) {
+                        _uiState.update { current ->
+                            current.copy(
+                                roadMapGraph = projectedGraph,
+                                selectedMapFileName = fileName,
+                                mapDataState = MapDataState.AVAILABLE,
+                                enuAnchor = GeoCoordinates.Wgs84Coordinate(
+                                    currentAnchor.anchorLatDeg,
+                                    currentAnchor.anchorLonDeg,
+                                    currentAnchor.anchorAltM
+                                )
+                            )
+                        }
+                    }
+                } else {
+                    withContext(Dispatchers.Main) {
+                        _uiState.update { it.copy(mapDataState = MapDataState.OFFLINE) }
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    _uiState.update { it.copy(mapDataState = MapDataState.OFFLINE) }
+                }
+            }
+        }
+    }
+
+    /**
+     * Consumes native telemetry at ~100 Hz, updates trajectories, and throttles UI state to ~10 Hz.
      */
     fun onTelemetryReceived(telemetry: NavigationTelemetry) {
         val nowNanos = System.nanoTime()
 
-        // Accumulate IDR trajectory point (with distance decimation to prevent clutter)
         val currentEnuX = telemetry.posX
         val currentEnuY = telemetry.posY
         val currentEnuZ = telemetry.posZ
         val currentSec = telemetry.timestampSec
 
+        // Accumulate IDR trajectory point
         synchronized(idrPoints) {
             val last = idrPoints.lastOrNull()
-            if (last == null || distanceSq(last.enuX, last.enuY, currentEnuX, currentEnuY) > 0.16) { // >= 0.4m
+            if (last == null || distanceSq(last.enuX, last.enuY, currentEnuX, currentEnuY) > 0.16) {
                 if (idrPoints.size >= maxTrajectoryPoints) {
                     idrPoints.removeFirst()
                 }
@@ -134,7 +230,6 @@ class NavigationViewModel(
         }
         lastUiUpdateTimestampNanos = nowNanos
 
-        // Determine DR state and outage duration
         val isDr = telemetry.mode.isDeadReckoning ||
                    telemetry.mode == NavigationMode.TRANSITION_TO_DR
         
@@ -148,7 +243,6 @@ class NavigationViewModel(
             0.0
         }
 
-        // Derive health states
         val currentDiag = _uiState.value.diagnostics
         val health = deriveHealthState(telemetry, currentDiag)
         val anchor = gnssManager?.anchorGeo?.let {
@@ -188,6 +282,13 @@ class NavigationViewModel(
             GeoCoordinates.Wgs84Coordinate(it.anchorLatDeg, it.anchorLonDeg, it.anchorAltM)
         }
 
+        // If anchor changed or established, re-project road network
+        val currentGeo = gnssManager?.anchorGeo
+        if (currentGeo != null && rawRoadGraph != null && _uiState.value.roadMapGraph?.currentAnchor != currentGeo) {
+            val reprojected = rawRoadGraph?.withEnuProjection(currentGeo)
+            _uiState.update { it.copy(roadMapGraph = reprojected) }
+        }
+
         if (sample.isValid) {
             synchronized(gnssPoints) {
                 val last = gnssPoints.lastOrNull()
@@ -215,6 +316,7 @@ class NavigationViewModel(
                         fixValid = true,
                         isSearching = false,
                         isPermissionGranted = true,
+                        fixState = if (age <= 1.5) "FIXED" else "STALE",
                         latitude = sample.latitudeDeg,
                         longitude = sample.longitudeDeg,
                         altitude = sample.altitudeM,
@@ -237,6 +339,7 @@ class NavigationViewModel(
                         fixValid = false,
                         isSearching = gnssManager?.isRunning == true,
                         isPermissionGranted = gnssManager?.isPermissionGranted ?: true,
+                        fixState = if (gnssManager?.isRunning == true) "SEARCHING" else "STANDBY",
                         totalSatellites = sample.totalSatelliteCount,
                         totalSatellitesInView = gnssManager?.totalInViewCount ?: sample.totalSatelliteCount,
                         navicSatellitesInView = gnssManager?.navicInViewCount ?: sample.navicSatelliteCount,
@@ -282,10 +385,6 @@ class NavigationViewModel(
         _uiState.update { it.copy(selectedScreen = tab) }
     }
 
-    fun setMapDataState(state: MapDataState) {
-        _uiState.update { it.copy(mapDataState = state) }
-    }
-
     fun clearTrajectories() {
         synchronized(idrPoints) { idrPoints.clear() }
         synchronized(gnssPoints) { gnssPoints.clear() }
@@ -303,17 +402,13 @@ class NavigationViewModel(
         _uiState.update { it.copy(isRunning = running) }
     }
 
-    fun setError(message: String?) {
-        _uiState.update { it.copy(errorMessage = message) }
-    }
-
     private fun deriveHealthState(
         telemetry: NavigationTelemetry?,
         diag: IngestionDiagnostics?
     ): SystemHealthState {
-        // IMU Health: Active when measured rate > 30 Hz
+        // IMU Health: Active when consumed rate > 40 Hz
         val imuHealth = when {
-            diag != null && diag.accelMeasuredHz > 40.0 && diag.gyroMeasuredHz > 40.0 -> HealthStatus.HEALTHY
+            diag != null && diag.accelConsumedHz > 40.0 && diag.gyroConsumedHz > 40.0 -> HealthStatus.HEALTHY
             diag != null && (diag.isAccelerometerAvailable || diag.isGyroscopeAvailable) -> HealthStatus.SEARCHING
             diag == null && telemetry != null -> HealthStatus.HEALTHY
             else -> HealthStatus.SEARCHING
@@ -346,6 +441,7 @@ class NavigationViewModel(
 
         // Map Health: Ready / Active when map is available
         val mapHealth = when {
+            _uiState.value.roadMapGraph != null -> HealthStatus.HEALTHY
             telemetry?.mapAvailable == true -> HealthStatus.HEALTHY
             _uiState.value.mapDataState == MapDataState.AVAILABLE || _uiState.value.mapDataState == MapDataState.READY -> HealthStatus.HEALTHY
             else -> HealthStatus.OFFLINE

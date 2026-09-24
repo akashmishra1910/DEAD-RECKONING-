@@ -1,0 +1,23 @@
+{
+  "name": "Prayagraj Urban & River Corridor",
+  "region": "Prayagraj, Uttar Pradesh, India",
+  "bounds": [
+    25.41,
+    81.82,
+    25.47,
+    81.89
+  ],
+  "format": "idrmap_v1.0 + vector_json",
+  "features": {
+    "roads": 24,
+    "buildings_3d": 7,
+    "rivers": 2,
+    "parks": 3,
+    "landmarks": 7
+  },
+  "attribution": {
+    "source": "OpenStreetMap",
+    "license": "ODbL 1.0 / (c) OpenStreetMap contributors",
+    "sponsor": "ISRO PS 26168 Intelligent Dead Reckoning"
+  }
+}

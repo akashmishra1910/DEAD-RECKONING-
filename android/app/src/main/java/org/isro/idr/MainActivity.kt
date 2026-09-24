@@ -65,14 +65,19 @@ class MainActivity : ComponentActivity() {
             )
         }
 
-        viewModel = NavigationViewModel(
+        val vm = NavigationViewModel(
             synchronizer = synchronizer,
-            gnssManager = gnssManager
+            gnssManager = gnssManager,
+            engine = localEngine
         )
+        viewModel = vm
 
         // Request location permissions and auto-start pipeline
         checkAndRequestPermissions()
         startNavigationPipeline()
+
+        // Auto-load default offline road map dataset (Comprehensive Prayagraj corridor)
+        vm.loadOfflineMap(applicationContext, "prayagraj_corridor.idrmap")
 
         setContent {
             IdrNavigationTheme {
@@ -98,7 +103,8 @@ class MainActivity : ComponentActivity() {
                             onZoomIn = { localVm.zoomIn() },
                             onZoomOut = { localVm.zoomOut() },
                             onToggleNorthUp = { localVm.toggleNorthUp() },
-                            onResetMap = { localVm.resetMap() }
+                            onResetMap = { localVm.resetMap() },
+                            onMapSelected = { localVm.loadOfflineMap(applicationContext, it) }
                         )
                     }
                 }
@@ -146,7 +152,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onPause() {
         super.onPause()
-        // Allow background updates if required or conserve power
     }
 
     override fun onDestroy() {

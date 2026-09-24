@@ -29,8 +29,8 @@ import org.isro.idr.ui.state.NavigationUiState
 
 /**
  * Diagnostics & Engineering Ingestion Metrics Screen.
- * Visualizes live hardware sensor rates, bounded buffer occupancies, timestamp anomalies,
- * and GNSS lock metrics to ensure zero-data-loss validation.
+ * Visualizes live hardware sensor rates (callback vs consumed), bounded buffer occupancies,
+ * inter-sample timing statistics, GNSS lock & NavIC metrics, and native C++ step latencies.
  */
 @Composable
 fun DiagnosticsScreen(
@@ -55,7 +55,7 @@ fun DiagnosticsScreen(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
-                text = "ENGINEERING & INGESTION DIAGNOSTICS",
+                text = "ENGINEERING & SENSOR INGESTION DIAGNOSTICS",
                 style = IdrTypography.labelSmall,
                 color = IdrColors.SaffronPrimary,
                 fontWeight = FontWeight.Bold
@@ -67,29 +67,32 @@ fun DiagnosticsScreen(
             )
         }
 
-        // Sensor Ingestion Rates
+        // Section 1: Raw Callback Rate vs Navigation Consumed Rate
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            val accelHz = diag?.accelMeasuredHz ?: 0.0
-            val gyroHz = diag?.gyroMeasuredHz ?: 0.0
+            val accelCbHz = diag?.accelCallbackHz ?: 0.0
+            val accelConsHz = diag?.accelConsumedHz ?: 0.0
 
             MetricCard(
-                label = "ACCEL RATE",
-                primaryValue = String.format("%.1f", accelHz),
+                label = "ACCEL RATES",
+                primaryValue = String.format("%.1f", accelConsHz),
                 primaryUnit = "Hz",
-                secondaryValue = "Target: 100 Hz",
-                valueColor = if (accelHz > 40.0) IdrColors.StatusGreenDark else IdrColors.NavBlueDark,
+                secondaryValue = String.format("Raw HW: %.1f Hz", accelCbHz),
+                valueColor = if (accelConsHz in 70.0..130.0) IdrColors.StatusGreenDark else IdrColors.NavBlueDark,
                 modifier = Modifier.weight(1f)
             )
 
+            val gyroCbHz = diag?.gyroCallbackHz ?: 0.0
+            val gyroConsHz = diag?.gyroConsumedHz ?: 0.0
+
             MetricCard(
-                label = "GYRO RATE",
-                primaryValue = String.format("%.1f", gyroHz),
+                label = "GYRO RATES",
+                primaryValue = String.format("%.1f", gyroConsHz),
                 primaryUnit = "Hz",
-                secondaryValue = "Target: 100 Hz",
-                valueColor = if (gyroHz > 40.0) IdrColors.StatusGreenDark else IdrColors.NavBlueDark,
+                secondaryValue = String.format("Raw HW: %.1f Hz", gyroCbHz),
+                valueColor = if (gyroConsHz in 70.0..130.0) IdrColors.StatusGreenDark else IdrColors.NavBlueDark,
                 modifier = Modifier.weight(1f)
             )
 
@@ -103,56 +106,97 @@ fun DiagnosticsScreen(
             )
         }
 
-        // Bounded Sensor Queue Diagnostics
+        // Section 2: Bounded Sensor Queue & Dropped Samples
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            val isQueueSaturated = (diag?.queueOccupancy ?: 0) >= (diag?.queueCapacity ?: 500) * 0.8
+            val queueOcc = diag?.queueOccupancy ?: 0
+            val queueCap = diag?.queueCapacity ?: 500
+            val isQueueSaturated = queueOcc >= queueCap * 0.8
+
             MetricCard(
                 label = "QUEUE OCCUPANCY",
-                primaryValue = "${diag?.queueOccupancy ?: 0}",
-                primaryUnit = "/ ${diag?.queueCapacity ?: 500}",
+                primaryValue = "$queueOcc",
+                primaryUnit = "/ $queueCap",
                 secondaryValue = if (isQueueSaturated) "SATURATED" else "NORMAL BUFFER",
                 valueColor = if (isQueueSaturated) IdrColors.StatusRed else IdrColors.StatusGreenDark,
                 modifier = Modifier.weight(1f)
             )
 
+            val drops = diag?.queueOverflowDrops ?: 0L
             MetricCard(
                 label = "DROPPED SAMPLES",
-                primaryValue = "${diag?.queueOverflowDrops ?: 0}",
+                primaryValue = "$drops",
                 primaryUnit = "events",
                 secondaryValue = "Queue overflow drops",
-                valueColor = if ((diag?.queueOverflowDrops ?: 0L) > 0) IdrColors.StatusAmberDark else IdrColors.StatusGreenDark,
+                valueColor = if (drops > 0) IdrColors.StatusAmberDark else IdrColors.StatusGreenDark,
                 modifier = Modifier.weight(1f)
             )
         }
 
-        // GNSS & Native Status
+        // Section 3: GNSS Tracking & Fix State
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            val fixState = diag?.gnssFixState ?: "SEARCHING"
+            val fixAgeS = if ((diag?.gnssFixAgeMs ?: -1L) >= 0) (diag?.gnssFixAgeMs ?: 0L) / 1000.0 else -1.0
+
+            MetricCard(
+                label = "GNSS FIX STATE",
+                primaryValue = fixState,
+                primaryUnit = if (fixAgeS >= 0) String.format("(%.1fs)", fixAgeS) else "",
+                secondaryValue = "1σ Acc: ${if (diag?.horizontalAccuracyM ?: 0f > 0f) String.format("%.1fm", diag?.horizontalAccuracyM) else "N/A"}",
+                valueColor = when (fixState) {
+                    "FIXED" -> IdrColors.StatusGreenDark
+                    "STALE" -> IdrColors.StatusAmberDark
+                    "OUTAGE" -> IdrColors.StatusRed
+                    else -> IdrColors.NavBlueDark
+                },
+                modifier = Modifier.weight(1f)
+            )
+
+            MetricCard(
+                label = "SATELLITE TELEMETRY",
+                primaryValue = "${diag?.totalSatCount ?: 0} / ${diag?.totalInViewCount ?: 0}",
+                primaryUnit = "sats",
+                secondaryValue = "NavIC: ${diag?.navicSatCount ?: 0} used / ${diag?.navicInViewCount ?: 0} view",
+                valueColor = if ((diag?.navicSatCount ?: 0) > 0) IdrColors.StatusGreenDark else IdrColors.NavyDarkest,
+                modifier = Modifier.weight(1.1f)
+            )
+        }
+
+        // Section 4: Map Matching & Navigation Estimator
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             MetricCard(
-                label = "GNSS FIX AGE",
-                primaryValue = String.format("%.2f", uiState.gnssStatus.ageSeconds),
-                primaryUnit = "s",
-                secondaryValue = if (uiState.gnssStatus.fixValid) "Valid (<1.5s)" else "Searching / Outage",
-                valueColor = if (uiState.gnssStatus.fixValid && uiState.gnssStatus.ageSeconds <= 1.5) IdrColors.StatusGreenDark else IdrColors.NavBlueDark,
+                label = "MAP CONFIDENCE",
+                primaryValue = uiState.mapConfidence,
+                primaryUnit = if (uiState.candidateCount > 0) "(${uiState.candidateCount} cands)" else "",
+                secondaryValue = "Hyps: ${uiState.hypothesisCount} | Margin: ${String.format("%.2f", uiState.scoreMargin)}",
+                valueColor = when (uiState.mapConfidence) {
+                    "HIGH" -> IdrColors.StatusGreenDark
+                    "MEDIUM" -> IdrColors.StatusAmberDark
+                    "LOW" -> IdrColors.StatusOrangeDark
+                    else -> IdrColors.TextTertiary
+                },
                 modifier = Modifier.weight(1f)
             )
 
             MetricCard(
-                label = "NATIVE STATUS",
-                primaryValue = uiState.nativeStatus.name,
-                primaryUnit = "code ${uiState.nativeStatus.code}",
-                secondaryValue = "idr-core C++ engine",
-                valueColor = if (uiState.nativeStatus.isSuccess) IdrColors.StatusGreenDark else IdrColors.StatusRed,
+                label = "NATIVE LATENCY",
+                primaryValue = "${diag?.lastStepDurationMicros ?: 0}",
+                primaryUnit = "µs/step",
+                secondaryValue = "Steps: ${diag?.totalStepsProcessed ?: 0}",
+                valueColor = if ((diag?.lastStepDurationMicros ?: 0) < 500) IdrColors.StatusGreenDark else IdrColors.StatusAmberDark,
                 modifier = Modifier.weight(1f)
             )
         }
 
-        // Ingestion Anomaly & Health Breakdown
+        // Section 5: Inter-sample Timing & Anomaly Breakdown
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -161,32 +205,31 @@ fun DiagnosticsScreen(
                 .border(1.dp, IdrColors.CardBorder, RoundedCornerShape(8.dp))
                 .padding(12.dp)
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 Text(
-                    text = "TIMESTAMP ANOMALIES & EXECUTION STATS",
+                    text = "SENSOR TIMING & MONOTONICITY AUDIT",
                     style = IdrTypography.labelSmall,
                     color = IdrColors.TextSecondary
                 )
                 Text(
-                    text = "Accel Dropped / Duplicates: ${diag?.accelDroppedCount ?: 0}",
+                    text = "Accel dt: Mean = ${String.format("%.2f", diag?.accelMeanDtMs ?: 0.0)} ms | Min = ${String.format("%.2f", diag?.accelMinDtMs ?: 0.0)} ms | Max = ${String.format("%.2f", diag?.accelMaxDtMs ?: 0.0)} ms | P95 = ${String.format("%.2f", diag?.accelP95DtMs ?: 0.0)} ms",
                     style = IdrTypography.bodyMedium,
                     color = IdrColors.TextPrimary
                 )
                 Text(
-                    text = "Gyro Dropped / Duplicates: ${diag?.gyroDroppedCount ?: 0}",
+                    text = "Gyro dt: Mean = ${String.format("%.2f", diag?.gyroMeanDtMs ?: 0.0)} ms",
                     style = IdrTypography.bodyMedium,
-                    color = if ((diag?.gyroDroppedCount ?: 0L) > 0) IdrColors.StatusAmberDark else IdrColors.TextPrimary
+                    color = IdrColors.TextPrimary
+                )
+                Text(
+                    text = "Dropped / Duplicate Callbacks: Accel = ${diag?.accelDroppedCount ?: 0} | Gyro = ${diag?.gyroDroppedCount ?: 0}",
+                    style = IdrTypography.bodyMedium,
+                    color = if (((diag?.accelDroppedCount ?: 0L) + (diag?.gyroDroppedCount ?: 0L)) > 0) IdrColors.StatusAmberDark else IdrColors.StatusGreenDark
                 )
                 Text(
                     text = "Large Time Gaps (>100ms): ${ (diag?.accelLargeGapCount ?: 0L) + (diag?.gyroLargeGapCount ?: 0L) }",
                     style = IdrTypography.bodyMedium,
                     color = if (((diag?.accelLargeGapCount ?: 0L) + (diag?.gyroLargeGapCount ?: 0L)) > 0) IdrColors.StatusAmberDark else IdrColors.TextPrimary
-                )
-                Text(
-                    text = "Total Steps Processed: ${diag?.totalStepsProcessed ?: 0}  (Step Latency: ${diag?.lastStepDurationMicros ?: 0} µs)",
-                    style = IdrTypography.bodyMedium,
-                    color = IdrColors.NavBlueDark,
-                    fontWeight = FontWeight.Bold
                 )
             }
         }

@@ -1,0 +1,469 @@
+<?xml version='1.0' encoding='utf-8'?>
+<osm version="0.6" generator="ISRO_IDR_GEO_COMPILER_V2">
+  <bounds minlat="25.4100" minlon="81.8200" maxlat="25.4700" maxlon="81.8900" />
+  <node id="2000" lat="25.435000" lon="81.828000" />
+  <node id="2001" lat="25.435000" lon="81.831500" />
+  <node id="2002" lat="25.435000" lon="81.835000" />
+  <node id="2003" lat="25.435000" lon="81.838500" />
+  <node id="2004" lat="25.435000" lon="81.842000" />
+  <node id="2005" lat="25.435000" lon="81.845500" />
+  <node id="2006" lat="25.435000" lon="81.849000" />
+  <node id="2007" lat="25.435000" lon="81.852500" />
+  <node id="2008" lat="25.435000" lon="81.856000" />
+  <node id="2009" lat="25.435000" lon="81.859500" />
+  <node id="2010" lat="25.435000" lon="81.863000" />
+  <node id="2011" lat="25.435000" lon="81.866500" />
+  <node id="2012" lat="25.435000" lon="81.870000" />
+  <way id="6000">
+    <nd ref="2000" />
+    <nd ref="2001" />
+    <nd ref="2002" />
+    <nd ref="2003" />
+    <nd ref="2004" />
+    <nd ref="2005" />
+    <nd ref="2006" />
+    <nd ref="2007" />
+    <nd ref="2008" />
+    <nd ref="2009" />
+    <nd ref="2010" />
+    <nd ref="2011" />
+    <nd ref="2012" />
+    <tag k="highway" v="primary" />
+    <tag k="name" v="Mahatma Gandhi Marg" />
+    <tag k="maxspeed" v="50" />
+    <tag k="lanes" v="4" />
+  </way>
+  <node id="2013" lat="25.418000" lon="81.850000" />
+  <node id="2014" lat="25.422000" lon="81.850000" />
+  <node id="2015" lat="25.426000" lon="81.850000" />
+  <node id="2016" lat="25.430000" lon="81.850000" />
+  <node id="2017" lat="25.434000" lon="81.850000" />
+  <node id="2018" lat="25.438000" lon="81.850000" />
+  <node id="2019" lat="25.442000" lon="81.850000" />
+  <node id="2020" lat="25.446000" lon="81.850000" />
+  <node id="2021" lat="25.450000" lon="81.850000" />
+  <node id="2022" lat="25.454000" lon="81.850000" />
+  <node id="2023" lat="25.458000" lon="81.850000" />
+  <node id="2024" lat="25.462000" lon="81.850000" />
+  <way id="6001">
+    <nd ref="2013" />
+    <nd ref="2014" />
+    <nd ref="2015" />
+    <nd ref="2016" />
+    <nd ref="2017" />
+    <nd ref="2018" />
+    <nd ref="2019" />
+    <nd ref="2020" />
+    <nd ref="2021" />
+    <nd ref="2022" />
+    <nd ref="2023" />
+    <nd ref="2024" />
+    <tag k="highway" v="primary" />
+    <tag k="name" v="Sardar Patel Marg" />
+    <tag k="maxspeed" v="50" />
+    <tag k="lanes" v="4" />
+  </way>
+  <node id="2025" lat="25.452000" lon="81.820000" />
+  <node id="2026" lat="25.449000" lon="81.830000" />
+  <node id="2027" lat="25.446500" lon="81.840000" />
+  <node id="2028" lat="25.444000" lon="81.850000" />
+  <node id="2029" lat="25.442000" lon="81.860000" />
+  <node id="2030" lat="25.439500" lon="81.870000" />
+  <node id="2031" lat="25.437000" lon="81.880000" />
+  <node id="2032" lat="25.434000" lon="81.890000" />
+  <way id="6002">
+    <nd ref="2025" />
+    <nd ref="2026" />
+    <nd ref="2027" />
+    <nd ref="2028" />
+    <nd ref="2029" />
+    <nd ref="2030" />
+    <nd ref="2031" />
+    <nd ref="2032" />
+    <tag k="highway" v="trunk" />
+    <tag k="name" v="Grand Trunk Road (NH-19)" />
+    <tag k="maxspeed" v="70" />
+    <tag k="lanes" v="6" />
+  </way>
+  <node id="2033" lat="25.438000" lon="81.872000" />
+  <node id="2034" lat="25.438000" lon="81.878000" />
+  <node id="2035" lat="25.438000" lon="81.884000" />
+  <node id="2036" lat="25.438000" lon="81.890000" />
+  <way id="6003">
+    <nd ref="2033" />
+    <nd ref="2034" />
+    <nd ref="2035" />
+    <nd ref="2036" />
+    <tag k="highway" v="trunk" />
+    <tag k="name" v="Shastri Bridge (Ganga)" />
+    <tag k="bridge" v="yes" />
+    <tag k="layer" v="1" />
+    <tag k="maxspeed" v="60" />
+  </way>
+  <node id="2037" lat="25.420000" lon="81.840000" />
+  <node id="2038" lat="25.420000" lon="81.850000" />
+  <node id="2039" lat="25.420000" lon="81.860000" />
+  <node id="2040" lat="25.420000" lon="81.870000" />
+  <way id="6004">
+    <nd ref="2037" />
+    <nd ref="2038" />
+    <nd ref="2039" />
+    <nd ref="2040" />
+    <tag k="highway" v="trunk" />
+    <tag k="name" v="New Yamuna Cable Bridge" />
+    <tag k="bridge" v="yes" />
+    <tag k="layer" v="1" />
+    <tag k="maxspeed" v="60" />
+  </way>
+  <node id="2041" lat="25.435000" lon="81.860000" />
+  <node id="2042" lat="25.430000" lon="81.868000" />
+  <node id="2043" lat="25.425000" lon="81.876000" />
+  <node id="2044" lat="25.421000" lon="81.884000" />
+  <node id="2045" lat="25.419000" lon="81.890000" />
+  <way id="6005">
+    <nd ref="2041" />
+    <nd ref="2042" />
+    <nd ref="2043" />
+    <nd ref="2044" />
+    <nd ref="2045" />
+    <tag k="highway" v="secondary" />
+    <tag k="name" v="Sangam Marg" />
+    <tag k="maxspeed" v="40" />
+  </way>
+  <node id="2046" lat="25.424000" lon="81.842000" />
+  <node id="2047" lat="25.430000" lon="81.842000" />
+  <node id="2048" lat="25.436000" lon="81.842000" />
+  <node id="2049" lat="25.442000" lon="81.842000" />
+  <node id="2050" lat="25.448000" lon="81.842000" />
+  <way id="6006">
+    <nd ref="2046" />
+    <nd ref="2047" />
+    <nd ref="2048" />
+    <nd ref="2049" />
+    <nd ref="2050" />
+    <tag k="highway" v="secondary" />
+    <tag k="name" v="Stanley Road" />
+    <tag k="maxspeed" v="40" />
+  </way>
+  <node id="2051" lat="25.442000" lon="81.834000" />
+  <node id="2052" lat="25.442000" lon="81.842000" />
+  <node id="2053" lat="25.442000" lon="81.850000" />
+  <node id="2054" lat="25.442000" lon="81.858000" />
+  <node id="2055" lat="25.442000" lon="81.866000" />
+  <way id="6007">
+    <nd ref="2051" />
+    <nd ref="2052" />
+    <nd ref="2053" />
+    <nd ref="2054" />
+    <nd ref="2055" />
+    <tag k="highway" v="secondary" />
+    <tag k="name" v="Clive Road" />
+    <tag k="maxspeed" v="40" />
+  </way>
+  <node id="2056" lat="25.448000" lon="81.850000" />
+  <node id="2057" lat="25.453000" lon="81.855000" />
+  <node id="2058" lat="25.458000" lon="81.860000" />
+  <node id="2059" lat="25.464000" lon="81.865000" />
+  <way id="6008">
+    <nd ref="2056" />
+    <nd ref="2057" />
+    <nd ref="2058" />
+    <nd ref="2059" />
+    <tag k="highway" v="primary" />
+    <tag k="name" v="University Road" />
+    <tag k="maxspeed" v="45" />
+  </way>
+  <node id="2060" lat="25.432000" lon="81.843000" />
+  <node id="2061" lat="25.432000" lon="81.847000" />
+  <node id="2062" lat="25.432000" lon="81.851000" />
+  <way id="6009">
+    <nd ref="2060" />
+    <nd ref="2061" />
+    <nd ref="2062" />
+    <tag k="highway" v="secondary" />
+    <tag k="name" v="Railway Underpass Tunnel" />
+    <tag k="tunnel" v="yes" />
+    <tag k="layer" v="-1" />
+    <tag k="maxspeed" v="30" />
+  </way>
+  <node id="2063" lat="25.426000" lon="81.832000" />
+  <node id="2064" lat="25.426000" lon="81.837500" />
+  <node id="2065" lat="25.426000" lon="81.843000" />
+  <node id="2066" lat="25.426000" lon="81.848500" />
+  <node id="2067" lat="25.426000" lon="81.854000" />
+  <node id="2068" lat="25.426000" lon="81.859500" />
+  <node id="2069" lat="25.426000" lon="81.865000" />
+  <node id="2070" lat="25.426000" lon="81.870500" />
+  <way id="6010">
+    <nd ref="2063" />
+    <nd ref="2064" />
+    <nd ref="2065" />
+    <nd ref="2066" />
+    <nd ref="2067" />
+    <nd ref="2068" />
+    <nd ref="2069" />
+    <nd ref="2070" />
+    <tag k="highway" v="residential" />
+    <tag k="name" v="Civil Lines Sector 1 Avenue" />
+    <tag k="maxspeed" v="30" />
+  </way>
+  <node id="2071" lat="25.430500" lon="81.832000" />
+  <node id="2072" lat="25.430500" lon="81.837500" />
+  <node id="2073" lat="25.430500" lon="81.843000" />
+  <node id="2074" lat="25.430500" lon="81.848500" />
+  <node id="2075" lat="25.430500" lon="81.854000" />
+  <node id="2076" lat="25.430500" lon="81.859500" />
+  <node id="2077" lat="25.430500" lon="81.865000" />
+  <node id="2078" lat="25.430500" lon="81.870500" />
+  <way id="6011">
+    <nd ref="2071" />
+    <nd ref="2072" />
+    <nd ref="2073" />
+    <nd ref="2074" />
+    <nd ref="2075" />
+    <nd ref="2076" />
+    <nd ref="2077" />
+    <nd ref="2078" />
+    <tag k="highway" v="residential" />
+    <tag k="name" v="Civil Lines Sector 2 Avenue" />
+    <tag k="maxspeed" v="30" />
+  </way>
+  <node id="2079" lat="25.435000" lon="81.832000" />
+  <node id="2080" lat="25.435000" lon="81.837500" />
+  <node id="2081" lat="25.435000" lon="81.843000" />
+  <node id="2082" lat="25.435000" lon="81.848500" />
+  <node id="2083" lat="25.435000" lon="81.854000" />
+  <node id="2084" lat="25.435000" lon="81.859500" />
+  <node id="2085" lat="25.435000" lon="81.865000" />
+  <node id="2086" lat="25.435000" lon="81.870500" />
+  <way id="6012">
+    <nd ref="2079" />
+    <nd ref="2080" />
+    <nd ref="2081" />
+    <nd ref="2082" />
+    <nd ref="2083" />
+    <nd ref="2084" />
+    <nd ref="2085" />
+    <nd ref="2086" />
+    <tag k="highway" v="residential" />
+    <tag k="name" v="Civil Lines Sector 3 Avenue" />
+    <tag k="maxspeed" v="30" />
+  </way>
+  <node id="2087" lat="25.439500" lon="81.832000" />
+  <node id="2088" lat="25.439500" lon="81.837500" />
+  <node id="2089" lat="25.439500" lon="81.843000" />
+  <node id="2090" lat="25.439500" lon="81.848500" />
+  <node id="2091" lat="25.439500" lon="81.854000" />
+  <node id="2092" lat="25.439500" lon="81.859500" />
+  <node id="2093" lat="25.439500" lon="81.865000" />
+  <node id="2094" lat="25.439500" lon="81.870500" />
+  <way id="6013">
+    <nd ref="2087" />
+    <nd ref="2088" />
+    <nd ref="2089" />
+    <nd ref="2090" />
+    <nd ref="2091" />
+    <nd ref="2092" />
+    <nd ref="2093" />
+    <nd ref="2094" />
+    <tag k="highway" v="residential" />
+    <tag k="name" v="Civil Lines Sector 4 Avenue" />
+    <tag k="maxspeed" v="30" />
+  </way>
+  <node id="2095" lat="25.444000" lon="81.832000" />
+  <node id="2096" lat="25.444000" lon="81.837500" />
+  <node id="2097" lat="25.444000" lon="81.843000" />
+  <node id="2098" lat="25.444000" lon="81.848500" />
+  <node id="2099" lat="25.444000" lon="81.854000" />
+  <node id="2100" lat="25.444000" lon="81.859500" />
+  <node id="2101" lat="25.444000" lon="81.865000" />
+  <node id="2102" lat="25.444000" lon="81.870500" />
+  <way id="6014">
+    <nd ref="2095" />
+    <nd ref="2096" />
+    <nd ref="2097" />
+    <nd ref="2098" />
+    <nd ref="2099" />
+    <nd ref="2100" />
+    <nd ref="2101" />
+    <nd ref="2102" />
+    <tag k="highway" v="residential" />
+    <tag k="name" v="Civil Lines Sector 5 Avenue" />
+    <tag k="maxspeed" v="30" />
+  </way>
+  <node id="2103" lat="25.448500" lon="81.832000" />
+  <node id="2104" lat="25.448500" lon="81.837500" />
+  <node id="2105" lat="25.448500" lon="81.843000" />
+  <node id="2106" lat="25.448500" lon="81.848500" />
+  <node id="2107" lat="25.448500" lon="81.854000" />
+  <node id="2108" lat="25.448500" lon="81.859500" />
+  <node id="2109" lat="25.448500" lon="81.865000" />
+  <node id="2110" lat="25.448500" lon="81.870500" />
+  <way id="6015">
+    <nd ref="2103" />
+    <nd ref="2104" />
+    <nd ref="2105" />
+    <nd ref="2106" />
+    <nd ref="2107" />
+    <nd ref="2108" />
+    <nd ref="2109" />
+    <nd ref="2110" />
+    <tag k="highway" v="residential" />
+    <tag k="name" v="Civil Lines Sector 6 Avenue" />
+    <tag k="maxspeed" v="30" />
+  </way>
+  <node id="2111" lat="25.453000" lon="81.832000" />
+  <node id="2112" lat="25.453000" lon="81.837500" />
+  <node id="2113" lat="25.453000" lon="81.843000" />
+  <node id="2114" lat="25.453000" lon="81.848500" />
+  <node id="2115" lat="25.453000" lon="81.854000" />
+  <node id="2116" lat="25.453000" lon="81.859500" />
+  <node id="2117" lat="25.453000" lon="81.865000" />
+  <node id="2118" lat="25.453000" lon="81.870500" />
+  <way id="6016">
+    <nd ref="2111" />
+    <nd ref="2112" />
+    <nd ref="2113" />
+    <nd ref="2114" />
+    <nd ref="2115" />
+    <nd ref="2116" />
+    <nd ref="2117" />
+    <nd ref="2118" />
+    <tag k="highway" v="residential" />
+    <tag k="name" v="Civil Lines Sector 7 Avenue" />
+    <tag k="maxspeed" v="30" />
+  </way>
+  <node id="2119" lat="25.424000" lon="81.835000" />
+  <node id="2120" lat="25.429000" lon="81.835000" />
+  <node id="2121" lat="25.434000" lon="81.835000" />
+  <node id="2122" lat="25.439000" lon="81.835000" />
+  <node id="2123" lat="25.444000" lon="81.835000" />
+  <node id="2124" lat="25.449000" lon="81.835000" />
+  <node id="2125" lat="25.454000" lon="81.835000" />
+  <way id="6017">
+    <nd ref="2119" />
+    <nd ref="2120" />
+    <nd ref="2121" />
+    <nd ref="2122" />
+    <nd ref="2123" />
+    <nd ref="2124" />
+    <nd ref="2125" />
+    <tag k="highway" v="residential" />
+    <tag k="name" v="Kutchery Link Lane 1" />
+    <tag k="maxspeed" v="30" />
+  </way>
+  <node id="2126" lat="25.424000" lon="81.840500" />
+  <node id="2127" lat="25.429000" lon="81.840500" />
+  <node id="2128" lat="25.434000" lon="81.840500" />
+  <node id="2129" lat="25.439000" lon="81.840500" />
+  <node id="2130" lat="25.444000" lon="81.840500" />
+  <node id="2131" lat="25.449000" lon="81.840500" />
+  <node id="2132" lat="25.454000" lon="81.840500" />
+  <way id="6018">
+    <nd ref="2126" />
+    <nd ref="2127" />
+    <nd ref="2128" />
+    <nd ref="2129" />
+    <nd ref="2130" />
+    <nd ref="2131" />
+    <nd ref="2132" />
+    <tag k="highway" v="residential" />
+    <tag k="name" v="Kutchery Link Lane 2" />
+    <tag k="maxspeed" v="30" />
+  </way>
+  <node id="2133" lat="25.424000" lon="81.846000" />
+  <node id="2134" lat="25.429000" lon="81.846000" />
+  <node id="2135" lat="25.434000" lon="81.846000" />
+  <node id="2136" lat="25.439000" lon="81.846000" />
+  <node id="2137" lat="25.444000" lon="81.846000" />
+  <node id="2138" lat="25.449000" lon="81.846000" />
+  <node id="2139" lat="25.454000" lon="81.846000" />
+  <way id="6019">
+    <nd ref="2133" />
+    <nd ref="2134" />
+    <nd ref="2135" />
+    <nd ref="2136" />
+    <nd ref="2137" />
+    <nd ref="2138" />
+    <nd ref="2139" />
+    <tag k="highway" v="residential" />
+    <tag k="name" v="Kutchery Link Lane 3" />
+    <tag k="maxspeed" v="30" />
+  </way>
+  <node id="2140" lat="25.424000" lon="81.851500" />
+  <node id="2141" lat="25.429000" lon="81.851500" />
+  <node id="2142" lat="25.434000" lon="81.851500" />
+  <node id="2143" lat="25.439000" lon="81.851500" />
+  <node id="2144" lat="25.444000" lon="81.851500" />
+  <node id="2145" lat="25.449000" lon="81.851500" />
+  <node id="2146" lat="25.454000" lon="81.851500" />
+  <way id="6020">
+    <nd ref="2140" />
+    <nd ref="2141" />
+    <nd ref="2142" />
+    <nd ref="2143" />
+    <nd ref="2144" />
+    <nd ref="2145" />
+    <nd ref="2146" />
+    <tag k="highway" v="residential" />
+    <tag k="name" v="Kutchery Link Lane 4" />
+    <tag k="maxspeed" v="30" />
+  </way>
+  <node id="2147" lat="25.424000" lon="81.857000" />
+  <node id="2148" lat="25.429000" lon="81.857000" />
+  <node id="2149" lat="25.434000" lon="81.857000" />
+  <node id="2150" lat="25.439000" lon="81.857000" />
+  <node id="2151" lat="25.444000" lon="81.857000" />
+  <node id="2152" lat="25.449000" lon="81.857000" />
+  <node id="2153" lat="25.454000" lon="81.857000" />
+  <way id="6021">
+    <nd ref="2147" />
+    <nd ref="2148" />
+    <nd ref="2149" />
+    <nd ref="2150" />
+    <nd ref="2151" />
+    <nd ref="2152" />
+    <nd ref="2153" />
+    <tag k="highway" v="residential" />
+    <tag k="name" v="Kutchery Link Lane 5" />
+    <tag k="maxspeed" v="30" />
+  </way>
+  <node id="2154" lat="25.424000" lon="81.862500" />
+  <node id="2155" lat="25.429000" lon="81.862500" />
+  <node id="2156" lat="25.434000" lon="81.862500" />
+  <node id="2157" lat="25.439000" lon="81.862500" />
+  <node id="2158" lat="25.444000" lon="81.862500" />
+  <node id="2159" lat="25.449000" lon="81.862500" />
+  <node id="2160" lat="25.454000" lon="81.862500" />
+  <way id="6022">
+    <nd ref="2154" />
+    <nd ref="2155" />
+    <nd ref="2156" />
+    <nd ref="2157" />
+    <nd ref="2158" />
+    <nd ref="2159" />
+    <nd ref="2160" />
+    <tag k="highway" v="residential" />
+    <tag k="name" v="Kutchery Link Lane 6" />
+    <tag k="maxspeed" v="30" />
+  </way>
+  <node id="2161" lat="25.424000" lon="81.868000" />
+  <node id="2162" lat="25.429000" lon="81.868000" />
+  <node id="2163" lat="25.434000" lon="81.868000" />
+  <node id="2164" lat="25.439000" lon="81.868000" />
+  <node id="2165" lat="25.444000" lon="81.868000" />
+  <node id="2166" lat="25.449000" lon="81.868000" />
+  <node id="2167" lat="25.454000" lon="81.868000" />
+  <way id="6023">
+    <nd ref="2161" />
+    <nd ref="2162" />
+    <nd ref="2163" />
+    <nd ref="2164" />
+    <nd ref="2165" />
+    <nd ref="2166" />
+    <nd ref="2167" />
+    <tag k="highway" v="residential" />
+    <tag k="name" v="Kutchery Link Lane 7" />
+    <tag k="maxspeed" v="30" />
+  </way>
+</osm>

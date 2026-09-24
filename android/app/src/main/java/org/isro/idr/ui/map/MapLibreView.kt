@@ -5,14 +5,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import org.isro.idr.engine.NavigationTelemetry
+import org.isro.idr.map.RoadMapGraph
 import org.isro.idr.ui.state.MapDataState
 import org.isro.idr.ui.state.TrajectoryDisplayMode
 import org.isro.idr.ui.state.TrajectoryPoint
 
 /**
  * Modular Map Layer Composable.
- * Hosts MapLibre GL Native Android map when offline MBTiles/vector layers are loaded,
- * with automatic, zero-crash fallback to TacticalGridMapCanvas for pure offline local ENU rendering.
+ * Hosts offline geographic road network canvas (.idrmap v1.0) with real OpenStreetMap
+ * road geometry, layers, bridges, flyovers, tunnels, and active snapped edge highlights.
  */
 @Composable
 fun MapContainerView(
@@ -20,6 +21,7 @@ fun MapContainerView(
     idrTrajectory: List<TrajectoryPoint>,
     gnssTrajectory: List<TrajectoryPoint>,
     mapAidedTrajectory: List<TrajectoryPoint> = emptyList(),
+    roadMapGraph: RoadMapGraph? = null,
     trajectoryMode: TrajectoryDisplayMode,
     mapDataState: MapDataState,
     isNorthUp: Boolean = true,
@@ -31,12 +33,12 @@ fun MapContainerView(
     modifier: Modifier = Modifier
 ) {
     Box(modifier = modifier.fillMaxSize()) {
-        // High-performance offline Tactical Grid Map Canvas in modern light styling
         TacticalGridMapCanvas(
             telemetry = telemetry,
             idrTrajectory = idrTrajectory,
             gnssTrajectory = gnssTrajectory,
             mapAidedTrajectory = mapAidedTrajectory,
+            roadMapGraph = roadMapGraph,
             trajectoryMode = trajectoryMode,
             mapDataState = mapDataState,
             isNorthUp = isNorthUp,

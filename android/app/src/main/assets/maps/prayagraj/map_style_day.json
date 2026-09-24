@@ -1,0 +1,19 @@
+{
+  "version": 8,
+  "name": "IDR Day Navigation",
+  "background_color": "#F1F5F9",
+  "water_color": "#38BDF8",
+  "water_edge_color": "#0284C7",
+  "park_color": "#DCFCE7",
+  "park_edge_color": "#86EFAC",
+  "building_fill_color": "#E2E8F0",
+  "building_top_color": "#FFFFFF",
+  "building_edge_color": "#CBD5E1",
+  "road_motorway_color": "#F59E0B",
+  "road_primary_color": "#FFFFFF",
+  "road_secondary_color": "#FFFFFF",
+  "road_residential_color": "#FFFFFF",
+  "road_casing_color": "#94A3B8",
+  "text_primary_color": "#0F172A",
+  "text_secondary_color": "#475569"
+}

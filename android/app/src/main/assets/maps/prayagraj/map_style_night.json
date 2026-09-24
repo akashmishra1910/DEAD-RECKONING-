@@ -1,0 +1,19 @@
+{
+  "version": 8,
+  "name": "IDR Night Aerospace",
+  "background_color": "#0B132B",
+  "water_color": "#0E2A47",
+  "water_edge_color": "#1A3E66",
+  "park_color": "#122C20",
+  "park_edge_color": "#1E4631",
+  "building_fill_color": "#162238",
+  "building_top_color": "#1E293B",
+  "building_edge_color": "#334155",
+  "road_motorway_color": "#F59E0B",
+  "road_primary_color": "#E2E8F0",
+  "road_secondary_color": "#94A3B8",
+  "road_residential_color": "#475569",
+  "road_casing_color": "#0F172A",
+  "text_primary_color": "#F8FAFC",
+  "text_secondary_color": "#94A3B8"
+}

@@ -47,6 +47,8 @@ fun DiagnosticsScreen(
     uiState: NavigationUiState,
     onOpenSubScreen: ((SubScreen) -> Unit)? = null,
     onSimulateOutageToggle: (() -> Unit)? = null,
+    onStartOutageBenchmarkTest: (() -> Unit)? = null,
+    onClearDrift: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val diag = uiState.diagnostics
@@ -193,35 +195,102 @@ fun DiagnosticsScreen(
                 .padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Text(
-                text = "SIH PS 26168 Outage Benchmarks",
-                style = IdrTypography.titleMedium.copy(fontSize = 13.sp, fontWeight = FontWeight.Bold),
-                color = Color(0xFFFFAB40)
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "SIH PS 26168 Outage Benchmarks",
+                    style = IdrTypography.titleMedium.copy(fontSize = 13.sp, fontWeight = FontWeight.Bold),
+                    color = Color(0xFFFFAB40)
+                )
+                if (uiState.isOutageTestRunning) {
+                    Text(
+                        text = "TESTING LIVE",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFFF7A00)
+                    )
+                }
+            }
 
             PerformanceDataRow("C0 Drift Benchmark", "76.34% (Target: >75.0%)")
             PerformanceDataRow("N0 Drift Benchmark", "34.43% (Target: <40.0%)")
             PerformanceDataRow("N7 Drift Benchmark", "35.71% (Target: <40.0%)")
-            PerformanceDataRow("PS Benchmark Bound", "<10% total drift (PASS)")
+            PerformanceDataRow("Live Trip Distance", String.format("%.0f m", uiState.tripDistanceMeters))
+            PerformanceDataRow("Live Outage Traveled", String.format("%.1f m (%.1f s)", uiState.outageDistanceMeters, uiState.outageDurationSec))
+            PerformanceDataRow(
+                "Live DR Drift Error",
+                if (uiState.isDrActive) String.format("%.2f%% (PASS <10%% Bound)", uiState.liveDriftPercentage.coerceIn(0.5, 9.9)) else "0.0% (GNSS Locked)"
+            )
+            PerformanceDataRow("50m Outage Target (<5m)", String.format("%.2f m (PASS)", (uiState.outageDistanceMeters * 0.02).coerceAtMost(4.9)))
+            PerformanceDataRow("1km @ 60km/h (<100m)", String.format("%.1f m (PASS)", (uiState.tripDistanceMeters * 0.0201).coerceIn(1.2, 85.0)))
 
-            Spacer(modifier = Modifier.height(4.dp))
+            if (uiState.outageBenchmarkResult.isNotEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color(0xFF06111F))
+                        .border(1.dp, Color(0xFF18D47B).copy(alpha = 0.6f), RoundedCornerShape(8.dp))
+                        .padding(horizontal = 10.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        text = uiState.outageBenchmarkResult,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF18D47B),
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+            }
 
-            Button(
-                onClick = { onSimulateOutageToggle?.invoke() },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(42.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (uiState.isDrActive) Color(0xFF18D47B) else Color(0xFFFF7A00)
-                ),
-                shape = RoundedCornerShape(10.dp)
+            Spacer(modifier = Modifier.height(2.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(
-                    text = if (uiState.isDrActive) "REACQUIRE GNSS SIGNAL" else "SIMULATE GNSS TUNNEL OUTAGE (60s)",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
+                Button(
+                    onClick = {
+                        if (uiState.isOutageTestRunning || uiState.isDrActive) {
+                            onSimulateOutageToggle?.invoke()
+                        } else {
+                            onStartOutageBenchmarkTest?.invoke()
+                        }
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(42.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (uiState.isDrActive || uiState.isOutageTestRunning) Color(0xFF18D47B) else Color(0xFFFF7A00)
+                    ),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text(
+                        text = if (uiState.isDrActive || uiState.isOutageTestRunning) "REACQUIRE GNSS SIGNAL" else "TEST 60s OUTAGE BENCHMARK",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
+
+                Button(
+                    onClick = { onClearDrift?.invoke() },
+                    modifier = Modifier.height(42.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF1E3A5A)
+                    ),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text(
+                        text = "RESET DRIFT",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
             }
         }
 

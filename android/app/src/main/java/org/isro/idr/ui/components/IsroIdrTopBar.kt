@@ -85,24 +85,24 @@ fun IsroIdrTopBar(
                 )
             )
             .border(1.2.dp, Color(0xFF1E3A5A), RoundedCornerShape(14.dp))
-            .padding(horizontal = 12.dp, vertical = 9.dp)
+            .padding(horizontal = 10.dp, vertical = 8.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // Left: Stylish Orange "IDR" Emblem Badge + Title & Subtitle
+            // Left: Orange "IDR" Emblem Badge + Title & Subtitle
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 // Stylish Orange Badge
                 Box(
                     modifier = Modifier
-                        .size(38.dp)
-                        .shadow(6.dp, RoundedCornerShape(10.dp), spotColor = Color(0xFFFF8A00))
-                        .clip(RoundedCornerShape(10.dp))
+                        .size(36.dp)
+                        .shadow(6.dp, RoundedCornerShape(9.dp), spotColor = Color(0xFFFF8A00))
+                        .clip(RoundedCornerShape(9.dp))
                         .background(
                             Brush.linearGradient(
                                 colors = listOf(
@@ -112,47 +112,45 @@ fun IsroIdrTopBar(
                                 )
                             )
                         )
-                        .border(1.2.dp, Color.White.copy(alpha = 0.9f), RoundedCornerShape(10.dp)),
+                        .border(1.2.dp, Color.White.copy(alpha = 0.9f), RoundedCornerShape(9.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "IDR",
-                        fontSize = 15.sp,
+                        fontSize = 14.sp,
                         fontWeight = FontWeight.Black,
                         fontFamily = FontFamily.SansSerif,
-                        letterSpacing = 1.sp,
+                        letterSpacing = 0.8.sp,
                         color = Color.White
                     )
                 }
 
-                Spacer(modifier = Modifier.width(10.dp))
-
                 Column {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
                     ) {
                         Text(
                             text = "ISRO IDR",
                             style = IdrTypography.titleMedium.copy(
-                                fontSize = 16.sp,
+                                fontSize = 15.sp,
                                 fontWeight = FontWeight.ExtraBold,
-                                letterSpacing = 0.8.sp
+                                letterSpacing = 0.5.sp
                             ),
                             color = Color.White
                         )
 
-                        // PS Badge Pill
+                        // PS Badge Pill (Single line, compact)
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(4.dp))
                                 .background(Color(0xFF17324A))
                                 .border(0.8.dp, Color(0xFF254B6E), RoundedCornerShape(4.dp))
-                                .padding(horizontal = 5.dp, vertical = 1.5.dp)
+                                .padding(horizontal = 4.dp, vertical = 1.dp)
                         ) {
                             Text(
                                 text = "PS 26168",
-                                fontSize = 9.sp,
+                                fontSize = 8.5.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFFFFD54F),
                                 fontFamily = FontFamily.Monospace
@@ -163,9 +161,9 @@ fun IsroIdrTopBar(
                     Spacer(modifier = Modifier.height(1.dp))
 
                     Text(
-                        text = "Intelligent Dead Reckoning System",
+                        text = "Intelligent Dead Reckoning",
                         style = IdrTypography.bodySmall.copy(
-                            fontSize = 10.sp,
+                            fontSize = 9.5.sp,
                             fontWeight = FontWeight.Medium
                         ),
                         color = Color(0xFF94A3B8)
@@ -176,30 +174,30 @@ fun IsroIdrTopBar(
             // Right: Status Badges (NavIC + Mode Indicator)
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                horizontalArrangement = Arrangement.spacedBy(5.dp)
             ) {
                 // NavIC Satellite Pill
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
+                        .clip(RoundedCornerShape(16.dp))
                         .background(Color(0xFF0D2B1E))
-                        .border(1.dp, Color(0xFF18D47B).copy(alpha = 0.6f), RoundedCornerShape(20.dp))
+                        .border(0.9.dp, Color(0xFF18D47B).copy(alpha = 0.6f), RoundedCornerShape(16.dp))
                         .clickable { onOpenNavicSkyView?.invoke() }
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                        .padding(horizontal = 6.dp, vertical = 3.dp)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        horizontalArrangement = Arrangement.spacedBy(3.dp)
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(6.dp)
+                                .size(5.dp)
                                 .clip(CircleShape)
                                 .background(Color(0xFFFFB020))
                         )
                         Text(
                             text = "NavIC: ${uiState.gnssStatus.navicSatellitesUsed}",
-                            fontSize = 11.sp,
+                            fontSize = 9.5.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
                         )
@@ -209,25 +207,25 @@ fun IsroIdrTopBar(
                 // Active Mode Pill
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
+                        .clip(RoundedCornerShape(16.dp))
                         .background(statusPillBg)
-                        .border(1.dp, statusPillColor.copy(alpha = 0.8f), RoundedCornerShape(20.dp))
+                        .border(0.9.dp, statusPillColor.copy(alpha = 0.8f), RoundedCornerShape(16.dp))
                         .clickable { onOpenDiagnostics?.invoke() }
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                        .padding(horizontal = 6.dp, vertical = 3.dp)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        horizontalArrangement = Arrangement.spacedBy(3.dp)
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(6.dp)
+                                .size(5.dp)
                                 .clip(CircleShape)
                                 .background(statusPillColor)
                         )
                         Text(
                             text = statusLabel,
-                            fontSize = 11.sp,
+                            fontSize = 9.5.sp,
                             fontWeight = FontWeight.Bold,
                             color = statusPillColor
                         )

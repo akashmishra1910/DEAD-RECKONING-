@@ -275,6 +275,10 @@ data class NavigationUiState(
     val nativeLatencyUs: Long = 1402,
     val p95SensorJitterMs: Double = 2.13,
     val memoryUsageMb: Int = 72,
+    val liveDriftPercentage: Double = 0.0,
+    val outageDistanceMeters: Double = 0.0,
+    val isOutageTestRunning: Boolean = false,
+    val outageBenchmarkResult: String = "",
 
     // Settings State
     val followVehicle: Boolean = true,

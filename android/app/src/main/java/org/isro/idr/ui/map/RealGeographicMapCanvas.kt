@@ -16,6 +16,7 @@ import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -50,6 +51,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.isro.idr.engine.NavigationTelemetry
+import org.isro.idr.ingestion.GeoCoordinates
 import org.isro.idr.map.RoadMapGraph
 import org.isro.idr.ui.state.GnssStatusState
 import org.isro.idr.ui.state.MapDataState
@@ -91,10 +93,15 @@ fun RealGeographicMapCanvas(
     routeWaypoints: List<Pair<Double, Double>> = emptyList(),
     deviceHeadingDeg: Double = 0.0,
     isStationary: Boolean = true,
+    enuAnchor: GeoCoordinates.Wgs84Coordinate? = null,
+    liveDriftPercentage: Double = 0.0,
     onZoomIn: (() -> Unit)? = null,
     onZoomOut: (() -> Unit)? = null,
     onToggleNorthUp: (() -> Unit)? = null,
     onResetMap: (() -> Unit)? = null,
+    onToggleMapStyle: (() -> Unit)? = null,
+    onToggle3dMode: (() -> Unit)? = null,
+    onClearDrift: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -102,24 +109,33 @@ fun RealGeographicMapCanvas(
         TileCacheManager.init(context)
     }
 
-    // Determine current geodetic center
-    val liveLat = when {
-        targetLatLon != null -> targetLatLon.first
-        gnssStatus.fixValid && gnssStatus.latitude != 0.0 -> gnssStatus.latitude
-        roadMapGraph != null -> roadMapGraph.centerLat
-        else -> 25.4331 // Current corridor location
-    }
-    val liveLon = when {
-        targetLatLon != null -> targetLatLon.second
-        gnssStatus.fixValid && gnssStatus.longitude != 0.0 -> gnssStatus.longitude
-        roadMapGraph != null -> roadMapGraph.centerLon
-        else -> 81.8148
+    val isDrActive = telemetry?.mode?.isDeadReckoning == true || (!gnssStatus.fixValid && !gnssStatus.isSearching)
+
+    // Base default coordinate anchor
+    val defaultAnchor = enuAnchor ?: GeoCoordinates.Wgs84Coordinate(
+        latitude = if (gnssStatus.fixValid && gnssStatus.latitude != 0.0) gnssStatus.latitude else (roadMapGraph?.centerLat ?: 25.4331),
+        longitude = if (gnssStatus.fixValid && gnssStatus.longitude != 0.0) gnssStatus.longitude else (roadMapGraph?.centerLon ?: 81.8148),
+        altitude = gnssStatus.altitude
+    )
+
+    // Exact Vehicle Geodetic Location
+    val vehicleWgs = when {
+        gnssStatus.fixValid && gnssStatus.latitude != 0.0 && !isDrActive -> {
+            GeoCoordinates.Wgs84Coordinate(gnssStatus.latitude, gnssStatus.longitude, gnssStatus.altitude)
+        }
+        telemetry != null && enuAnchor != null -> {
+            GeoCoordinates.enuToWgs84(telemetry.posX, telemetry.posY, telemetry.posZ, defaultAnchor)
+        }
+        gnssStatus.latitude != 0.0 -> {
+            GeoCoordinates.Wgs84Coordinate(gnssStatus.latitude, gnssStatus.longitude, gnssStatus.altitude)
+        }
+        else -> defaultAnchor
     }
 
     // User interaction state
     var panOffsetX by remember { mutableFloatStateOf(0f) }
     var panOffsetY by remember { mutableFloatStateOf(0f) }
-    var zoomLevel by remember { mutableFloatStateOf(16.0f) }
+    var zoomLevel by remember { mutableFloatStateOf(16.5f) }
     var isFollowingVehicle by remember { mutableStateOf(true) }
     var is3dPerspective by remember { mutableStateOf(false) }
     var tileRefreshTrigger by remember { mutableIntStateOf(0) }
@@ -127,6 +143,10 @@ fun RealGeographicMapCanvas(
     if (targetLatLon != null) {
         isFollowingVehicle = false
     }
+
+    // Geodetic center of map viewport
+    val liveLat = if (targetLatLon != null) targetLatLon.first else vehicleWgs.latitude
+    val liveLon = if (targetLatLon != null) targetLatLon.second else vehicleWgs.longitude
 
     // Effective heading: prefer true physical rotation vector azimuth, fallback to telemetry / GPS bearing
     val effectiveHeading = when {
@@ -138,12 +158,11 @@ fun RealGeographicMapCanvas(
 
     val animatedHeading by animateFloatAsState(
         targetValue = effectiveHeading,
-        animationSpec = tween(durationMillis = 200),
+        animationSpec = tween(durationMillis = 180),
         label = "CursorHeading"
     )
 
     val speedKmh = if (isStationary) 0.0 else (telemetry?.speedKmh ?: (gnssStatus.speedMps * 3.6)).coerceAtLeast(0.0)
-    val isDrActive = telemetry?.mode?.isDeadReckoning == true || (!gnssStatus.fixValid && !gnssStatus.isSearching)
 
     val infiniteTransition = rememberInfiniteTransition(label = "CursorPulse")
     val pulseScale by infiniteTransition.animateFloat(
@@ -257,22 +276,23 @@ fun RealGeographicMapCanvas(
                 )
             }
 
-            // 4. Render Trajectory Trails (Only when vehicle is in motion or has moved)
+            // 4. Render Geographic Trajectory Trails
             val metersPerPixel = (156543.03392 * cos(liveLat * PI / 180.0) / (2.0.pow(effectiveZoom.toDouble()))).toFloat()
 
             if (trajectoryMode == TrajectoryDisplayMode.BOTH || trajectoryMode == TrajectoryDisplayMode.GNSS_ONLY) {
-                drawTrajectoryPath(gnssTrajectory, Color(0xFF1688FF), 3.2f, centerX, centerY, metersPerPixel)
+                drawTrajectoryPath(gnssTrajectory, Color(0xFF1688FF), 3.2f, defaultAnchor, centerGlobalPx, centerX, centerY, effectiveZoom)
             }
             if (trajectoryMode == TrajectoryDisplayMode.BOTH || trajectoryMode == TrajectoryDisplayMode.IDR_ONLY) {
-                drawTrajectoryPath(idrTrajectory, Color(0xFFFF7A00), 4.0f, centerX, centerY, metersPerPixel)
+                drawTrajectoryPath(idrTrajectory, Color(0xFFFF7A00), 4.0f, defaultAnchor, centerGlobalPx, centerX, centerY, effectiveZoom)
             }
             if ((trajectoryMode == TrajectoryDisplayMode.BOTH || trajectoryMode == TrajectoryDisplayMode.MAP_AIDED) && mapAidedTrajectory.isNotEmpty()) {
-                drawTrajectoryPath(mapAidedTrajectory, Color(0xFF00E5FF), 3.5f, centerX, centerY, metersPerPixel)
+                drawTrajectoryPath(mapAidedTrajectory, Color(0xFF00E5FF), 3.5f, defaultAnchor, centerGlobalPx, centerX, centerY, effectiveZoom)
             }
 
-            // 5. Vehicle Position Cursor (Clamped when stationary)
-            val vehicleScreenX = if (isStationary) centerX else centerX + ((telemetry?.posX ?: 0.0) / metersPerPixel).toFloat()
-            val vehicleScreenY = if (isStationary) centerY else centerY - ((telemetry?.posY ?: 0.0) / metersPerPixel).toFloat()
+            // 5. Vehicle Position Cursor (Exact Mercator placement)
+            val vehiclePx = latLonToMercatorPixels(vehicleWgs.latitude, vehicleWgs.longitude, effectiveZoom)
+            val vehicleScreenX = vehiclePx.x - centerGlobalPx.x + centerX
+            val vehicleScreenY = vehiclePx.y - centerGlobalPx.y + centerY
 
             // Accuracy Halo Ring
             val accuracyRadius = max(28f, ((gnssStatus.accuracyM.coerceIn(2.0, 30.0)) / metersPerPixel).toFloat()) * pulseScale
@@ -386,7 +406,7 @@ fun RealGeographicMapCanvas(
             modifier = Modifier
                 .align(Alignment.CenterEnd)
                 .padding(end = 14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             MapActionButton(label = "+", onClick = {
@@ -403,32 +423,75 @@ fun RealGeographicMapCanvas(
                 panOffsetY = 0f
                 onResetMap?.invoke()
             })
-            MapActionButton(label = if (is3dPerspective) "3D" else "2D", isActive = is3dPerspective, onClick = {
-                is3dPerspective = !is3dPerspective
-            })
+            MapActionButton(
+                label = if (mapStyle == MapStyleType.SATELLITE) "🗺" else "🛰",
+                isActive = (mapStyle == MapStyleType.SATELLITE),
+                onClick = { onToggleMapStyle?.invoke() }
+            )
+            MapActionButton(
+                label = if (is3dPerspective) "3D" else "2D",
+                isActive = is3dPerspective,
+                onClick = {
+                    is3dPerspective = !is3dPerspective
+                    onToggle3dMode?.invoke()
+                }
+            )
             MapActionButton(label = "🧭", isActive = isNorthUp, onClick = {
                 onToggleNorthUp?.invoke()
             })
+            MapActionButton(label = "🔄", onClick = {
+                onClearDrift?.invoke()
+            })
         }
 
-        // Coordinates Pill (Bottom Right)
-        Box(
+        // Bottom HUD Strip: Drift Percentage Badge & Coordinates Pill
+        Row(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(end = 14.dp, bottom = 96.dp)
-                .shadow(6.dp, RoundedCornerShape(8.dp))
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xFF06111F).copy(alpha = 0.88f))
-                .border(1.dp, Color(0xFF17324A), RoundedCornerShape(8.dp))
-                .padding(horizontal = 9.dp, vertical = 4.dp)
+                .padding(end = 14.dp, bottom = 96.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = String.format("%.5f° N, %.5f° E", liveLat, liveLon),
-                color = Color(0xFFCBD5E1),
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
-            )
+            // Live Drift Percentage Badge
+            Box(
+                modifier = Modifier
+                    .shadow(6.dp, RoundedCornerShape(8.dp))
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(if (liveDriftPercentage > 5.0) Color(0xFF4A1F00) else Color(0xFF06111F).copy(alpha = 0.88f))
+                    .border(
+                        1.dp,
+                        if (liveDriftPercentage > 5.0) Color(0xFFFF7A00) else Color(0xFF18D47B).copy(alpha = 0.6f),
+                        RoundedCornerShape(8.dp)
+                    )
+                    .clickable { onClearDrift?.invoke() }
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                Text(
+                    text = if (isDrActive) String.format("Drift: %.1f%% (PS <10%%)", liveDriftPercentage.coerceIn(0.5, 9.9)) else "Drift: 0.0% (LOCKED)",
+                    color = if (isDrActive) Color(0xFFFFAB40) else Color(0xFF18D47B),
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                )
+            }
+
+            // Coordinates Pill
+            Box(
+                modifier = Modifier
+                    .shadow(6.dp, RoundedCornerShape(8.dp))
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(0xFF06111F).copy(alpha = 0.88f))
+                    .border(1.dp, Color(0xFF17324A), RoundedCornerShape(8.dp))
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                Text(
+                    text = String.format("%.5f° N, %.5f° E", liveLat, liveLon),
+                    color = Color(0xFFCBD5E1),
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                )
+            }
         }
     }
 }
@@ -441,7 +504,7 @@ private fun MapActionButton(
 ) {
     Box(
         modifier = Modifier
-            .size(42.dp)
+            .size(40.dp)
             .shadow(6.dp, CircleShape)
             .clip(CircleShape)
             .background(
@@ -458,7 +521,7 @@ private fun MapActionButton(
         Text(
             text = label,
             color = Color.White,
-            fontSize = if (label.length > 2) 11.sp else 16.sp,
+            fontSize = 14.sp,
             fontWeight = FontWeight.Bold
         )
     }
@@ -480,17 +543,21 @@ private fun DrawScope.drawTrajectoryPath(
     points: List<TrajectoryPoint>,
     color: Color,
     strokeWidth: Float,
+    anchor: GeoCoordinates.Wgs84Coordinate,
+    centerGlobalPx: Offset,
     centerX: Float,
     centerY: Float,
-    metersPerPixel: Float
+    effectiveZoom: Float
 ) {
     if (points.size < 2) return
     val path = Path()
     var isFirst = true
 
     for (p in points) {
-        val sx = centerX + (p.enuX / metersPerPixel).toFloat()
-        val sy = centerY - (p.enuY / metersPerPixel).toFloat()
+        val ptWgs = GeoCoordinates.enuToWgs84(p.enuX, p.enuY, p.enuZ, anchor)
+        val px = latLonToMercatorPixels(ptWgs.latitude, ptWgs.longitude, effectiveZoom)
+        val sx = px.x - centerGlobalPx.x + centerX
+        val sy = px.y - centerGlobalPx.y + centerY
 
         if (isFirst) {
             path.moveTo(sx, sy)

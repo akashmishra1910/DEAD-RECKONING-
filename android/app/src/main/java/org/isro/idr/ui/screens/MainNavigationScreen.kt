@@ -33,6 +33,9 @@ fun MainNavigationScreen(
     onZoomOut: (() -> Unit)? = null,
     onToggleNorthUp: (() -> Unit)? = null,
     onResetMap: (() -> Unit)? = null,
+    onToggleMapStyle: (() -> Unit)? = null,
+    onToggle3dMode: (() -> Unit)? = null,
+    onClearDrift: (() -> Unit)? = null,
     onOpenDiagnostics: (() -> Unit)? = null,
     onOpenNavicSkyView: (() -> Unit)? = null,
     onSimulateOutageToggle: (() -> Unit)? = null,
@@ -70,10 +73,15 @@ fun MainNavigationScreen(
             routeWaypoints = uiState.routeWaypoints,
             deviceHeadingDeg = headingDeg,
             isStationary = uiState.isStationary,
+            enuAnchor = uiState.enuAnchor,
+            liveDriftPercentage = uiState.liveDriftPercentage,
             onZoomIn = onZoomIn,
             onZoomOut = onZoomOut,
             onToggleNorthUp = onToggleNorthUp,
             onResetMap = onResetMap,
+            onToggleMapStyle = onToggleMapStyle,
+            onToggle3dMode = onToggle3dMode,
+            onClearDrift = onClearDrift,
             modifier = Modifier.fillMaxSize()
         )
 
@@ -100,7 +108,7 @@ fun MainNavigationScreen(
             )
         }
 
-        // 3. Bottom Dock: NextTurnCard stacked neatly above SpeedHeadingHud
+        // 3. Bottom Dock: NextTurnCard stacked neatly above SpeedHeadingHud (Only visible during active trip)
         Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -108,17 +116,19 @@ fun MainNavigationScreen(
                 .padding(start = 12.dp, end = 12.dp, bottom = 8.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            // Dynamic Next Turn Guidance & Active Trip Card
-            NextTurnCard(
-                distanceMeters = uiState.nextTurnDistanceMeters,
-                turnDirection = uiState.nextTurnDirection,
-                roadName = uiState.selectedRoadName,
-                turnIcon = uiState.currentManeuverIcon,
-                isTripActive = uiState.isTripActive,
-                remainingDistanceMeters = uiState.remainingDistanceMeters,
-                estimatedMinutes = uiState.estimatedTimeMinutes,
-                onEndTrip = onEndTrip
-            )
+            // Dynamic Next Turn Guidance & Active Trip Card (Only during active navigation trip)
+            if (uiState.isTripActive) {
+                NextTurnCard(
+                    distanceMeters = uiState.nextTurnDistanceMeters,
+                    turnDirection = uiState.nextTurnDirection,
+                    roadName = uiState.selectedRoadName,
+                    turnIcon = uiState.currentManeuverIcon,
+                    isTripActive = uiState.isTripActive,
+                    remainingDistanceMeters = uiState.remainingDistanceMeters,
+                    estimatedMinutes = uiState.estimatedTimeMinutes,
+                    onEndTrip = onEndTrip
+                )
+            }
 
             // Bottom Instrument Strip
             SpeedHeadingHud(

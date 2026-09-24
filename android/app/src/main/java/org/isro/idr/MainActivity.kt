@@ -244,6 +244,9 @@ private fun MainApplicationShell(
                                 onZoomOut = { viewModel.zoomOut() },
                                 onToggleNorthUp = { viewModel.toggleNorthUp() },
                                 onResetMap = { viewModel.resetMap() },
+                                onToggleMapStyle = { viewModel.toggleMapStyle() },
+                                onToggle3dMode = { viewModel.toggle3dMode() },
+                                onClearDrift = { viewModel.clearDrift() },
                                 onOpenDiagnostics = { viewModel.setSelectedScreen(ScreenTab.DIAGNOSTICS) },
                                 onOpenNavicSkyView = { viewModel.openSubScreen(SubScreen.GNSS_NAVIC_SKYVIEW) },
                                 onSimulateOutageToggle = { viewModel.toggleOutageSimulation() },
@@ -277,7 +280,9 @@ private fun MainApplicationShell(
                             DiagnosticsScreen(
                                 uiState = uiState,
                                 onOpenSubScreen = { viewModel.openSubScreen(it) },
-                                onSimulateOutageToggle = { viewModel.toggleOutageSimulation() }
+                                onSimulateOutageToggle = { viewModel.toggleOutageSimulation() },
+                                onStartOutageBenchmarkTest = { viewModel.startOutageBenchmarkTest() },
+                                onClearDrift = { viewModel.clearDrift() }
                             )
                         }
                         ScreenTab.SETTINGS -> {

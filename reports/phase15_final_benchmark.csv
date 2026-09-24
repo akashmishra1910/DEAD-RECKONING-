@@ -1,0 +1,6 @@
+Model,Description,Median_Drift_pct,Mean_Drift_pct,Pass_Count_10pct,Pass_Rate_pct,Along_m,Cross_m,Delta_Med_vs_N7,Delta_Pass_vs_N7
+C0 (Classical Control),Ingests uncalibrated magnetometer,76.34,74.45,12,7.59,44.41,64.44,40.63,-24
+N0 (Pure Gyro Strapdown),"Fixed NHC r=0.05, mag rejected",34.43,47.7,28,17.72,13.94,30.27,-1.28,-8
+N7 (Frozen Baseline),Bounded Adaptive NHC + Causal Multi-Map,35.71,45.86,36,22.78,17.77,26.67,0.0,0
+Phase 14 Best (Candidate A1),Causal Gyro-Bias Observer + Tight Road Heading (r=0.050),31.65,43.48,39,24.68,16.86,22.62,-4.06,3
+Phase 15 Final,ESKF Kalman ZARU + Bounded-Slip Lateral NHC (r_max=0.40),30.88,43.5,39,24.68,16.5,23.18,-4.83,3

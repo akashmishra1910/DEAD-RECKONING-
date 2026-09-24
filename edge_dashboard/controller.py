@@ -352,7 +352,83 @@ class EdgeTestController:
             self.reference_trajectory.clear()
             self.estimated_trajectory.clear()
 
-            if file_path_or_preset == "synthetic" or not os.path.exists(file_path_or_preset):
+            preset_lower = file_path_or_preset.lower()
+            if "i2nav" in preset_lower:
+                from idr_pipeline.i2nav_external_replay import I2NavReplayAdapter, R_FRD_TO_FLU
+                sensor_name = "ICM20602"
+                if "460" in preset_lower:
+                    sensor_name = "ADIS16460"
+                elif "465" in preset_lower:
+                    sensor_name = "ADIS16465"
+                elif "300" in preset_lower or "hguide" in preset_lower:
+                    sensor_name = "HGuide-i300"
+
+                adapter = I2NavReplayAdapter()
+                meta = adapter.SENSOR_PATHS[sensor_name]
+                imu_abs = adapter.resolve_path(meta["imu"])
+                t_gnss_all, enu_gnss_all, acc_gnss_all, lat0, lon0, h0 = adapter.load_gnss()
+                t_truth_all, enu_truth_all, vel_truth_all, att_truth_all = adapter.load_truth(sensor_name, lat0, lon0, h0)
+
+                # Load first 120 seconds of real data for interactive dashboard replay
+                duration_load = 120.0
+                imu_raw = np.loadtxt(imu_abs, max_rows=int(duration_load * 205))
+                t_imu = imu_raw[:, 0]
+                t0 = t_imu[0]
+                mask_t = (t_imu - t0) <= duration_load
+                t_sub = t_imu[mask_t] - t0
+                dt_empirical = float(np.mean(np.diff(t_imu[mask_t])))
+                effective_hz = 1.0 / dt_empirical
+
+                # Compute physical rates
+                dt_arr = np.diff(t_imu[mask_t])
+                dt_arr = np.insert(dt_arr, 0, dt_empirical)
+                dt_col = np.maximum(1e-5, dt_arr)[:, np.newaxis]
+                d_theta = imu_raw[mask_t, 1:4]
+                d_vel = imu_raw[mask_t, 4:7]
+
+                omega_sensor = d_theta / dt_col
+                accel_sensor = d_vel / dt_col
+
+                # Convert to body FLU using R_FRD_TO_FLU
+                accel_flu = accel_sensor @ R_FRD_TO_FLU.T
+                omega_flu = omega_sensor @ R_FRD_TO_FLU.T
+
+                # Interpolate ground truth
+                mask_tr = (t_truth_all >= t_imu[0]) & (t_truth_all <= t_imu[0] + duration_load + 0.1)
+                t_tr_sub = t_truth_all[mask_tr]
+                pos_tr_sub = enu_truth_all[mask_tr]
+                vel_tr_sub = vel_truth_all[mask_tr]
+
+                pos_interp = np.zeros((len(t_sub), 3))
+                vel_interp = np.zeros((len(t_sub), 3))
+                for col in range(3):
+                    pos_interp[:, col] = np.interp(t_imu[mask_t], t_tr_sub, pos_tr_sub[:, col])
+                    vel_interp[:, col] = np.interp(t_imu[mask_t], t_tr_sub, vel_tr_sub[:, col])
+                speed_interp = np.linalg.norm(vel_interp[:, :2], axis=1)
+
+                self.replay_data = {
+                    "time": t_sub,
+                    "dt": dt_empirical,
+                    "accel": accel_flu,
+                    "gyro": omega_flu,
+                    "pos_enu": pos_interp,
+                    "vel_enu": vel_interp,
+                    "speed": speed_interp,
+                    "baro_alt": pos_interp[:, 2] + 120.0,
+                }
+                self.replay_file = f"REAL i2Nav ({sensor_name}) 120s"
+                self.input_source_desc = f"REAL i2Nav DATASET ({sensor_name})"
+                self.coordinate_frame = "body FLU (Transformed from FRD via R)"
+                self.validation_status = "EXTERNAL MEMS/INDUSTRIAL (Not FOG hardware)"
+                self.measured_rate_hz = round(effective_hz, 1)
+                self.profile = "EDGE_FOG"
+                self.input_profile = "EDGE_EXTERNAL_IMU"
+
+                cfg = NavigationProfileConfig.edge_fog_defaults()
+                cfg.target_update_rate_hz = effective_hz
+                cfg.imu_sample_rate_hz = effective_hz
+                self.engine.initialize(cfg)
+            elif file_path_or_preset == "synthetic" or not os.path.exists(file_path_or_preset):
                 self.replay_data = self.generate_synthetic_replay(duration_s=60.0, dt=0.005)
                 self.replay_file = "Built-in 200 Hz Corridor Replay (60s)"
             else:

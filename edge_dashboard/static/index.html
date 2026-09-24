@@ -282,6 +282,15 @@
           <span id="replayStatus">IDLE</span>
         </div>
         <div class="panel-body">
+          <div class="btn-row" style="margin-bottom: 10px; align-items: center;">
+            <span style="font-weight: 600; color: var(--text-muted);">DATASET:</span>
+            <button class="dataset-btn btn-active" onclick="loadDataset('synthetic')">Corridor (200Hz)</button>
+            <button class="dataset-btn" onclick="loadDataset('i2nav_icm20602')">i2Nav ICM20602</button>
+            <button class="dataset-btn" onclick="loadDataset('i2nav_adis16460')">i2Nav ADIS16460</button>
+            <button class="dataset-btn" onclick="loadDataset('i2nav_adis16465')">i2Nav ADIS16465</button>
+            <button class="dataset-btn" onclick="loadDataset('i2nav_i300')">i2Nav HGuide-i300</button>
+          </div>
+
           <div class="btn-row">
             <button class="btn-primary" onclick="sendControl('start')">▶ START REPLAY</button>
             <button class="btn-warn" onclick="sendControl('pause')">⏸ PAUSE</button>
@@ -603,6 +612,17 @@
 
     async function setInputProfile(profile) {
       await sendControl('set_input_profile', profile);
+    }
+
+    async function loadDataset(source) {
+      document.querySelectorAll('.dataset-btn').forEach(b => b.classList.remove('btn-active'));
+      event.target.classList.add('btn-active');
+      await fetch('/api/replay', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'load', source: source })
+      });
+      pollState();
     }
 
     async function setSpeed(mult) {

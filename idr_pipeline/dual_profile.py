@@ -836,7 +836,12 @@ class CommonNavigationCore:
             if frame.gnss_vel is not None and np.linalg.norm(frame.gnss_vel[:2]) > 0.5:
                 self.eskf.update_gnss_velocity(frame.gnss_vel, r_vel=0.30)
                 course = math.atan2(frame.gnss_vel[0], frame.gnss_vel[1])
-                self.eskf.update_heading(course, r_yaw=0.08, chi2_gate=16.0)
+                if not getattr(self, "heading_initialized", False):
+                    self.eskf.yaw = course
+                    self.eskf.R = euler_to_rotation_matrix(self.eskf.roll, self.eskf.pitch, self.eskf.yaw)
+                    self.heading_initialized = True
+                else:
+                    self.eskf.update_heading(course, r_yaw=0.08, chi2_gate=16.0)
         else:
             self.mode = NavigationMode.INTELLIGENT_DEAD_RECKONING
             self.in_outage = True

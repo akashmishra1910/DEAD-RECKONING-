@@ -19,6 +19,7 @@ documentation.pdf
 Synchronised_V_and_S_datasets.zip
 synchronised_iovnbd_data/
 IO-VNBD-ACTUAL/
+awesome-gins-datasets/
 *.zip
 
 # Build directories and compiled artifacts

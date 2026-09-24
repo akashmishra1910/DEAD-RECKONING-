@@ -58,3 +58,7 @@ set_tests_properties(test_offline_navigation PROPERTIES WORKING_DIRECTORY "${CMA
 add_executable(benchmark_tactical_100k benchmark_tactical_100k.cpp)
 target_link_libraries(benchmark_tactical_100k PRIVATE idr_core)
 
+add_executable(test_edge_engine test_edge_engine.cpp)
+target_link_libraries(test_edge_engine PRIVATE idr_core)
+add_test(NAME test_edge_engine COMMAND test_edge_engine)
+

@@ -31,6 +31,7 @@ set(IDR_CORE_SOURCES
     src/navigation_engine.cpp
     src/c_api.cpp
     src/idrmap_reader.cpp
+    src/edge_engine.cpp
 )
 
 # Core static library

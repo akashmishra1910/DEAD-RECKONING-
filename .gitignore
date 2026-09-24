@@ -14,6 +14,8 @@ test_arch.png
 test.pdf
 test.xml
 documentation.pdf
+logs/
+*.log
 
 # Large dataset archives (>100MB)
 Synchronised_V_and_S_datasets.zip

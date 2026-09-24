@@ -30,4 +30,14 @@ build/
 *.so
 *.dylib.*
 
+# Android / IDE
+.gradle/
+*/.gradle/
+.idea/
+*/.idea/
+local.properties
+*/local.properties
+*.iml
+
+
 

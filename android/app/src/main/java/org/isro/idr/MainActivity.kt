@@ -242,7 +242,9 @@ private fun MainApplicationShell(
                                 onZoomIn = { viewModel.zoomIn() },
                                 onZoomOut = { viewModel.zoomOut() },
                                 onToggleNorthUp = { viewModel.toggleNorthUp() },
-                                onResetMap = { viewModel.resetMap() }
+                                onResetMap = { viewModel.resetMap() },
+                                onOpenDiagnostics = { viewModel.setSelectedScreen(ScreenTab.DIAGNOSTICS) },
+                                onOpenNavicSkyView = { viewModel.openSubScreen(SubScreen.GNSS_NAVIC_SKYVIEW) }
                             )
                         }
                         ScreenTab.MAP_EXPLORER -> {

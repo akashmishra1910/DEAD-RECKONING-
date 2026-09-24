@@ -1,0 +1,49 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Deep Orange / ISRO Saffron Aerospace Background -->
+    <path
+        android:fillColor="#FF8A00"
+        android:pathData="M0,0h108v108h-108z" />
+        
+    <!-- Dark Aerospace Radial Accent -->
+    <path
+        android:fillColor="#E65100"
+        android:pathData="M0,0h108v54h-108z" />
+
+    <!-- Orbital Telemetry Rings -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.2"
+        android:strokeAlpha="0.4"
+        android:pathData="M54,18 A36,36 0 1,0 54,90 A36,36 0 1,0 54,18" />
+        
+    <path
+        android:strokeColor="#FFD54F"
+        android:strokeWidth="1.8"
+        android:strokeAlpha="0.7"
+        android:pathData="M24,54 A30,14 45 1,0 84,54 A30,14 45 1,0 24,54" />
+
+    <!-- Stylized IDR Navigation Vector Icon -->
+    <!-- Navigation Arrow / Chevron -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,28 L68,64 L54,56 L40,64 Z" />
+        
+    <path
+        android:fillColor="#06111F"
+        android:pathData="M54,34 L62,58 L54,54 L46,58 Z" />
+
+    <!-- Gold Center Satellite Node -->
+    <path
+        android:fillColor="#FFD54F"
+        android:pathData="M54,42 A3,3 0 1,0 54,48 A3,3 0 1,0 54,42" />
+
+    <!-- Saffron / Tricolor Sub-bar -->
+    <path
+        android:fillColor="#18D47B"
+        android:pathData="M38,82 h32 v3 h-32 z" />
+</vector>

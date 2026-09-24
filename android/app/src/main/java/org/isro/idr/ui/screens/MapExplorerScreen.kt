@@ -67,15 +67,17 @@ fun MapExplorerScreen(
             .fillMaxSize()
             .background(IdrColors.Background)
     ) {
-        // 1. Full Viewport Vector Map
-        TacticalGridMapCanvas(
+        // 1. Full Viewport Real Geographic Map
+        org.isro.idr.ui.map.RealGeographicMapCanvas(
             telemetry = uiState.telemetry,
+            gnssStatus = uiState.gnssStatus,
             idrTrajectory = uiState.idrTrajectory,
             gnssTrajectory = uiState.gnssTrajectory,
             mapAidedTrajectory = uiState.mapAidedTrajectory,
             roadMapGraph = uiState.roadMapGraph,
             trajectoryMode = uiState.trajectoryMode,
             mapDataState = uiState.mapDataState,
+            mapStyle = uiState.mapStyle,
             isNorthUp = uiState.isNorthUp,
             userZoomFactor = uiState.mapZoomLevel,
             onZoomIn = onZoomIn,

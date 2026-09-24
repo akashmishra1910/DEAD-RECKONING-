@@ -1,6 +1,7 @@
 package org.isro.idr.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -13,19 +14,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.isro.idr.theme.IdrColors
+import org.isro.idr.ui.components.IsroIdrTopBar
 import org.isro.idr.ui.components.NextTurnCard
 import org.isro.idr.ui.components.SpeedHeadingHud
 import org.isro.idr.ui.components.TopNavBanner
-import org.isro.idr.ui.map.TacticalGridMapCanvas
+import org.isro.idr.ui.map.RealGeographicMapCanvas
 import org.isro.idr.ui.state.NavigationUiState
 import org.isro.idr.ui.state.TrajectoryDisplayMode
 
 /**
  * Screens 3, 4, 5: Production Navigation Screen.
- * Full-screen map dominant navigation supporting:
- * - Screen 3: GNSS Navigation (Green Top HUD)
- * - Screen 4: Dead Reckoning Navigation (Amber/Saffron Top HUD + DR Trail)
- * - Screen 5: GNSS Recovery (Cyan Top HUD + Track Reacquisition)
+ * Full-screen real geographic world map dominant navigation supporting:
+ * - Redesigned ISRO IDR Top Bar & Status Banner
+ * - Screen 3: GNSS Navigation (Green Top Banner)
+ * - Screen 4: Dead Reckoning Navigation (Amber/Saffron Top Banner + DR Trail)
+ * - Screen 5: GNSS Recovery (Cyan Top Banner + Track Reacquisition)
+ * - Non-overlapping layout with floating right controls and clean bottom HUD dock
  */
 @Composable
 fun MainNavigationScreen(
@@ -35,6 +39,8 @@ fun MainNavigationScreen(
     onZoomOut: (() -> Unit)? = null,
     onToggleNorthUp: (() -> Unit)? = null,
     onResetMap: (() -> Unit)? = null,
+    onOpenDiagnostics: (() -> Unit)? = null,
+    onOpenNavicSkyView: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val speedKmh = (uiState.telemetry?.speedKmh ?: (uiState.gnssStatus.speedMps * 3.6)).coerceAtLeast(0.0)
@@ -51,15 +57,17 @@ fun MainNavigationScreen(
             .fillMaxSize()
             .background(IdrColors.Background)
     ) {
-        // 1. Full Viewport Offline Geographic Vector Canvas
-        TacticalGridMapCanvas(
+        // 1. Full Viewport Real Worldwide Geographic Map Canvas
+        RealGeographicMapCanvas(
             telemetry = uiState.telemetry,
+            gnssStatus = uiState.gnssStatus,
             idrTrajectory = uiState.idrTrajectory,
             gnssTrajectory = uiState.gnssTrajectory,
             mapAidedTrajectory = uiState.mapAidedTrajectory,
             roadMapGraph = uiState.roadMapGraph,
             trajectoryMode = uiState.trajectoryMode,
             mapDataState = uiState.mapDataState,
+            mapStyle = uiState.mapStyle,
             isNorthUp = uiState.isNorthUp,
             userZoomFactor = uiState.mapZoomLevel,
             onZoomIn = onZoomIn,
@@ -69,13 +77,20 @@ fun MainNavigationScreen(
             modifier = Modifier.fillMaxSize()
         )
 
-        // 2. Top Floating Navigation Status Banner
-        Box(
+        // 2. Top Header Stack: ISRO IDR Bar + Dynamic Navigation Status Banner
+        Column(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 10.dp)
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
+            IsroIdrTopBar(
+                uiState = uiState,
+                onOpenDiagnostics = onOpenDiagnostics,
+                onOpenNavicSkyView = onOpenNavicSkyView
+            )
+
             TopNavBanner(
                 isDrActive = isDrMode,
                 isGnssReacquired = uiState.isGnssReacquired,
@@ -84,26 +99,22 @@ fun MainNavigationScreen(
             )
         }
 
-        // 3. Floating Next Turn Guidance Card (Bottom Left over Map)
-        Box(
+        // 3. Bottom Dock: NextTurnCard stacked neatly above SpeedHeadingHud (Zero Overlap)
+        Column(
             modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(start = 12.dp, bottom = 78.dp)
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .padding(start = 12.dp, end = 12.dp, bottom = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
+            // Next Turn Guidance Card
             NextTurnCard(
                 distanceMeters = uiState.nextTurnDistanceMeters,
                 turnDirection = uiState.nextTurnDirection,
                 roadName = uiState.selectedRoadName
             )
-        }
 
-        // 4. Bottom Instrument Strip (Speed, Heading, Accuracy / Est. Error, Map Confidence)
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp)
-        ) {
+            // Bottom Instrument Strip
             SpeedHeadingHud(
                 speedKmh = speedKmh,
                 headingDeg = headingDeg,

@@ -1,0 +1,42 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Circular Mask -->
+    <path
+        android:fillColor="#FF8A00"
+        android:pathData="M54,0 A54,54 0 1,0 54,108 A54,54 0 1,0 54,0" />
+        
+    <!-- Top Gradient Arc -->
+    <path
+        android:fillColor="#E65100"
+        android:pathData="M54,0 A54,54 0 0,0 0,54 L108,54 A54,54 0 0,0 54,0" />
+
+    <!-- Orbital Ring -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.2"
+        android:strokeAlpha="0.5"
+        android:pathData="M54,20 A34,34 0 1,0 54,88 A34,34 0 1,0 54,20" />
+
+    <!-- Stylized Navigation Chevron -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,28 L68,64 L54,56 L40,64 Z" />
+        
+    <path
+        android:fillColor="#06111F"
+        android:pathData="M54,34 L62,58 L54,54 L46,58 Z" />
+
+    <!-- Gold Center Satellite Node -->
+    <path
+        android:fillColor="#FFD54F"
+        android:pathData="M54,42 A3,3 0 1,0 54,48 A3,3 0 1,0 54,42" />
+
+    <!-- Tricolor Bottom Arc -->
+    <path
+        android:fillColor="#18D47B"
+        android:pathData="M36,80 h36 v3 h-36 z" />
+</vector>

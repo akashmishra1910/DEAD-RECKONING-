@@ -7,10 +7,14 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
         android:allowBackup="true"
         android:label="ISRO IDR"
+        android:icon="@drawable/ic_launcher_idr"
+        android:roundIcon="@drawable/ic_launcher_idr_round"
         android:supportsRtl="true">
         <activity
             android:name=".MainActivity"

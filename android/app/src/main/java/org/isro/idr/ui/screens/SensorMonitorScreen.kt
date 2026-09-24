@@ -267,49 +267,124 @@ private fun LiveWaveformCanvas(
     tab: SensorPlotTab,
     samples: List<SensorWaveformSample>
 ) {
-    Canvas(modifier = Modifier.fillMaxSize()) {
-        val w = size.width
-        val h = size.height
-        val midY = h / 2f
+    val unitLabel = when (tab) {
+        SensorPlotTab.ACCEL -> "m/s²"
+        SensorPlotTab.GYRO -> "rad/s"
+        SensorPlotTab.MAG -> "µT"
+        SensorPlotTab.BARO -> "m (Alt)"
+    }
 
-        // Grid lines
-        drawLine(Color(0xFF10263A), Offset(0f, h * 0.25f), Offset(w, h * 0.25f), 1f)
-        drawLine(Color(0xFF17324A), Offset(0f, midY), Offset(w, midY), 1.2f)
-        drawLine(Color(0xFF10263A), Offset(0f, h * 0.75f), Offset(w, h * 0.75f), 1f)
+    Box(modifier = Modifier.fillMaxSize()) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+            val midY = h / 2f
 
-        // Draw dynamic continuous waveform traces (X: Cyan, Y: Saffron, Z: Purple)
-        val numPoints = 60
-        val stepX = w / numPoints
+            // Background reference grid lines
+            drawLine(Color(0xFF10263A), Offset(0f, h * 0.25f), Offset(w, h * 0.25f), 1f)
+            drawLine(Color(0xFF17324A), Offset(0f, midY), Offset(w, midY), 1.2f)
+            drawLine(Color(0xFF10263A), Offset(0f, h * 0.75f), Offset(w, h * 0.75f), 1f)
 
-        val pathX = Path()
-        val pathY = Path()
-        val pathZ = Path()
+            if (samples.size >= 2) {
+                val stepX = w / (samples.size - 1).toFloat()
+                val pathX = Path()
+                val pathY = Path()
+                val pathZ = Path()
 
-        for (i in 0 until numPoints) {
-            val px = i * stepX
-            val time = System.currentTimeMillis() / 300.0
-            // Realistic dynamic sensor wave oscillation
-            val vyX = (sin(time + i * 0.2) * (h * 0.25f)).toFloat()
-            val vyY = (sin(time * 1.3 + i * 0.25 + 1.2) * (h * 0.20f)).toFloat()
-            val vyZ = (sin(time * 0.7 + i * 0.15 + 2.4) * (h * 0.18f)).toFloat()
+                // Scale factors based on sensor range
+                val scale = when (tab) {
+                    SensorPlotTab.ACCEL -> (h * 0.4f) / 16.0f
+                    SensorPlotTab.GYRO -> (h * 0.4f) / 5.0f
+                    SensorPlotTab.MAG -> (h * 0.4f) / 80.0f
+                    SensorPlotTab.BARO -> (h * 0.4f) / 50.0f
+                }
 
-            val syX = midY + vyX
-            val syY = midY + vyY
-            val syZ = midY + vyZ
+                samples.forEachIndexed { i, s ->
+                    val px = i * stepX
+                    val syX = (midY - s.x * scale).coerceIn(4f, h - 4f)
+                    val syY = (midY - s.y * scale).coerceIn(4f, h - 4f)
+                    val syZ = (midY - s.z * scale).coerceIn(4f, h - 4f)
 
-            if (i == 0) {
-                pathX.moveTo(px, syX)
-                pathY.moveTo(px, syY)
-                pathZ.moveTo(px, syZ)
+                    if (i == 0) {
+                        pathX.moveTo(px, syX)
+                        pathY.moveTo(px, syY)
+                        pathZ.moveTo(px, syZ)
+                    } else {
+                        pathX.lineTo(px, syX)
+                        pathY.lineTo(px, syY)
+                        pathZ.lineTo(px, syZ)
+                    }
+                }
+
+                drawPath(pathX, color = Color(0xFF00B8FF), style = Stroke(width = 2.2f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+                drawPath(pathY, color = Color(0xFFFF8A00), style = Stroke(width = 2.2f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+                drawPath(pathZ, color = Color(0xFFA855F7), style = Stroke(width = 2.2f, cap = StrokeCap.Round, join = StrokeJoin.Round))
             } else {
-                pathX.lineTo(px, syX)
-                pathY.lineTo(px, syY)
-                pathZ.lineTo(px, syZ)
+                // Smooth synthetic preview when physical buffer initializes
+                val numPoints = 60
+                val stepX = w / numPoints
+                val pathX = Path()
+                val pathY = Path()
+                val pathZ = Path()
+
+                for (i in 0 until numPoints) {
+                    val px = i * stepX
+                    val time = System.currentTimeMillis() / 350.0
+                    val vyX = (sin(time + i * 0.18) * (h * 0.22f)).toFloat()
+                    val vyY = (sin(time * 1.2 + i * 0.22 + 1.2) * (h * 0.18f)).toFloat()
+                    val vyZ = (sin(time * 0.8 + i * 0.14 + 2.4) * (h * 0.15f)).toFloat()
+
+                    val syX = midY + vyX
+                    val syY = midY + vyY
+                    val syZ = midY + vyZ
+
+                    if (i == 0) {
+                        pathX.moveTo(px, syX)
+                        pathY.moveTo(px, syY)
+                        pathZ.moveTo(px, syZ)
+                    } else {
+                        pathX.lineTo(px, syX)
+                        pathY.lineTo(px, syY)
+                        pathZ.lineTo(px, syZ)
+                    }
+                }
+
+                drawPath(pathX, color = Color(0xFF00B8FF), style = Stroke(width = 2.0f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+                drawPath(pathY, color = Color(0xFFFF8A00), style = Stroke(width = 2.0f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+                drawPath(pathZ, color = Color(0xFFA855F7), style = Stroke(width = 2.0f, cap = StrokeCap.Round, join = StrokeJoin.Round))
             }
         }
 
-        drawPath(pathX, color = Color(0xFF00B8FF), style = Stroke(width = 2.0f, cap = StrokeCap.Round, join = StrokeJoin.Round))
-        drawPath(pathY, color = Color(0xFFFF8A00), style = Stroke(width = 2.0f, cap = StrokeCap.Round, join = StrokeJoin.Round))
-        drawPath(pathZ, color = Color(0xFFA855F7), style = Stroke(width = 2.0f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+        // Legend Overlay at top right of canvas
+        Row(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            TraceLegendDot("X", Color(0xFF00B8FF))
+            TraceLegendDot("Y", Color(0xFFFF8A00))
+            TraceLegendDot("Z", Color(0xFFA855F7))
+            Text(
+                text = "[$unitLabel]",
+                color = Color(0xFF64748B),
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+@Composable
+private fun TraceLegendDot(axis: String, color: Color) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .size(6.dp)
+                .clip(CircleShape)
+                .background(color)
+        )
+        Spacer(modifier = Modifier.width(3.dp))
+        Text(text = axis, color = color, fontSize = 10.sp, fontWeight = FontWeight.Bold)
     }
 }

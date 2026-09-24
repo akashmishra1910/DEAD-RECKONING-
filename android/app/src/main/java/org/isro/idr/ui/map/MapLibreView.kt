@@ -6,24 +6,28 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import org.isro.idr.engine.NavigationTelemetry
 import org.isro.idr.map.RoadMapGraph
+import org.isro.idr.ui.state.GnssStatusState
 import org.isro.idr.ui.state.MapDataState
+import org.isro.idr.ui.state.MapStyleType
 import org.isro.idr.ui.state.TrajectoryDisplayMode
 import org.isro.idr.ui.state.TrajectoryPoint
 
 /**
  * Modular Map Layer Composable.
- * Hosts offline geographic road network canvas (.idrmap v1.0) with real OpenStreetMap
- * road geometry, layers, bridges, flyovers, tunnels, and active snapped edge highlights.
+ * Hosts real worldwide geographic map canvas with dynamic OpenStreetMap / CartoDB tiles,
+ * live physical GPS centering, and .idrmap vector road overlays.
  */
 @Composable
 fun MapContainerView(
     telemetry: NavigationTelemetry?,
+    gnssStatus: GnssStatusState,
     idrTrajectory: List<TrajectoryPoint>,
     gnssTrajectory: List<TrajectoryPoint>,
     mapAidedTrajectory: List<TrajectoryPoint> = emptyList(),
     roadMapGraph: RoadMapGraph? = null,
-    trajectoryMode: TrajectoryDisplayMode,
-    mapDataState: MapDataState,
+    trajectoryMode: TrajectoryDisplayMode = TrajectoryDisplayMode.BOTH,
+    mapDataState: MapDataState = MapDataState.READY,
+    mapStyle: MapStyleType = MapStyleType.DARK,
     isNorthUp: Boolean = true,
     userZoomFactor: Float = 1.0f,
     onZoomIn: (() -> Unit)? = null,
@@ -33,14 +37,16 @@ fun MapContainerView(
     modifier: Modifier = Modifier
 ) {
     Box(modifier = modifier.fillMaxSize()) {
-        TacticalGridMapCanvas(
+        RealGeographicMapCanvas(
             telemetry = telemetry,
+            gnssStatus = gnssStatus,
             idrTrajectory = idrTrajectory,
             gnssTrajectory = gnssTrajectory,
             mapAidedTrajectory = mapAidedTrajectory,
             roadMapGraph = roadMapGraph,
             trajectoryMode = trajectoryMode,
             mapDataState = mapDataState,
+            mapStyle = mapStyle,
             isNorthUp = isNorthUp,
             userZoomFactor = userZoomFactor,
             onZoomIn = onZoomIn,

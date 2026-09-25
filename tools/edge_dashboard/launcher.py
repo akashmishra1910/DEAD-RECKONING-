@@ -80,7 +80,8 @@ def setup_launcher_logger(log_file: str, dev_mode: bool = False) -> logging.Logg
 def is_port_bindable(port: int, host: str = "127.0.0.1") -> bool:
     """Checks if a TCP port is currently available to bind."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        if sys.platform != "win32":
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:
             s.bind((host, port))
             return True

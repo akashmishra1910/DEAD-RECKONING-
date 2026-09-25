@@ -34,7 +34,8 @@ class TestPhase17FinalBenchmark:
     def setup_data(self):
         self.benchmark_csv = "reports/phase17_final_benchmark.csv"
         self.outages_csv = "reports/phase17_final_outage_results.csv"
-        self.doc_file = "docs/PHASE_17_FINAL_REPORT.md"
+        p_path = "docs/phases/PHASE_17_FINAL_REPORT.md"
+        self.doc_file = p_path if os.path.exists(p_path) else "docs/PHASE_17_FINAL_REPORT.md"
 
     def test_01_artifacts_presence(self):
         """Verifies that all Phase 17 artifacts exist and are non-empty."""

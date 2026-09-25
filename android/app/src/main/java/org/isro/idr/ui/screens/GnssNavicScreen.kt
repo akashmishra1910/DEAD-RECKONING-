@@ -160,29 +160,37 @@ fun GnssNavicScreen(
                     drawLine(Color(0xFF17324A), Offset(cx, cy - r), Offset(cx, cy + r), 1f)
                     drawLine(Color(0xFF17324A), Offset(cx - r, cy), Offset(cx + r, cy), 1f)
 
-                    // Plot Constellation Satellites at Polar Positions
-                    val sampleSats = listOf(
-                        Triple(45f, 30f, Color(0xFFFF8A00)),   // NavIC PRN 1
-                        Triple(135f, 50f, Color(0xFFFF8A00)),  // NavIC PRN 2
-                        Triple(225f, 40f, Color(0xFFFF8A00)),  // NavIC PRN 3
-                        Triple(315f, 65f, Color(0xFFFF8A00)),  // NavIC PRN 4
-                        Triple(20f, 60f, Color(0xFF18D47B)),   // GPS
-                        Triple(90f, 75f, Color(0xFF18D47B)),   // GPS
-                        Triple(180f, 35f, Color(0xFF18D47B)),  // GPS
-                        Triple(270f, 45f, Color(0xFF1688FF)),  // GLONASS
-                        Triple(160f, 70f, Color(0xFFA855F7))   // Galileo
-                    )
+                    // Plot Real Constellation Satellites at Polar Positions
+                    val activeSats = uiState.gnssStatus.satellites
+                    if (activeSats.isNotEmpty()) {
+                        for (sat in activeSats) {
+                            val satColor = when (sat.constellation) {
+                                org.isro.idr.ui.state.ConstellationType.GPS -> Color(0xFF18D47B)
+                                org.isro.idr.ui.state.ConstellationType.NAVIC -> Color(0xFFFF8A00)
+                                org.isro.idr.ui.state.ConstellationType.GLONASS -> Color(0xFF1688FF)
+                                org.isro.idr.ui.state.ConstellationType.GALILEO -> Color(0xFFA855F7)
+                                org.isro.idr.ui.state.ConstellationType.BEIDOU -> Color(0xFF00E5FF)
+                            }
+                            val rad = Math.toRadians(sat.azimuthDeg.toDouble() - 90.0)
+                            val dist = r * ((90.0 - sat.elevationDeg.coerceIn(0f, 90f)) / 90.0)
+                            val sx = cx + (dist * cos(rad)).toFloat()
+                            val sy = cy + (dist * sin(rad)).toFloat()
 
-                    for ((azimuthDeg, elevationDeg, satColor) in sampleSats) {
-                        val rad = Math.toRadians(azimuthDeg.toDouble() - 90.0)
-                        val dist = r * ((90.0 - elevationDeg) / 90.0)
-                        val sx = cx + (dist * cos(rad)).toFloat()
-                        val sy = cy + (dist * sin(rad)).toFloat()
-
-                        drawCircle(satColor.copy(alpha = 0.35f), 9f, Offset(sx, sy))
-                        drawCircle(satColor, 5f, Offset(sx, sy))
-                        drawCircle(Color.White, 5f, Offset(sx, sy), style = Stroke(1.2f))
+                            val alpha = if (sat.usedInFix) 0.95f else 0.45f
+                            drawCircle(satColor.copy(alpha = 0.35f * alpha), 9f, Offset(sx, sy))
+                            drawCircle(satColor.copy(alpha = alpha), 5f, Offset(sx, sy))
+                            if (sat.usedInFix) {
+                                drawCircle(Color.White, 5f, Offset(sx, sy), style = Stroke(1.2f))
+                            }
+                        }
                     }
+                }
+                if (uiState.gnssStatus.satellites.isEmpty()) {
+                    Text(
+                        text = "Searching for satellite geometry...",
+                        style = IdrTypography.bodySmall.copy(fontSize = 11.sp),
+                        color = Color(0xFF64748B)
+                    )
                 }
             }
         }

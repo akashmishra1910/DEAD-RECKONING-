@@ -27,12 +27,13 @@ class TestPhase12FinalBenchmark(unittest.TestCase):
     def setUpClass(cls):
         cls.repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         cls.comp_csv = os.path.join(cls.repo_root, "reports", "phase12_benchmark_comparison.csv")
-        cls.final_report_md = os.path.join(cls.repo_root, "docs", "PHASE_12_TRACK_B_FINAL_REPORT.md")
+        p_path = os.path.join(cls.repo_root, "docs", "phases", "PHASE_12_TRACK_B_FINAL_REPORT.md")
+        cls.final_report_md = p_path if os.path.exists(p_path) else os.path.join(cls.repo_root, "docs", "PHASE_12_TRACK_B_FINAL_REPORT.md")
 
     def test_01_artifacts_presence(self):
         """Verify presence of Phase 12 final report and benchmark comparison CSV."""
         self.assertTrue(os.path.exists(self.comp_csv), "Missing reports/phase12_benchmark_comparison.csv")
-        self.assertTrue(os.path.exists(self.final_report_md), "Missing docs/PHASE_12_TRACK_B_FINAL_REPORT.md")
+        self.assertTrue(os.path.exists(self.final_report_md), "Missing PHASE_12_TRACK_B_FINAL_REPORT.md in docs/phases/")
 
     def test_02_benchmark_parity(self):
         """Verify all candidate metrics match authoritative frozen numbers."""

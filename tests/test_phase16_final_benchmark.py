@@ -29,13 +29,14 @@ class TestPhase16FinalBenchmark(unittest.TestCase):
         cls.repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         cls.comp_csv = os.path.join(cls.repo_root, "reports", "phase16_final_benchmark.csv")
         cls.outage_csv = os.path.join(cls.repo_root, "reports", "phase16_final_outage_results.csv")
-        cls.report_md = os.path.join(cls.repo_root, "docs", "PHASE_16_FINAL_REPORT.md")
+        p_path = os.path.join(cls.repo_root, "docs", "phases", "PHASE_16_FINAL_REPORT.md")
+        cls.report_md = p_path if os.path.exists(p_path) else os.path.join(cls.repo_root, "docs", "PHASE_16_FINAL_REPORT.md")
 
     def test_01_artifacts_presence(self):
         """Verify presence of all Phase 16 deliverables."""
         self.assertTrue(os.path.exists(self.comp_csv), "Missing reports/phase16_final_benchmark.csv")
         self.assertTrue(os.path.exists(self.outage_csv), "Missing reports/phase16_final_outage_results.csv")
-        self.assertTrue(os.path.exists(self.report_md), "Missing docs/PHASE_16_FINAL_REPORT.md")
+        self.assertTrue(os.path.exists(self.report_md), "Missing PHASE_16_FINAL_REPORT.md in docs/phases/")
 
     def test_02_historical_controls_invariance(self):
         """Verify C0, N0, N7, Phase-14 A1, and Phase-15 controls remain strictly unchanged."""

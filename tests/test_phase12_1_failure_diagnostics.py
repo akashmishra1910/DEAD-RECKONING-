@@ -23,12 +23,13 @@ class TestPhase121FailureDiagnostics(unittest.TestCase):
     def setUpClass(cls):
         cls.repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         cls.failure_csv = os.path.join(cls.repo_root, "reports", "phase12_1_failure_modes.csv")
-        cls.report_md = os.path.join(cls.repo_root, "docs", "PHASE_12_1_N7_FAILURE_DIAGNOSTIC_REPORT.md")
+        p_path = os.path.join(cls.repo_root, "docs", "phases", "PHASE_12_1_N7_FAILURE_DIAGNOSTIC_REPORT.md")
+        cls.report_md = p_path if os.path.exists(p_path) else os.path.join(cls.repo_root, "docs", "PHASE_12_1_N7_FAILURE_DIAGNOSTIC_REPORT.md")
 
     def test_01_artifact_presence(self):
         """Verify presence of Phase 12.1 CSV and documentation report."""
         self.assertTrue(os.path.exists(self.failure_csv), "Missing reports/phase12_1_failure_modes.csv")
-        self.assertTrue(os.path.exists(self.report_md), "Missing docs/PHASE_12_1_N7_FAILURE_DIAGNOSTIC_REPORT.md")
+        self.assertTrue(os.path.exists(self.report_md), "Missing PHASE_12_1_N7_FAILURE_DIAGNOSTIC_REPORT.md in docs/phases/")
 
     def test_02_failure_taxonomy_counts(self):
         """Verify exact distribution of failure taxonomy across all 158 outages."""

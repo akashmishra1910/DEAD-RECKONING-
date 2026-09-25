@@ -56,7 +56,8 @@ def test_port_bindable_check():
 
     # Occupied port should not be bindable
     server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    if sys.platform != "win32":
+        server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server_sock.bind(("127.0.0.1", free_port))
     server_sock.listen(1)
 
@@ -66,24 +67,26 @@ def test_port_bindable_check():
 
 def test_select_best_port_conflict_resolution():
     """Verifies dynamic port scanning when preferred port is occupied."""
-    # Occupy port 8080 temporarily
+    # Find an ephemeral open port to act as conflict base
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        probe.bind(("127.0.0.1", 0))
+        base_port = probe.getsockname()[1]
+
+    # Occupy base port temporarily
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    try:
-        s.bind(("127.0.0.1", 8080))
-        s.listen(1)
-        port_8080_occupied = True
-    except Exception:
-        port_8080_occupied = True  # Already occupied by daemon
+    if sys.platform != "win32":
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s.bind(("127.0.0.1", base_port))
+    s.listen(1)
 
     logger = setup_launcher_logger("logs/test_launcher.log", dev_mode=False)
-    cfg = LauncherConfig(preferred_port=8080, max_port=8090, reuse_server=False)
+    cfg = LauncherConfig(preferred_port=base_port, max_port=base_port + 10, reuse_server=False)
 
     chosen_port, is_reused = select_best_port(cfg, logger)
-    # Port 8080 is occupied, so launcher must pick a port > 8080
-    assert chosen_port > 8080
+    # base_port is occupied, so launcher must pick a port > base_port
+    assert chosen_port > base_port
     assert is_reused is False
-    assert chosen_port <= 8090
+    assert chosen_port <= base_port + 10
 
     try:
         s.close()

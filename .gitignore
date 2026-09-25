@@ -1,21 +1,25 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
+*/__pycache__/
+*/*/__pycache__/
 *.py[cod]
 *$py.class
 
-# Caches and temporary files
+# Caches and temporary test files
 .pytest_cache/
+*/.pytest_cache/
 /tmp/matplotlib_cache/
 .DS_Store
+Thumbs.db
 
-# Scratch and test files
+# Logs and scratch
 scratch/
+logs/
+*.log
 test_arch.png
 test.pdf
 test.xml
 documentation.pdf
-logs/
-*.log
 
 # Large dataset archives (>100MB)
 Synchronised_V_and_S_datasets.zip
@@ -23,27 +27,47 @@ synchronised_iovnbd_data/
 IO-VNBD-ACTUAL/
 awesome-gins-datasets/
 *.zip
+*.tar.gz
 
-# Build directories and compiled artifacts
+# Native and build directories
 build/
 */build/
-*.o
-*.a
-*.dylib
-*.so
-*.dylib.*
-
-# Android / IDE
-.gradle/
-*/.gradle/
-.idea/
-*/.idea/
-local.properties
-*/local.properties
-*.iml
+*/*/build/
+bin/
+*/bin/
+obj/
+*/obj/
 .cxx/
 */.cxx/
 */*/.cxx/
+
+# Compiled native / binary artifacts
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dylib
+*.dll
+*.dex
+*.class
+*.apk
+*.aab
+
+# Android / IDE metadata
+.gradle/
+*/.gradle/
+*/*/.gradle/
+.idea/
+*/.idea/
+*/*/.idea/
+*.iml
+*/*.iml
+local.properties
+*/local.properties
+Captures/
+.externalNativeBuild/
+
 
 
 

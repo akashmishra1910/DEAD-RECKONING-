@@ -115,10 +115,10 @@ data class GnssStatusState(
     val accuracyM: Double = 0.0,
     val hdop: Double = 0.8,
     val ageSeconds: Double = 0.0,
-    val totalSatellites: Int = 24,
-    val totalSatellitesInView: Int = 24,
-    val navicSatellitesInView: Int = 4,
-    val navicSatellitesUsed: Int = 4,
+    val totalSatellites: Int = 0,
+    val totalSatellitesInView: Int = 0,
+    val navicSatellitesInView: Int = 0,
+    val navicSatellitesUsed: Int = 0,
     val satellites: List<SatelliteInfo> = emptyList()
 )
 
@@ -170,11 +170,11 @@ data class NavigationUiState(
     val activeSubScreen: SubScreen = SubScreen.NONE,
 
     // IMU Calibration Flow State
-    val calibrationProgress: Float = 1.0f,
-    val isAccelCalibrated: Boolean = true,
-    val isGyroCalibrated: Boolean = true,
-    val isMagCalibrated: Boolean = true,
-    val isBaroCalibrated: Boolean = true,
+    val calibrationProgress: Float = 0.0f,
+    val isAccelCalibrated: Boolean = false,
+    val isGyroCalibrated: Boolean = false,
+    val isMagCalibrated: Boolean = false,
+    val isBaroCalibrated: Boolean = false,
 
     // Live Telemetry & Estimator States
     val telemetry: NavigationTelemetry? = null,
@@ -200,15 +200,15 @@ data class NavigationUiState(
     val gnssTrajectory: List<TrajectoryPoint> = emptyList(),
     val mapAidedTrajectory: List<TrajectoryPoint> = emptyList(),
     val mapMatchedPositionEnu: org.isro.idr.engine.Vector3D? = null,
-    val selectedRoadName: String = "Mahatma Gandhi Marg",
-    val nextTurnDistanceMeters: Int = 350,
-    val nextTurnDirection: String = "Turn right",
+    val selectedRoadName: String = "",
+    val nextTurnDistanceMeters: Int = 0,
+    val nextTurnDirection: String = "",
     val selectedRoadLayer: String = "Ground",
     val mapConfidence: String = "HIGH",
     val isMapAmbiguous: Boolean = false,
-    val candidateCount: Int = 3,
-    val hypothesisCount: Int = 3,
-    val scoreMargin: Double = 0.85,
+    val candidateCount: Int = 0,
+    val hypothesisCount: Int = 0,
+    val scoreMargin: Double = 1.0,
 
     // Active End-to-End Trip Navigation State
     val isTripActive: Boolean = false,
@@ -219,7 +219,7 @@ data class NavigationUiState(
     val remainingDistanceMeters: Double = 0.0,
     val estimatedTimeMinutes: Int = 0,
     val currentManeuverIcon: String = "⮅",
-    val currentManeuverInstruction: String = "Continue straight",
+    val currentManeuverInstruction: String = "Proceed to destination",
     val routeWaypoints: List<Pair<Double, Double>> = emptyList(),
     val deviceHeadingDeg: Double = 0.0,
     val isStationary: Boolean = true,
@@ -238,24 +238,19 @@ data class NavigationUiState(
     val gyroHistory: List<SensorWaveformSample> = emptyList(),
     val magHistory: List<SensorWaveformSample> = emptyList(),
     val baroHistory: List<SensorWaveformSample> = emptyList(),
-    val sensorCallbackRateHz: Double = 468.8,
-    val sensorConsumedRateHz: Double = 100.0,
+    val sensorCallbackRateHz: Double = 0.0,
+    val sensorConsumedRateHz: Double = 0.0,
     val baroPressureHpa: Double = 1013.25,
-    val baroAltitudeM: Double = 98.4,
+    val baroAltitudeM: Double = 0.0,
 
     // Trip & Analytics State
-    val tripStartTime: String = "12 Nov 2024, 10:24",
-    val tripDurationSec: Long = 9374,
-    val tripDistanceMeters: Double = 12800.0,
-    val tripAvgSpeedKmh: Double = 29.4,
-    val tripMaxSpeedKmh: Double = 78.6,
+    val tripStartTime: String = "--",
+    val tripDurationSec: Long = 0L,
+    val tripDistanceMeters: Double = 0.0,
+    val tripAvgSpeedKmh: Double = 0.0,
+    val tripMaxSpeedKmh: Double = 0.0,
     val tripDriftData: List<DriftPoint> = emptyList(),
-    val tripEvents: List<TripEvent> = listOf(
-        TripEvent("10:24:12", "GNSS Acquired", "GNSS_ACQUIRED"),
-        TripEvent("11:05:24", "GNSS lost - DR active", "DR_ACTIVE"),
-        TripEvent("11:05:30", "Map aided DR", "MAP_AIDED"),
-        TripEvent("11:22:18", "GNSS reacquired", "GNSS_REACQUIRED")
-    ),
+    val tripEvents: List<TripEvent> = emptyList(),
 
     // Offline Maps Region Packs
     val offlineRegionPacks: List<OfflineRegionPack> = listOf(
@@ -272,9 +267,9 @@ data class NavigationUiState(
     // Diagnostics & Health State
     val health: SystemHealthState = SystemHealthState(),
     val diagnostics: IngestionDiagnostics? = null,
-    val nativeLatencyUs: Long = 1402,
-    val p95SensorJitterMs: Double = 2.13,
-    val memoryUsageMb: Int = 72,
+    val nativeLatencyUs: Long = 0,
+    val p95SensorJitterMs: Double = 0.0,
+    val memoryUsageMb: Int = 42,
     val liveDriftPercentage: Double = 0.0,
     val outageDistanceMeters: Double = 0.0,
     val isOutageTestRunning: Boolean = false,

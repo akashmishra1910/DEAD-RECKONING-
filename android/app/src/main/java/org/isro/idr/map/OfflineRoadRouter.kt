@@ -574,7 +574,7 @@ object OfflineRoadRouter {
         return clean
     }
 
-    private fun findNearestEdge(lat: Double, lon: Double, edges: List<RoadEdgeGeometry>): RoadEdgeGeometry? {
+    private fun findNearestEdge(lat: Double, lon: Double, edges: List<RoadEdgeGeometry>, maxSnapDistanceM: Double = 1500.0): RoadEdgeGeometry? {
         var minD = Double.MAX_VALUE
         var bestEdge: RoadEdgeGeometry? = null
         for (edge in edges) {
@@ -586,7 +586,7 @@ object OfflineRoadRouter {
                 }
             }
         }
-        return bestEdge
+        return if (minD <= maxSnapDistanceM) bestEdge else null
     }
 
     private fun bearingDeg(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
@@ -649,12 +649,24 @@ object OfflineRoadRouter {
         destName: String
     ): RoutePlanResult {
         val totalDist = haversineDistanceMeters(startLat, startLon, destLat, destLon)
-        val waypoints = listOf(Pair(startLat, startLon), Pair(destLat, destLon))
+        val waypoints = mutableListOf<Pair<Double, Double>>()
+        waypoints.add(Pair(startLat, startLon))
+
+        val numSteps = (totalDist / 80.0).toInt().coerceIn(3, 40)
+        for (i in 1 until numSteps) {
+            val frac = i.toDouble() / numSteps
+            val latInterp = startLat + frac * (destLat - startLat)
+            val lonInterp = startLon + frac * (destLon - startLon)
+            waypoints.add(Pair(latInterp, lonInterp))
+        }
+        waypoints.add(Pair(destLat, destLon))
+
+        val dist = calculatePolylineDistance(waypoints)
         val maneuvers = listOf(
             ManeuverStep(
                 instruction = "Proceed towards $destName",
                 icon = "↑",
-                distanceMeters = totalDist,
+                distanceMeters = dist,
                 roadName = destName,
                 startCoord = Pair(startLat, startLon),
                 endCoord = Pair(destLat, destLon)
@@ -668,9 +680,9 @@ object OfflineRoadRouter {
                 endCoord = Pair(destLat, destLon)
             )
         )
-        val mins = (totalDist / 400.0).toInt().coerceAtLeast(1)
+        val mins = (dist / 400.0).toInt().coerceAtLeast(1)
         return RoutePlanResult(
-            totalDistanceMeters = totalDist,
+            totalDistanceMeters = dist,
             estimatedTimeMinutes = mins,
             waypoints = waypoints,
             maneuvers = maneuvers,

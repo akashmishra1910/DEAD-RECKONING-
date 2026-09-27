@@ -108,6 +108,12 @@ std::tuple<bool, bool, double, double> SeamlessGNSSDeficitEngine::evaluate_gnss_
     bool is_mild_pos_jump = (gamma_pos > 20.0);
     bool is_mild_vel_jump = (static_cast<bool>(gnss_vel) && gamma_vel > 12.0);
 
+    // In DR mode or recovery transition, accept returning valid GNSS fixes so the filter re-anchors to true location
+    if (mode_ == NavigationMode::DR_ONLY || mode_ == NavigationMode::TRANSITION_TO_DR || mode_ == NavigationMode::TRANSITION_TO_GNSS) {
+        if (gnss_valid && static_cast<bool>(gnss_pos) && (!static_cast<bool>(gnss_vel) || gamma_vel <= 25.0)) {
+            return {false, false, gamma_pos, gamma_vel};
+        }
+    }
 
     if (is_severe_pos_jump && is_severe_vel_jump) {
         return {true, false, gamma_pos, gamma_vel};
@@ -356,15 +362,15 @@ NavigationTelemetry SeamlessGNSSDeficitEngine::process_step(
             }
         }
     } else if (mode_ == NavigationMode::TRANSITION_TO_GNSS) {
-        bool is_fix_accepted = (gamma_pos <= chi2_pos_threshold_);
+        bool is_fix_accepted = gnss_valid && static_cast<bool>(gnss_pos) && (gamma_vel <= chi2_vel_threshold_ || !static_cast<bool>(gnss_vel) || gamma_pos <= 200.0);
         if (is_fix_accepted) {
             reacquisition_epochs_++;
             if (static_cast<bool>(gnss_pos)) {
-                eskf_.update_gnss(*gnss_pos, 5.0);
+                eskf_.update_gnss(*gnss_pos, 2.5);
             }
-            if (static_cast<bool>(gnss_vel) && gamma_vel <= chi2_vel_threshold_) {
-                eskf_.update_gnss_velocity(*gnss_vel, 0.6);
-                gnss_weight = 0.5;
+            if (static_cast<bool>(gnss_vel)) {
+                eskf_.update_gnss_velocity(*gnss_vel, 0.4);
+                gnss_weight = 0.8;
             }
             if (reacquisition_epochs_ >= min_reacquisition_dwell_) {
                 mode_ = NavigationMode::GNSS_REACQUIRED;
@@ -395,17 +401,20 @@ NavigationTelemetry SeamlessGNSSDeficitEngine::process_step(
             eskf_.update_zupt(0.01);
         }
     } else if (mode_ == NavigationMode::GNSS_REACQUIRED) {
-        if (static_cast<bool>(gnss_pos) && gamma_pos <= chi2_pos_threshold_) {
-            eskf_.update_gnss(*gnss_pos, 3.0);
+        if (static_cast<bool>(gnss_pos)) {
+            eskf_.update_gnss(*gnss_pos, 2.0);
         }
-        if (static_cast<bool>(gnss_vel) && gamma_vel <= chi2_vel_threshold_) {
-            eskf_.update_gnss_velocity(*gnss_vel, 0.3);
-            gnss_weight = 0.9;
+        if (static_cast<bool>(gnss_vel)) {
+            eskf_.update_gnss_velocity(*gnss_vel, 0.2);
+            gnss_weight = 1.0;
         }
         eskf_.update_nhc(0.06, 0.06);
-        if (vib_state.is_engine_idling) {
+        if (vib_state.is_engine_idling || is_stationary) {
             eskf_.update_zupt(0.01);
         }
+        mode_ = NavigationMode::GNSS_AIDED;
+        last_transition_reason_ = "Full GNSS-Aided Authority Restored";
+        if (speed_calibrator_) speed_calibrator_->unfreeze();
     }
 
     double step_dist = std::hypot(eskf_.get_position().x - last_pos_.x, eskf_.get_position().y - last_pos_.y);

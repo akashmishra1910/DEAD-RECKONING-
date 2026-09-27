@@ -71,9 +71,9 @@ class NavigationPipelineSynchronizer(
 
         // 1. Causal GNSS availability check
         val gnss = gnssManager.latestGnssSample
+        val nowElapsedNanos = SystemClock.elapsedRealtimeNanos()
         val isGnssFresh = gnss != null && gnss.isValid &&
-                (imu.timestampNanos - gnss.timestampNanos <= maxGnssAgeNanos) &&
-                (imu.timestampNanos >= gnss.timestampNanos)
+                (nowElapsedNanos - gnss.timestampNanos in -500_000_000L..maxGnssAgeNanos)
 
         val gnssPos = if (isGnssFresh && gnss != null) gnss.posEnu else Vector3D()
         val gnssVel = if (isGnssFresh && gnss != null) gnss.velEnu else Vector3D()

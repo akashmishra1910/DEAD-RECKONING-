@@ -560,8 +560,18 @@ class NavigationViewModel(
     }
 
     fun startNavigationToPoi(title: String, lat: Double, lon: Double) {
-        val currentLat = if (_uiState.value.gnssStatus.fixValid) _uiState.value.gnssStatus.latitude else 25.4331
-        val currentLon = if (_uiState.value.gnssStatus.fixValid) _uiState.value.gnssStatus.longitude else 81.8148
+        val currentLat = when {
+            _uiState.value.gnssStatus.fixValid && _uiState.value.gnssStatus.latitude != 0.0 -> _uiState.value.gnssStatus.latitude
+            _uiState.value.lastTrustedFix != null -> _uiState.value.lastTrustedFix!!.latitude
+            _uiState.value.enuAnchor != null -> _uiState.value.enuAnchor!!.latitude
+            else -> lat - 0.003
+        }
+        val currentLon = when {
+            _uiState.value.gnssStatus.fixValid && _uiState.value.gnssStatus.longitude != 0.0 -> _uiState.value.gnssStatus.longitude
+            _uiState.value.lastTrustedFix != null -> _uiState.value.lastTrustedFix!!.longitude
+            _uiState.value.enuAnchor != null -> _uiState.value.enuAnchor!!.longitude
+            else -> lon - 0.003
+        }
 
         planTrip(
             startName = "Current Location",

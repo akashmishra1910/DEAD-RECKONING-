@@ -122,9 +122,12 @@ fun RealGeographicMapCanvas(
         altitude = gnssStatus.altitude
     )
 
-    // Exact Vehicle Geodetic Location
+    // Exact Vehicle Geodetic Location:
+    // 1. If GNSS fix is active and valid, vehicle is at exact physical GNSS fix.
+    // 2. If GNSS is lost / in DR, dead reckon forward in ENU frame relative to anchor.
+    // 3. Fallback to last trusted fix or anchor.
     val vehicleWgs = when {
-        gnssStatus.fixValid && gnssStatus.latitude != 0.0 && !isDrActive -> {
+        gnssStatus.fixValid && gnssStatus.latitude != 0.0 -> {
             GeoCoordinates.Wgs84Coordinate(gnssStatus.latitude, gnssStatus.longitude, gnssStatus.altitude)
         }
         telemetry != null && enuAnchor != null -> {

@@ -360,7 +360,6 @@ void ErrorStateKalmanFilter::update_ai_velocity(double v_ai, double r_ai) {
 
     // Forward body axis in nav frame is column 0 of R: R[:, 0]
     Vector3 r0 = R_.col(0);
-    Vector3 r0_skew_v = r0.cross(v_); // [1, 0, 0] @ R.T @ [v]_x = (R[:, 0])^T @ [v]_x -> r0 @ skew(v)
 
     // Note: in Python: H[0, 6:9] = self.R[:, 0] @ skew_symmetric(self.v)
     Matrix3x3 skew_v = skew_symmetric(v_);

@@ -6,7 +6,17 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+
+#ifdef __APPLE__
 #include <mach/mach.h>
+#elif defined(__linux__) || defined(__ANDROID__)
+#include <sys/resource.h>
+#include <unistd.h>
+#include <fstream>
+#elif defined(_WIN32)
+#include <windows.h>
+#include <psapi.h>
+#endif
 
 // Global allocation counter for tactical loop verification
 static bool g_track_allocations = false;
@@ -50,20 +60,38 @@ void operator delete[](void* p, std::size_t) noexcept {
 }
 
 static size_t get_peak_rss_bytes() {
+#ifdef __APPLE__
     struct mach_task_basic_info info;
     mach_msg_type_number_t info_count = MACH_TASK_BASIC_INFO_COUNT;
     if (task_info(mach_task_self(), MACH_TASK_BASIC_INFO, (task_info_t)&info, &info_count) == KERN_SUCCESS) {
         return info.resident_size_max;
     }
+#elif defined(__linux__) || defined(__ANDROID__)
+    struct rusage usage;
+    if (getrusage(RUSAGE_SELF, &usage) == 0) {
+        return (size_t)usage.ru_maxrss * 1024;
+    }
+#endif
     return 0;
 }
 
 static size_t get_current_rss_bytes() {
+#ifdef __APPLE__
     struct mach_task_basic_info info;
     mach_msg_type_number_t info_count = MACH_TASK_BASIC_INFO_COUNT;
     if (task_info(mach_task_self(), MACH_TASK_BASIC_INFO, (task_info_t)&info, &info_count) == KERN_SUCCESS) {
         return info.resident_size;
     }
+#elif defined(__linux__) || defined(__ANDROID__)
+    std::ifstream statm("/proc/self/statm");
+    if (statm.is_open()) {
+        unsigned long size, resident;
+        if (statm >> size >> resident) {
+            long page_size = sysconf(_SC_PAGESIZE);
+            return resident * page_size;
+        }
+    }
+#endif
     return 0;
 }
 

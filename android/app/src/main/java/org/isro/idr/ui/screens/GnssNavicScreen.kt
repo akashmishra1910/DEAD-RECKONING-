@@ -98,7 +98,7 @@ fun GnssNavicScreen(
                         color = if (isFixed) Color(0xFF18D47B) else Color(0xFFFFB020)
                     )
                     Text(
-                        text = "${uiState.gnssStatus.totalSatellites} sats | NavIC: ${uiState.gnssStatus.navicSatellitesUsed} | 1σ Acc: ${if (isFixed) "±${String.format("%.1f", uiState.gnssStatus.accuracyM)} m" else "N/A"}",
+                        text = "Total: ${uiState.gnssStatus.totalSatellites} used / ${uiState.gnssStatus.totalSatellitesInView} in view | NavIC: ${uiState.gnssStatus.navicSatellitesUsed} / ${uiState.gnssStatus.navicSatellitesInView} | Acc: ${if (isFixed) "±${String.format("%.1f", uiState.gnssStatus.accuracyM)} m" else "N/A"}",
                         style = IdrTypography.bodySmall.copy(fontSize = 11.sp),
                         color = Color(0xFF94A3B8)
                     )
@@ -124,16 +124,20 @@ fun GnssNavicScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Sky View (Live)",
+                    text = "Sky View (${uiState.gnssStatus.satellites.size} visible)",
                     style = IdrTypography.titleMedium.copy(fontSize = 14.sp, fontWeight = FontWeight.Bold),
                     color = Color.White
                 )
                 // Constellation Key Pills
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    ConstellationLegendDot("GPS", Color(0xFF18D47B))
-                    ConstellationLegendDot("NavIC", Color(0xFFFF8A00))
-                    ConstellationLegendDot("GLONASS", Color(0xFF1688FF))
-                    ConstellationLegendDot("Galileo", Color(0xFFA855F7))
+                    val gpsCnt = uiState.gnssStatus.satellites.count { it.constellation == org.isro.idr.ui.state.ConstellationType.GPS }
+                    val navicCnt = uiState.gnssStatus.satellites.count { it.constellation == org.isro.idr.ui.state.ConstellationType.NAVIC }
+                    val gloCnt = uiState.gnssStatus.satellites.count { it.constellation == org.isro.idr.ui.state.ConstellationType.GLONASS }
+                    val galCnt = uiState.gnssStatus.satellites.count { it.constellation == org.isro.idr.ui.state.ConstellationType.GALILEO }
+                    ConstellationLegendDot("GPS ($gpsCnt)", Color(0xFF18D47B))
+                    ConstellationLegendDot("NavIC ($navicCnt)", Color(0xFFFF8A00))
+                    ConstellationLegendDot("GLO ($gloCnt)", Color(0xFF1688FF))
+                    ConstellationLegendDot("GAL ($galCnt)", Color(0xFFA855F7))
                 }
             }
 

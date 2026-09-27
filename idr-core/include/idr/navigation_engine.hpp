@@ -5,6 +5,8 @@
 #include "idr/eskf.hpp"
 #include "idr/alignment_engine.hpp"
 #include "idr/vibration_filter.hpp"
+#include "idr/feature_extractor.hpp"
+#include "idr/gbdt_model.hpp"
 #include "idr/heading_supervisor.hpp"
 #include "idr/osm_graph.hpp"
 #include "idr/map_matcher_3d.hpp"
@@ -139,6 +141,7 @@ private:
 
     InVehicleAlignmentEngine alignment_engine_;
     VibrationPotholeFilter vibration_filter_;
+    SlidingWindowFeatureExtractor feature_extractor_;
     ErrorStateKalmanFilter eskf_;
 
     bool enable_heading_supervisor_;

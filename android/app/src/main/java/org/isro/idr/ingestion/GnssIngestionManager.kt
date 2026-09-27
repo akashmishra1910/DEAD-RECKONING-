@@ -108,11 +108,13 @@ class GnssIngestionManager(
                             val constTypeInt = status.getConstellationType(i)
                             val constType = when (constTypeInt) {
                                 GnssStatus.CONSTELLATION_GPS -> org.isro.idr.ui.state.ConstellationType.GPS
-                                GnssStatus.CONSTELLATION_IRNSS -> org.isro.idr.ui.state.ConstellationType.NAVIC
+                                GnssStatus.CONSTELLATION_SBAS -> org.isro.idr.ui.state.ConstellationType.GPS
                                 GnssStatus.CONSTELLATION_GLONASS -> org.isro.idr.ui.state.ConstellationType.GLONASS
-                                GnssStatus.CONSTELLATION_GALILEO -> org.isro.idr.ui.state.ConstellationType.GALILEO
+                                GnssStatus.CONSTELLATION_QZSS -> org.isro.idr.ui.state.ConstellationType.GPS
                                 GnssStatus.CONSTELLATION_BEIDOU -> org.isro.idr.ui.state.ConstellationType.BEIDOU
-                                else -> org.isro.idr.ui.state.ConstellationType.GPS
+                                GnssStatus.CONSTELLATION_GALILEO -> org.isro.idr.ui.state.ConstellationType.GALILEO
+                                GnssStatus.CONSTELLATION_IRNSS -> org.isro.idr.ui.state.ConstellationType.NAVIC
+                                else -> if (constTypeInt == 7) org.isro.idr.ui.state.ConstellationType.NAVIC else org.isro.idr.ui.state.ConstellationType.GPS
                             }
                             val isNavic = (constType == org.isro.idr.ui.state.ConstellationType.NAVIC)
                             if (isNavic) {
@@ -140,6 +142,7 @@ class GnssIngestionManager(
                         totalInViewCount = totalInView
                         navicSatCount = navicUsed
                         navicInViewCount = navicInView
+                        android.util.Log.d("IDR_GNSS", "GnssStatus: TotalInView=$totalInView, Used=$totalUsed, NavIC_InView=$navicInView, NavIC_Used=$navicUsed")
                         onSatelliteStatusListener?.invoke(satList)
                     }
                 }

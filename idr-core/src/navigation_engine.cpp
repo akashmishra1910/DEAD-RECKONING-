@@ -219,6 +219,15 @@ NavigationTelemetry SeamlessGNSSDeficitEngine::process_step(
     Vector3 clean_accel_b = vib_state.cleaned_accel;
     Vector3 clean_gyro_b = vib_state.cleaned_gyro;
 
+    // Push into sliding window feature extractor for autonomous on-device AI speed estimation
+    feature_extractor_.push(clean_accel_b, clean_gyro_b);
+    if ((!static_cast<bool>(ai_speed) || *ai_speed < 0.0) && feature_extractor_.is_full()) {
+        std::array<double, SlidingWindowFeatureExtractor::NUM_TOP_FEATURES> feats{};
+        feature_extractor_.compute_45_features(feats);
+        double inferred_spd = GBDTSpeedModel::predict(feats);
+        ai_speed = inferred_spd;
+    }
+
     eskf_.predict(clean_accel_b, clean_gyro_b, dt_);
     eskf_.update_altitude(baro_alt, 0.8);
 
@@ -263,7 +272,7 @@ NavigationTelemetry SeamlessGNSSDeficitEngine::process_step(
             speed_calibrator_->update_gnss_aiding(time_s, *ai_speed, g_spd, gnss_valid);
         }
         eskf_.update_nhc(0.08, 0.08);
-        if (vib_state.is_engine_idling) {
+        if (vib_state.is_engine_idling || is_stationary) {
             eskf_.update_zupt(0.01);
         }
     } else if (mode_ == NavigationMode::GNSS_DEGRADED) {
@@ -281,11 +290,21 @@ NavigationTelemetry SeamlessGNSSDeficitEngine::process_step(
         if (static_cast<bool>(ai_speed)) {
             double cal_speed = speed_calibrator_ ? speed_calibrator_->correct_speed(*ai_speed) : *ai_speed;
             double eff_speed = vib_state.is_engine_idling ? 0.0 : cal_speed;
-            eskf_.update_ai_velocity(eff_speed, 0.50);
+            double turn_rate = std::abs(clean_gyro_b.z);
+            double vib_energy = (accel_b - clean_accel_b).norm();
+
+            double sigma_vx = 0.50 * (1.0 + 0.5 * vib_energy + 1.2 * turn_rate);
+            double sigma_vy = (turn_rate < 0.05) ? 0.035 : std::min(0.40, 0.035 + 0.80 * turn_rate);
+            double sigma_vz = 0.06;
+
+            Vector3 v_ai_b(eff_speed, 0.0, 0.0);
+            Vector3 sigma_v(sigma_vx, sigma_vy, sigma_vz);
+            eskf_.update_ai_velocity_vector(v_ai_b, sigma_v);
             ai_weight = 0.60;
+        } else {
+            eskf_.update_nhc(0.06, 0.06);
         }
-        eskf_.update_nhc(0.06, 0.06);
-        if (vib_state.is_engine_idling || (static_cast<bool>(ai_speed) && *ai_speed < 0.2)) {
+        if (vib_state.is_engine_idling || (static_cast<bool>(ai_speed) && *ai_speed < 0.2) || is_stationary) {
             eskf_.update_zupt(0.01);
         }
     } else if (mode_ == NavigationMode::TRANSITION_TO_DR || mode_ == NavigationMode::DR_ONLY) {
@@ -294,12 +313,19 @@ NavigationTelemetry SeamlessGNSSDeficitEngine::process_step(
             double eff_speed = vib_state.is_engine_idling ? 0.0 : cal_speed;
             double turn_rate = std::abs(clean_gyro_b.z);
             double vib_energy = (accel_b - clean_accel_b).norm();
-            double r_ai_adapt = 0.35 * (1.0 + 0.5 * vib_energy + 1.2 * turn_rate);
-            eskf_.update_ai_velocity(eff_speed, r_ai_adapt);
+
+            double sigma_vx = 0.35 * (1.0 + 0.5 * vib_energy + 1.2 * turn_rate);
+            double sigma_vy = (turn_rate < 0.05) ? 0.025 : std::min(0.40, 0.025 + 0.80 * turn_rate);
+            double sigma_vz = 0.05;
+
+            Vector3 v_ai_b(eff_speed, 0.0, 0.0);
+            Vector3 sigma_v(sigma_vx, sigma_vy, sigma_vz);
+            eskf_.update_ai_velocity_vector(v_ai_b, sigma_v);
             ai_weight = 1.0;
+        } else {
+            eskf_.update_nhc(0.05, 0.05);
         }
-        eskf_.update_nhc(0.05, 0.05);
-        if (vib_state.is_engine_idling || (static_cast<bool>(ai_speed) && *ai_speed < 0.2)) {
+        if (vib_state.is_engine_idling || (static_cast<bool>(ai_speed) && *ai_speed < 0.2) || is_stationary) {
             eskf_.update_zupt(0.01);
         }
         if (enable_map_matching_ && map_matcher_ && enable_road_constraints) {
@@ -350,12 +376,22 @@ NavigationTelemetry SeamlessGNSSDeficitEngine::process_step(
             if (static_cast<bool>(ai_speed)) {
                 double cal_speed = speed_calibrator_ ? speed_calibrator_->correct_speed(*ai_speed) : *ai_speed;
                 double eff_speed = vib_state.is_engine_idling ? 0.0 : cal_speed;
-                eskf_.update_ai_velocity(eff_speed, 0.45);
+                double turn_rate = std::abs(clean_gyro_b.z);
+                double vib_energy = (accel_b - clean_accel_b).norm();
+
+                double sigma_vx = 0.45 * (1.0 + 0.5 * vib_energy + 1.2 * turn_rate);
+                double sigma_vy = (turn_rate < 0.05) ? 0.030 : std::min(0.40, 0.030 + 0.80 * turn_rate);
+                double sigma_vz = 0.05;
+
+                Vector3 v_ai_b(eff_speed, 0.0, 0.0);
+                Vector3 sigma_v(sigma_vx, sigma_vy, sigma_vz);
+                eskf_.update_ai_velocity_vector(v_ai_b, sigma_v);
                 ai_weight = 0.5;
+            } else {
+                eskf_.update_nhc(0.05, 0.05);
             }
         }
-        eskf_.update_nhc(0.05, 0.05);
-        if (vib_state.is_engine_idling || (static_cast<bool>(ai_speed) && *ai_speed < 0.2)) {
+        if (vib_state.is_engine_idling || (static_cast<bool>(ai_speed) && *ai_speed < 0.2) || is_stationary) {
             eskf_.update_zupt(0.01);
         }
     } else if (mode_ == NavigationMode::GNSS_REACQUIRED) {
@@ -491,6 +527,7 @@ void SeamlessGNSSDeficitEngine::reset() {
     eskf_.reset();
     alignment_engine_.reset();
     vibration_filter_.reset();
+    feature_extractor_.reset();
     if (heading_supervisor_) heading_supervisor_->reset();
     if (map_matcher_) map_matcher_->reset();
     if (speed_calibrator_) speed_calibrator_->reset();

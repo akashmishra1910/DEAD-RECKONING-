@@ -381,6 +381,39 @@ void ErrorStateKalmanFilter::update_ai_velocity(double v_ai, double r_ai) {
     apply_kalman_update<1>(dz, H, R_cov);
 }
 
+void ErrorStateKalmanFilter::update_ai_velocity_vector(const Vector3& v_ai_b, const Vector3& sigma_v) {
+    Vector3 v_b = R_.transpose() * v_;
+    std::array<double, 3> dz = {v_ai_b.x - v_b.x, v_ai_b.y - v_b.y, v_ai_b.z - v_b.z};
+
+    Vector3 r0 = R_.col(0);
+    Vector3 r1 = R_.col(1);
+    Vector3 r2 = R_.col(2);
+    Matrix3x3 skew_v = skew_symmetric(v_);
+    Vector3 h_att0 = r0 * skew_v;
+    Vector3 h_att1 = r1 * skew_v;
+    Vector3 h_att2 = r2 * skew_v;
+
+    std::array<std::array<double, 15>, 3> H{};
+    // Row 0: forward
+    H[0][3] = r0.x; H[0][4] = r0.y; H[0][5] = r0.z;
+    H[0][6] = h_att0.x; H[0][7] = h_att0.y; H[0][8] = h_att0.z;
+
+    // Row 1: lateral
+    H[1][3] = r1.x; H[1][4] = r1.y; H[1][5] = r1.z;
+    H[1][6] = h_att1.x; H[1][7] = h_att1.y; H[1][8] = h_att1.z;
+
+    // Row 2: vertical
+    H[2][3] = r2.x; H[2][4] = r2.y; H[2][5] = r2.z;
+    H[2][6] = h_att2.x; H[2][7] = h_att2.y; H[2][8] = h_att2.z;
+
+    std::array<std::array<double, 3>, 3> R_cov{};
+    R_cov[0][0] = sigma_v.x * sigma_v.x;
+    R_cov[1][1] = sigma_v.y * sigma_v.y;
+    R_cov[2][2] = sigma_v.z * sigma_v.z;
+
+    apply_kalman_update<3>(dz, H, R_cov);
+}
+
 void ErrorStateKalmanFilter::update_nhc(double r_lat, double r_vert) {
     Vector3 v_b = R_.transpose() * v_;
     std::array<double, 2> dz = {-v_b.y, -v_b.z};

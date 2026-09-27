@@ -167,5 +167,51 @@ class NavigationViewModelTest {
         assertEquals(1, state.gnssTrajectory.size)
         assertEquals(12.5, state.gnssTrajectory.first().enuX, 1e-6)
     }
+
+    @Test
+    fun testSatelliteTrackingAndNavicPreservation() {
+        val satList = listOf(
+            org.isro.idr.ui.state.SatelliteInfo(1, org.isro.idr.ui.state.ConstellationType.GPS, 45f, 120f, 38f, true),
+            org.isro.idr.ui.state.SatelliteInfo(2, org.isro.idr.ui.state.ConstellationType.GPS, 30f, 210f, 32f, true),
+            org.isro.idr.ui.state.SatelliteInfo(3, org.isro.idr.ui.state.ConstellationType.GPS, 15f, 300f, 22f, false),
+            org.isro.idr.ui.state.SatelliteInfo(101, org.isro.idr.ui.state.ConstellationType.NAVIC, 65f, 180f, 42f, true),
+            org.isro.idr.ui.state.SatelliteInfo(102, org.isro.idr.ui.state.ConstellationType.NAVIC, 50f, 90f, 39f, true),
+            org.isro.idr.ui.state.SatelliteInfo(103, org.isro.idr.ui.state.ConstellationType.NAVIC, 20f, 270f, 28f, false)
+        )
+
+        viewModel.onSatelliteStatus(satList)
+
+        var state = viewModel.uiState.value
+        assertEquals(6, state.gnssStatus.totalSatellitesInView)
+        assertEquals(4, state.gnssStatus.totalSatellites)
+        assertEquals(3, state.gnssStatus.navicSatellitesInView)
+        assertEquals(2, state.gnssStatus.navicSatellitesUsed)
+        assertEquals(6, state.gnssStatus.satellites.size)
+
+        // Verify that receiving a GNSS sample DOES NOT wipe the satellite list
+        val sample = GnssSample(
+            timestampNanos = 2_000_000_000L,
+            timeSeconds = 2.0,
+            isValid = true,
+            posEnu = Vector3D(10.0, 20.0, 0.0),
+            velEnu = Vector3D(0.0, 0.0, 0.0),
+            latitudeDeg = 25.43,
+            longitudeDeg = 81.84,
+            altitudeM = 100.0,
+            groundSpeedMps = 10.0,
+            courseDeg = 0.0,
+            horizontalAccuracyMeters = 3.0f,
+            navicSatelliteCount = 2,
+            totalSatelliteCount = 4
+        )
+        viewModel.onGnssSample(sample)
+
+        state = viewModel.uiState.value
+        assertEquals(6, state.gnssStatus.totalSatellitesInView)
+        assertEquals(4, state.gnssStatus.totalSatellites)
+        assertEquals(3, state.gnssStatus.navicSatellitesInView)
+        assertEquals(2, state.gnssStatus.navicSatellitesUsed)
+        assertEquals(6, state.gnssStatus.satellites.size)
+    }
 }
 

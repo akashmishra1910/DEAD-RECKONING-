@@ -30,6 +30,7 @@ public:
     void update_gnss(const Vector3& gnss_pos, double r_gnss = 2.5);
     void update_gnss_velocity(const Vector3& gnss_vel, double r_vel = 0.2);
     void update_ai_velocity(double v_ai, double r_ai = 0.35);
+    void update_ai_velocity_vector(const Vector3& v_ai_b, const Vector3& sigma_v);
     void update_nhc(double r_lat = 0.05, double r_vert = 0.05);
     void update_zupt(double r_zupt = 0.01);
     void update_altitude(double alt_meas, double r_alt = 0.8);

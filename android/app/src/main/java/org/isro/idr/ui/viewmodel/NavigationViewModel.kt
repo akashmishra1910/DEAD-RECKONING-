@@ -605,13 +605,19 @@ class NavigationViewModel(
     }
 
     fun onSatelliteStatus(satellites: List<org.isro.idr.ui.state.SatelliteInfo>) {
+        val totalInView = satellites.size
+        val totalUsed = satellites.count { it.usedInFix }
+        val navicInView = satellites.count { it.constellation == org.isro.idr.ui.state.ConstellationType.NAVIC }
+        val navicUsed = satellites.count { it.constellation == org.isro.idr.ui.state.ConstellationType.NAVIC && it.usedInFix }
+
         _uiState.update { current ->
             current.copy(
                 gnssStatus = current.gnssStatus.copy(
                     satellites = satellites,
-                    totalSatellitesInView = satellites.size,
-                    navicSatellitesInView = satellites.count { it.constellation == org.isro.idr.ui.state.ConstellationType.NAVIC },
-                    navicSatellitesUsed = satellites.count { it.constellation == org.isro.idr.ui.state.ConstellationType.NAVIC && it.usedInFix }
+                    totalSatellites = totalUsed,
+                    totalSatellitesInView = totalInView,
+                    navicSatellitesInView = navicInView,
+                    navicSatellitesUsed = navicUsed
                 )
             )
         }
@@ -639,6 +645,12 @@ class NavigationViewModel(
             _uiState.update { current ->
                 val currentSec = current.telemetry?.timestampSec ?: sample.timeSeconds
                 val age = (currentSec - sample.timeSeconds).coerceAtLeast(0.0)
+                val existingSats = current.gnssStatus.satellites
+                val inViewCount = if (existingSats.isNotEmpty()) existingSats.size else (gnssManager?.totalInViewCount ?: sample.totalSatelliteCount)
+                val usedCount = if (existingSats.isNotEmpty()) existingSats.count { it.usedInFix } else sample.totalSatelliteCount
+                val navicInView = if (existingSats.isNotEmpty()) existingSats.count { it.constellation == org.isro.idr.ui.state.ConstellationType.NAVIC } else (gnssManager?.navicInViewCount ?: sample.navicSatelliteCount)
+                val navicUsed = if (existingSats.isNotEmpty()) existingSats.count { it.constellation == org.isro.idr.ui.state.ConstellationType.NAVIC && it.usedInFix } else (gnssManager?.navicSatCount ?: sample.navicSatelliteCount)
+
                 current.copy(
                     gnssStatus = GnssStatusState(
                         fixValid = true,
@@ -652,29 +664,37 @@ class NavigationViewModel(
                         bearingDeg = sample.courseDeg,
                         accuracyM = sample.horizontalAccuracyMeters.toDouble(),
                         ageSeconds = age,
-                        totalSatellites = sample.totalSatelliteCount,
-                        totalSatellitesInView = gnssManager?.totalInViewCount ?: sample.totalSatelliteCount,
-                        navicSatellitesInView = gnssManager?.navicInViewCount ?: sample.navicSatelliteCount,
-                        navicSatellitesUsed = sample.navicSatelliteCount
+                        totalSatellites = usedCount,
+                        totalSatellitesInView = inViewCount,
+                        navicSatellitesInView = navicInView,
+                        navicSatellitesUsed = navicUsed,
+                        satellites = existingSats
                     ),
                     gnssTrajectory = synchronized(gnssPoints) { gnssPoints.toList() },
-                    enuAnchor = anchor
+                    enuAnchor = anchor ?: current.enuAnchor
                 )
             }
         } else {
             _uiState.update { current ->
+                val existingSats = current.gnssStatus.satellites
+                val inViewCount = if (existingSats.isNotEmpty()) existingSats.size else (gnssManager?.totalInViewCount ?: sample.totalSatelliteCount)
+                val usedCount = if (existingSats.isNotEmpty()) existingSats.count { it.usedInFix } else sample.totalSatelliteCount
+                val navicInView = if (existingSats.isNotEmpty()) existingSats.count { it.constellation == org.isro.idr.ui.state.ConstellationType.NAVIC } else (gnssManager?.navicInViewCount ?: sample.navicSatelliteCount)
+                val navicUsed = if (existingSats.isNotEmpty()) existingSats.count { it.constellation == org.isro.idr.ui.state.ConstellationType.NAVIC && it.usedInFix } else (gnssManager?.navicSatCount ?: sample.navicSatelliteCount)
+
                 current.copy(
                     gnssStatus = current.gnssStatus.copy(
                         fixValid = false,
                         isSearching = gnssManager?.isRunning == true,
                         isPermissionGranted = gnssManager?.isPermissionGranted ?: true,
                         fixState = if (gnssManager?.isRunning == true) "SEARCHING" else "STANDBY",
-                        totalSatellites = sample.totalSatelliteCount,
-                        totalSatellitesInView = gnssManager?.totalInViewCount ?: sample.totalSatelliteCount,
-                        navicSatellitesInView = gnssManager?.navicInViewCount ?: sample.navicSatelliteCount,
-                        navicSatellitesUsed = sample.navicSatelliteCount
+                        totalSatellites = usedCount,
+                        totalSatellitesInView = inViewCount,
+                        navicSatellitesInView = navicInView,
+                        navicSatellitesUsed = navicUsed,
+                        satellites = existingSats
                     ),
-                    enuAnchor = anchor
+                    enuAnchor = anchor ?: current.enuAnchor
                 )
             }
         }

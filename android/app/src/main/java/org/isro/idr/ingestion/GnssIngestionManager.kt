@@ -61,6 +61,20 @@ class GnssIngestionManager(
     val isSearchingFix: Boolean
         get() = isRunning && !isGnssAvailable
 
+    private val providerPollRunnable = object : Runnable {
+        override fun run() {
+            if (isRunning) {
+                val gpsEnabled = locationManager?.isProviderEnabled(LocationManager.GPS_PROVIDER) == true
+                if (gpsEnabled && !isGpsProviderActive) {
+                    android.util.Log.i("IDR_GNSS", "GPS provider detected enabled via polling mid-session")
+                    recheckAndRestartProviders()
+                }
+                mainHandler.postDelayed(this, 1500L)
+            }
+        }
+    }
+    @Volatile private var isGpsProviderActive = false
+
     @SuppressLint("MissingPermission")
     fun start(): Boolean {
         if (isRunning || locationManager == null) return false
@@ -68,18 +82,34 @@ class GnssIngestionManager(
         try {
             isPermissionGranted = true
 
-            // 1. Request updates from GPS Provider on Main Looper
-            if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-                locationManager.requestLocationUpdates(
-                    LocationManager.GPS_PROVIDER,
-                    minUpdateIntervalMs,
-                    minUpdateDistanceM,
-                    this,
-                    Looper.getMainLooper()
-                )
+            // 1. Register broadcast receiver for dynamic system provider changes
+            if (!isReceiverRegistered) {
+                try {
+                    val filter = android.content.IntentFilter(LocationManager.PROVIDERS_CHANGED_ACTION)
+                    context.registerReceiver(providerReceiver, filter)
+                    isReceiverRegistered = true
+                } catch (e: Exception) {
+                    android.util.Log.w("IDR_GNSS", "Could not register PROVIDERS_CHANGED_ACTION receiver", e)
+                }
             }
 
-            // 2. Fallback request from Network Provider for coarse fix while GPS locks
+            // 2. Request updates from GPS Provider on Main Looper if enabled
+            if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+                try {
+                    locationManager.requestLocationUpdates(
+                        LocationManager.GPS_PROVIDER,
+                        minUpdateIntervalMs,
+                        minUpdateDistanceM,
+                        this,
+                        Looper.getMainLooper()
+                    )
+                    isGpsProviderActive = true
+                } catch (e: Exception) {
+                    android.util.Log.w("IDR_GNSS", "Failed to request GPS provider updates", e)
+                }
+            }
+
+            // 3. Fallback request from Network Provider for coarse fix while GPS locks
             if (locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
                 try {
                     locationManager.requestLocationUpdates(
@@ -92,7 +122,7 @@ class GnssIngestionManager(
                 } catch (_: Exception) {}
             }
 
-            // 3. Register GnssStatus callback for satellite tracking and NavIC / IRNSS detection
+            // 4. Register GnssStatus callback for satellite tracking and NavIC / IRNSS detection
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                 gnssStatusCallback = object : GnssStatus.Callback() {
                     override fun onSatelliteStatusChanged(status: GnssStatus) {
@@ -106,15 +136,26 @@ class GnssIngestionManager(
                         for (i in 0 until count) {
                             totalInView++
                             val constTypeInt = status.getConstellationType(i)
-                            val constType = when (constTypeInt) {
-                                GnssStatus.CONSTELLATION_GPS -> org.isro.idr.ui.state.ConstellationType.GPS
-                                GnssStatus.CONSTELLATION_SBAS -> org.isro.idr.ui.state.ConstellationType.GPS
-                                GnssStatus.CONSTELLATION_GLONASS -> org.isro.idr.ui.state.ConstellationType.GLONASS
-                                GnssStatus.CONSTELLATION_QZSS -> org.isro.idr.ui.state.ConstellationType.GPS
-                                GnssStatus.CONSTELLATION_BEIDOU -> org.isro.idr.ui.state.ConstellationType.BEIDOU
-                                GnssStatus.CONSTELLATION_GALILEO -> org.isro.idr.ui.state.ConstellationType.GALILEO
-                                GnssStatus.CONSTELLATION_IRNSS -> org.isro.idr.ui.state.ConstellationType.NAVIC
-                                else -> if (constTypeInt == 7) org.isro.idr.ui.state.ConstellationType.NAVIC else org.isro.idr.ui.state.ConstellationType.GPS
+                            
+                            // Check carrier frequency on API 26+ for NavIC L5 band (~1176.45 MHz)
+                            var isNavicCarrier = false
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && status.hasCarrierFrequencyHz(i)) {
+                                val freqHz = status.getCarrierFrequencyHz(i)
+                                // NavIC L5 is 1176.45 MHz (+/- 2 MHz) or S band 2492.028 MHz
+                                if (freqHz in 1174_000_000f..1178_000_000f && constTypeInt == 7) {
+                                    isNavicCarrier = true
+                                }
+                            }
+
+                            val constType = when {
+                                constTypeInt == GnssStatus.CONSTELLATION_IRNSS || constTypeInt == 7 || isNavicCarrier -> org.isro.idr.ui.state.ConstellationType.NAVIC
+                                constTypeInt == GnssStatus.CONSTELLATION_GPS -> org.isro.idr.ui.state.ConstellationType.GPS
+                                constTypeInt == GnssStatus.CONSTELLATION_SBAS -> org.isro.idr.ui.state.ConstellationType.GPS
+                                constTypeInt == GnssStatus.CONSTELLATION_GLONASS -> org.isro.idr.ui.state.ConstellationType.GLONASS
+                                constTypeInt == GnssStatus.CONSTELLATION_QZSS -> org.isro.idr.ui.state.ConstellationType.GPS
+                                constTypeInt == GnssStatus.CONSTELLATION_BEIDOU -> org.isro.idr.ui.state.ConstellationType.BEIDOU
+                                constTypeInt == GnssStatus.CONSTELLATION_GALILEO -> org.isro.idr.ui.state.ConstellationType.GALILEO
+                                else -> org.isro.idr.ui.state.ConstellationType.GPS
                             }
                             val isNavic = (constType == org.isro.idr.ui.state.ConstellationType.NAVIC)
                             if (isNavic) {
@@ -142,14 +183,17 @@ class GnssIngestionManager(
                         totalInViewCount = totalInView
                         navicSatCount = navicUsed
                         navicInViewCount = navicInView
-                        android.util.Log.d("IDR_GNSS", "GnssStatus: TotalInView=$totalInView, Used=$totalUsed, NavIC_InView=$navicInView, NavIC_Used=$navicUsed")
                         onSatelliteStatusListener?.invoke(satList)
                     }
                 }
-                locationManager.registerGnssStatusCallback(gnssStatusCallback!!, mainHandler)
+                try {
+                    locationManager.registerGnssStatusCallback(gnssStatusCallback!!, mainHandler)
+                } catch (e: Exception) {
+                    android.util.Log.w("IDR_GNSS", "Could not register gnssStatusCallback", e)
+                }
             }
 
-            // 4. Poll last known location for instant anchoring
+            // 5. Poll last known location for instant anchoring
             val lastGps = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
             val lastNet = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
             val bestLast = when {
@@ -162,6 +206,7 @@ class GnssIngestionManager(
             }
 
             isRunning = true
+            mainHandler.postDelayed(providerPollRunnable, 1500L)
             return true
         } catch (e: SecurityException) {
             isPermissionGranted = false
@@ -172,11 +217,21 @@ class GnssIngestionManager(
 
     fun stop() {
         if (!isRunning) return
+        mainHandler.removeCallbacks(providerPollRunnable)
+        if (isReceiverRegistered) {
+            try {
+                context.unregisterReceiver(providerReceiver)
+            } catch (_: Exception) {}
+            isReceiverRegistered = false
+        }
         locationManager?.removeUpdates(this)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && gnssStatusCallback != null) {
-            locationManager?.unregisterGnssStatusCallback(gnssStatusCallback!!)
+            try {
+                locationManager?.unregisterGnssStatusCallback(gnssStatusCallback!!)
+            } catch (_: Exception) {}
             gnssStatusCallback = null
         }
+        isGpsProviderActive = false
         isRunning = false
     }
 
@@ -236,7 +291,7 @@ class GnssIngestionManager(
     private val providerReceiver = object : android.content.BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: android.content.Intent?) {
             if (intent?.action == LocationManager.PROVIDERS_CHANGED_ACTION) {
-                android.util.Log.d("IDR_GNSS", "Location providers changed action received")
+                android.util.Log.i("IDR_GNSS", "Location providers changed action received")
                 recheckAndRestartProviders()
             }
         }
@@ -255,6 +310,7 @@ class GnssIngestionManager(
     override fun onProviderDisabled(provider: String) {
         android.util.Log.w("IDR_GNSS", "GNSS Provider disabled: $provider")
         if (provider == LocationManager.GPS_PROVIDER) {
+            isGpsProviderActive = false
             latestGnssSample = latestGnssSample?.copy(isValid = false)
         }
     }
@@ -265,6 +321,7 @@ class GnssIngestionManager(
         try {
             if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
                 try {
+                    locationManager.removeUpdates(this)
                     locationManager.requestLocationUpdates(
                         LocationManager.GPS_PROVIDER,
                         minUpdateIntervalMs,
@@ -272,19 +329,26 @@ class GnssIngestionManager(
                         this,
                         Looper.getMainLooper()
                     )
-                } catch (_: Exception) {}
+                    isGpsProviderActive = true
+                    android.util.Log.i("IDR_GNSS", "Successfully attached GPS_PROVIDER updates mid-session")
+                } catch (e: Exception) {
+                    android.util.Log.w("IDR_GNSS", "Could not request GPS updates mid-session", e)
+                }
             }
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && gnssStatusCallback != null) {
                 try {
+                    locationManager.unregisterGnssStatusCallback(gnssStatusCallback!!)
                     locationManager.registerGnssStatusCallback(gnssStatusCallback!!, mainHandler)
                 } catch (_: Exception) {}
             }
 
             // Check if fresh last location is available
             val freshGps = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
-            if (freshGps != null) {
-                onLocationChanged(freshGps)
+            val freshNet = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
+            val bestFresh = freshGps ?: freshNet
+            if (bestFresh != null) {
+                onLocationChanged(bestFresh)
             }
         } catch (e: SecurityException) {
             android.util.Log.e("IDR_GNSS", "Security exception re-checking providers", e)

@@ -1,0 +1,12 @@
+Configuration,Speed Source,Median Drift (%),Mean Drift (%),Pass (<10%),Median Along (m),Median Cross (m),10s Median (%),30s Median (%),60s Median (%),120s Median (%),Time (s)
+B0_N7_Baseline,GT CAN (Historical),37.6,47.66,35/158 (22.2%),16.6,28.77,22.92,37.63,63.48,72.64,19.0
+Abl_A_Handover_Only,GT CAN (Historical),35.64,46.08,36/158 (22.8%),16.94,23.74,19.35,36.59,54.35,78.79,20.1
+Abl_B_BoundedSlip_Only,GT CAN (Historical),37.68,47.2,36/158 (22.8%),17.45,30.54,25.31,37.8,62.91,57.32,18.9
+Abl_C_InFlightZARU_Only,GT CAN (Historical),37.6,47.66,35/158 (22.2%),16.6,28.77,22.92,37.63,63.48,72.64,19.0
+Phase16_Full,GT CAN (Historical),30.02,43.72,43/158 (27.2%),16.45,20.51,18.38,45.05,55.08,51.24,20.0
+Abl_D_DynamicConf_Only,GT CAN (Historical),35.78,45.38,38/158 (24.1%),16.81,22.49,19.41,44.91,59.38,66.19,20.2
+Abl_E_LeverArmNHC_Only,GT CAN (Historical),35.01,45.04,38/158 (24.1%),16.6,23.02,19.59,37.64,62.8,65.43,20.4
+Phase17_Full,GT CAN (Historical),31.04,44.16,42/158 (26.6%),15.27,20.88,14.34,45.73,62.86,56.52,20.1
+Auton_B0_N7,Top-45 GBDT (Autonomous),65.81,129.47,4/158 (2.5%),40.34,47.12,51.27,60.4,114.53,106.59,18.7
+Auton_Phase16,Top-45 GBDT (Autonomous),57.0,124.97,5/158 (3.2%),41.57,40.12,45.87,67.59,88.51,87.72,19.8
+Auton_Phase17,Top-45 GBDT (Autonomous),58.16,126.12,5/158 (3.2%),41.63,42.09,45.92,59.17,119.4,95.5,19.6

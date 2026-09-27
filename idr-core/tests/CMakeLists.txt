@@ -62,3 +62,8 @@ add_executable(test_edge_engine test_edge_engine.cpp)
 target_link_libraries(test_edge_engine PRIVATE idr_core)
 add_test(NAME test_edge_engine COMMAND test_edge_engine)
 
+add_executable(test_integrity_manager test_integrity_manager.cpp)
+target_link_libraries(test_integrity_manager PRIVATE idr_core)
+add_test(NAME test_integrity_manager COMMAND test_integrity_manager)
+
+

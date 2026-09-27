@@ -1,0 +1,32 @@
+{
+  "candidate_id": "B2",
+  "decision": "REJECT",
+  "firewall_criteria": {
+    "median_improvement_or_parity": false,
+    "pass_count_maintained": false,
+    "no_catastrophic_worst_case": false,
+    "no_oracle_leakage_verified": true,
+    "strict_causality_verified": true
+  },
+  "b0_baseline": {
+    "median_drift_pct": 35.710359942373955,
+    "mean_drift_pct": 45.863176326324755,
+    "p90_drift_pct": 105.58265840055132,
+    "p95_drift_pct": 133.71104728371688,
+    "pass_count": 36,
+    "pass_rate_pct": 22.78481012658228
+  },
+  "candidate": {
+    "median_drift_pct": 151.4345871926465,
+    "mean_drift_pct": 344.0748551578257,
+    "p90_drift_pct": 882.4391240547844,
+    "p95_drift_pct": 1312.613068047255,
+    "pass_count": 4,
+    "pass_rate_pct": 2.5316455696202533
+  },
+  "delta": {
+    "delta_median_pct": 115.72,
+    "delta_mean_pct": 298.21,
+    "delta_pass_count": -32
+  }
+}

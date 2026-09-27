@@ -171,6 +171,7 @@ private:
     double total_distance_traveled_ = 0.0;
 
     Vector3 last_pos_{0.0, 0.0, 0.0};
+    int steady_straight_ticks_ = 0;
     std::optional<MapMatchResult> last_match_result_ = std::nullopt;
 };
 

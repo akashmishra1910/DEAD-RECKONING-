@@ -33,6 +33,7 @@ public:
     void update_ai_velocity_vector(const Vector3& v_ai_b, const Vector3& sigma_v);
     void update_nhc(double r_lat = 0.05, double r_vert = 0.05);
     void update_zupt(double r_zupt = 0.01);
+    void update_zaru(double gyro_z_meas, double r_zaru = 0.005);
     void update_altitude(double alt_meas, double r_alt = 0.8);
     std::pair<bool, double> update_heading(double heading_meas, double r_yaw = 0.05, std::optional<double> chi2_gate = std::nullopt);
     std::pair<bool, double> update_road_heading(double road_azimuth, double r_road_yaw = 0.087, std::optional<double> chi2_gate = 9.0);

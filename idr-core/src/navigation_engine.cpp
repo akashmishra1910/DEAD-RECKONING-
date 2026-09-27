@@ -215,7 +215,7 @@ NavigationTelemetry SeamlessGNSSDeficitEngine::process_step(
     bool enable_road_constraints
 ) {
     bool is_stationary = (static_cast<bool>(ai_speed) && *ai_speed < 0.2) ||
-                         (gnss_valid && static_cast<bool>(gnss_pos) && eskf_.get_velocity().norm() < 0.2);
+                         (gnss_valid && static_cast<bool>(gnss_vel) && gnss_vel->norm() < 0.2);
 
     alignment_engine_.process_sample(accel_raw_p, gyro_raw_p, is_stationary);
     Vector3 accel_b = alignment_engine_.transform_phone_to_vehicle(accel_raw_p);
@@ -333,6 +333,17 @@ NavigationTelemetry SeamlessGNSSDeficitEngine::process_step(
         }
         if (vib_state.is_engine_idling || (static_cast<bool>(ai_speed) && *ai_speed < 0.2) || is_stationary) {
             eskf_.update_zupt(0.01);
+        }
+
+        // Causal in-flight Kalman ZARU on bg[2]
+        bool is_steady_straight = (std::abs(clean_gyro_b.z) < 0.005 && std::abs(clean_accel_b.y) < 0.15 && eskf_.get_velocity().norm() > 4.0);
+        if (is_steady_straight) {
+            steady_straight_ticks_++;
+            if (steady_straight_ticks_ > 8) {
+                eskf_.update_zaru(clean_gyro_b.z, 0.005);
+            }
+        } else {
+            steady_straight_ticks_ = 0;
         }
         if (enable_map_matching_ && map_matcher_ && enable_road_constraints) {
             double v_mag = eskf_.get_velocity().norm();
@@ -553,6 +564,7 @@ void SeamlessGNSSDeficitEngine::reset() {
     outage_distance_traveled_ = 0.0;
     total_distance_traveled_ = 0.0;
     last_pos_ = Vector3(0.0, 0.0, 0.0);
+    steady_straight_ticks_ = 0;
     last_match_result_ = std::nullopt;
 }
 

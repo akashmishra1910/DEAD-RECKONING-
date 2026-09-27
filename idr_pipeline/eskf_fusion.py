@@ -244,6 +244,28 @@ class ErrorStateKalmanFilter:
         R_cov = np.array([[r_ai**2]])
         self._apply_kalman_update(dz, H, R_cov)
 
+    def update_ai_velocity_vector(
+        self,
+        v_ai_b: np.ndarray,
+        sigma_v: np.ndarray,
+        chi2_gate: Optional[float] = 11.345
+    ) -> Tuple[bool, float]:
+        """
+        Measurement update using 3D AI Velocity Vector [v_x, v_y, v_z]^T in vehicle body frame.
+        Innovation: dz = v_ai_b - R^T @ v^n
+        Measurement Jacobian H: maps [delta_v^n, delta_theta^n] into body frame:
+        H = [0, R^T, R^T @ [v^n]_x, 0, 0]
+        """
+        v_b = self.R.T @ self.v
+        dz = v_ai_b - v_b
+
+        H = np.zeros((3, 15))
+        H[0:3, 3:6] = self.R.T
+        H[0:3, 6:9] = self.R.T @ skew_symmetric(self.v)
+
+        R_cov = np.diag(sigma_v**2)
+        return self._apply_kalman_update(dz, H, R_cov, chi2_gate=chi2_gate)
+
     def update_nhc(self, r_lat: float = 0.05, r_vert: float = 0.05):
         """
         Non-Holonomic Constraints (NHC) measurement update.

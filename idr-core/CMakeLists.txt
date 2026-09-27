@@ -28,6 +28,7 @@ set(IDR_CORE_SOURCES
     src/map_matcher_3d.cpp
     src/speed_calibrator.cpp
     src/longitudinal_sync.cpp
+    src/integrity_manager.cpp
     src/navigation_engine.cpp
     src/c_api.cpp
     src/idrmap_reader.cpp

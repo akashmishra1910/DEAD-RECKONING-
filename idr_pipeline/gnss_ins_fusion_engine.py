@@ -359,7 +359,9 @@ class SeamlessGNSSDeficitEngine:
         ai_speed: Optional[float] = None,
         gnss_vel: Optional[np.ndarray] = None,
         mag_raw_p: Optional[np.ndarray] = None,
-        enable_road_constraints: bool = True
+        enable_road_constraints: bool = True,
+        ai_vel_vector: Optional[np.ndarray] = None,
+        sigma_v: Optional[np.ndarray] = None
     ) -> NavigationTelemetry:
         """
         Executes one complete supervisory navigation cycle.
@@ -465,7 +467,16 @@ class SeamlessGNSSDeficitEngine:
 
         elif self.mode in [NavigationMode.TRANSITION_TO_DR, NavigationMode.DR_ONLY]:
             # Pure Dead Reckoning Mode: zero GNSS ingestion
-            if ai_speed is not None:
+            if ai_vel_vector is not None:
+                eff_vel = ai_vel_vector.copy()
+                if self.speed_calibrator is not None:
+                    eff_vel[0] = self.speed_calibrator.correct_speed(eff_vel[0])
+                if vib_state.is_engine_idling:
+                    eff_vel[0] = 0.0
+                sig = sigma_v if sigma_v is not None else np.array([0.35, 0.05, 0.05])
+                accepted, gamma = self.eskf.update_ai_velocity_vector(eff_vel, sig, chi2_gate=11.345)
+                ai_weight = 1.0 if accepted else 0.2
+            elif ai_speed is not None:
                 # Apply causal speed calibration
                 if self.speed_calibrator is not None:
                     calibrated_speed = self.speed_calibrator.correct_speed(ai_speed)
@@ -480,8 +491,10 @@ class SeamlessGNSSDeficitEngine:
                 self.eskf.update_ai_velocity(eff_speed, r_ai=r_ai_adapt)
                 ai_weight = 1.0
 
-            self.eskf.update_nhc(r_lat=0.05, r_vert=0.05)
-            if vib_state.is_engine_idling or (ai_speed is not None and ai_speed < 0.2):
+            if ai_vel_vector is None:
+                self.eskf.update_nhc(r_lat=0.05, r_vert=0.05)
+            curr_speed_val = ai_vel_vector[0] if ai_vel_vector is not None else ai_speed
+            if vib_state.is_engine_idling or (curr_speed_val is not None and curr_speed_val < 0.2):
                 self.eskf.update_zupt(r_zupt=0.01)
 
             # Causal 3D Map Matching & Road Constraints

@@ -1,0 +1,141 @@
+# CONFIG/EXPERIMENT_CONTRACT_M0_M7.yaml
+# ====================================
+# Formal Traceability & Execution Contract for Ablation Experiments M0 through M7
+# SIH 2026 / ISRO-SAC PS 26168: AI-ML Based Intelligent Dead Reckoning System
+
+contract_metadata:
+  version: "1.0.0"
+  creation_date: "2026-09-27"
+  benchmark_dataset: "IO-VNBD authentic 158 outages"
+  benchmark_regime: "Regime B (Pure Autonomous IMU Dead Reckoning, Zero GT Speed)"
+  model: "gbdt_speed_model_iovnbd_top45.joblib"
+  model_sha256: "dc05b8de795732233082c3c687553d983d358bd4581514c5ffc4bdd9d58ad242"
+  script_runner: "scripts/run_controlled_architectural_ablations.py"
+  historical_output_ledger: "reports/historical_ablation_results_m0_m7.csv"
+  canonical_output_ledger: "BENCHMARK_ABLATION_RESULTS.csv"
+
+experiments:
+  M0:
+    name: "B1/N8 Golden Baseline"
+    description: "Current authoritative production baseline without motion state classification or dynamic uncertainty gating."
+    modules:
+      motion_state_manager: false
+      speed_confidence_scaling: false
+      adaptive_nhc_covariance: false
+      innovation_monitor: false
+      map_confidence_gating: false
+    expected_metrics:
+      median_drift_pct: 54.86
+      mean_drift_pct: 123.14
+      p90_drift_pct: 183.53
+      p95_drift_pct: 229.92
+      pass_count_le_10pct: 9
+
+  M1:
+    name: "B1/N8 + Motion-State Manager"
+    description: "Adds causal motion-state classification (STOPPED, TURNING, ACCEL, BRAKE, STRAIGHT, CRUISING) and anti-creep standstill ZUPT."
+    modules:
+      motion_state_manager: true
+      speed_confidence_scaling: false
+      adaptive_nhc_covariance: false
+      innovation_monitor: false
+      map_confidence_gating: false
+    expected_metrics:
+      median_drift_pct: 54.35
+      mean_drift_pct: 115.18
+      p90_drift_pct: 171.37
+      p95_drift_pct: 203.64
+      pass_count_le_10pct: 10
+
+  M2:
+    name: "B1/N8 + Speed Uncertainty"
+    description: "Evaluates dynamic scaling of speed measurement covariance R_v during turns and accelerations without motion manager."
+    modules:
+      motion_state_manager: false
+      speed_confidence_scaling: true
+      adaptive_nhc_covariance: false
+      innovation_monitor: false
+      map_confidence_gating: false
+    expected_metrics:
+      median_drift_pct: 54.86
+      mean_drift_pct: 123.14
+      p90_drift_pct: 183.53
+      p95_drift_pct: 229.92
+      pass_count_le_10pct: 9
+
+  M3:
+    name: "B1/N8 + Adaptive NHC"
+    description: "Evaluates motion-state-dependent NHC covariance (tightening on straights to 0.09 m^2/s^2, relaxing on turns to 0.25 m^2/s^2)."
+    modules:
+      motion_state_manager: true
+      speed_confidence_scaling: false
+      adaptive_nhc_covariance: true
+      innovation_monitor: false
+      map_confidence_gating: false
+    expected_metrics:
+      median_drift_pct: 54.35
+      mean_drift_pct: 115.03
+      p90_drift_pct: 171.30
+      p95_drift_pct: 203.64
+      pass_count_le_10pct: 9
+
+  M4:
+    name: "B1/N8 + Innovation Monitor"
+    description: "Evaluates gating of longitudinal speed updates when innovation residual exceeds 8.0 m/s."
+    modules:
+      motion_state_manager: false
+      speed_confidence_scaling: false
+      adaptive_nhc_covariance: false
+      innovation_monitor: true
+      map_confidence_gating: false
+    expected_metrics:
+      median_drift_pct: 58.16
+      mean_drift_pct: 120.26
+      p90_drift_pct: 179.29
+      p95_drift_pct: 219.17
+      pass_count_le_10pct: 9
+
+  M5:
+    name: "B1/N8 + Uncertainty-Aware Map"
+    description: "Strict isolation of uncertainty-aware map matching (stricter 25° heading gating during turns, dynamic road heading tightening when P_yaw > 0.01) with motion_state disabled."
+    modules:
+      motion_state_manager: false
+      speed_confidence_scaling: false
+      adaptive_nhc_covariance: false
+      innovation_monitor: false
+      map_confidence_gating: true
+    note_on_historical_run: "In historical runs prior to Part 1 audit, M5 was accidentally executed with motion_state: true, producing identical metrics to M6."
+
+  M6:
+    name: "B1/N8 + MotionState + MapConf"
+    description: "Synergistic combination of Motion-State Manager (anti-creep standstill ZUPT) and Uncertainty-Aware Map Matching."
+    modules:
+      motion_state_manager: true
+      speed_confidence_scaling: false
+      adaptive_nhc_covariance: false
+      innovation_monitor: false
+      map_confidence_gating: true
+    expected_metrics:
+      median_drift_pct: 54.35
+      mean_drift_pct: 115.12
+      p90_drift_pct: 171.37
+      p95_drift_pct: 203.64
+      pass_count_le_10pct: 10
+      median_cross_track_m: 31.11
+
+  M7:
+    name: "B1/N8 + Full Integrated Policy"
+    description: "Combined activation of Motion State, Speed Confidence, Adaptive NHC, Innovation Monitor, and Map Confidence."
+    modules:
+      motion_state_manager: true
+      speed_confidence_scaling: true
+      adaptive_nhc_covariance: true
+      innovation_monitor: true
+      map_confidence_gating: true
+    expected_metrics:
+      median_drift_pct: 54.96
+      mean_drift_pct: 108.38
+      p90_drift_pct: 164.15
+      p95_drift_pct: 203.58
+      pass_count_le_10pct: 12
+    caveat: "Exhibits elevated median yaw error (42.98° vs 36.32° baseline) due to innovation gating rejecting speed transients during turns. Not approved for production promotion until resolved."

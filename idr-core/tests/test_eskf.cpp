@@ -40,18 +40,11 @@ int main() {
     assert(std::abs(eskf.get_position().x - 112.955720) < 1e-4);
     assert(std::abs(eskf.get_covariance().trace() - 6.111362) < 1e-4);
 
-    // Step 2b: Unified 3D Velocity Vector update verification
-    Vector3 v_ai_b(12.5, 0.0, 0.0);
-    Vector3 sigma_v(0.35, 0.05, 0.05);
-    eskf.update_ai_velocity_vector(v_ai_b, sigma_v);
-    std::cout << "  Unified 3D velocity vector pos.x: " << eskf.get_position().x << std::endl;
-    assert(std::isfinite(eskf.get_position().x));
-    assert(std::isfinite(eskf.get_velocity().x));
-
     // Step 3: NHC
     eskf.update_nhc(0.05, 0.05);
     std::cout << "  NHC vel: [" << eskf.get_velocity().x << ", " << eskf.get_velocity().y << ", " << eskf.get_velocity().z << "]" << std::endl;
-    assert(std::isfinite(eskf.get_velocity().x));
+    assert(std::abs(eskf.get_velocity().x - 10.019554) < 1e-4);
+    assert(std::abs(eskf.get_covariance().trace() - 5.271264) < 1e-4);
 
     // Step 4: Heading update
     auto res_hdg = eskf.update_heading(50.0 * DEG_TO_RAD, 0.05, 6.635);
@@ -96,6 +89,16 @@ int main() {
     assert(std::abs(eskf.get_velocity().x - 0.041222) < 1e-4);
     assert(std::abs(eskf.get_velocity().y - 0.008649) < 1e-4);
     std::cout << "  ZUPT update passed." << std::endl;
+
+    // Step 9: 3D Velocity Vector & In-Flight ZARU updates
+    Vector3 v_ai_b(0.0, 0.0, 0.0);
+    Vector3 sigma_v(0.35, 0.05, 0.05);
+    eskf.update_ai_velocity_vector(v_ai_b, sigma_v);
+    assert(std::isfinite(eskf.get_position().x));
+
+    eskf.update_zaru(0.001, 0.005);
+    assert(std::isfinite(eskf.get_gyro_bias().z));
+    std::cout << "  3D Velocity vector and in-flight ZARU passed." << std::endl;
 
     std::cout << "[TEST] All ESKF 15-State Filter Tests PASSED with numerical parity!" << std::endl;
     return 0;

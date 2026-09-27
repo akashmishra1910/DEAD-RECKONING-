@@ -1,0 +1,159 @@
+outage_id,drive_name,duration_s,dist_gt_m,drift_pct,failure_type,primary_cause
+OUT-010s-001_Driver_A_S3b,Driver_A_S3b,10.0,49.942631391760195,42.7566559615708,MODE_D_STANDSTILL_SINGULARITY,Small distance traveled inflated percentage drift
+OUT-010s-002_Driver_A_S3b,Driver_A_S3b,10.0,52.43489611415936,30.83245322513691,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 1.34 m/s causing along-track stretch
+OUT-010s-003_Driver_A_S3b,Driver_A_S3b,10.0,107.70124500623669,17.66838364514366,MODE_MIXED,Combined speed residual and lateral drift
+OUT-010s-004_Driver_A_S3b,Driver_A_S3b,10.0,82.21112000479758,9.010774376969483,PASS,NONE
+OUT-010s-005_Driver_A_S3b,Driver_A_S3b,10.0,102.06079611703827,43.37596259711302,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 4.42 m/s causing along-track stretch
+OUT-010s-006_Driver_A_S3b,Driver_A_S3b,10.0,61.483834170241536,16.90915183004269,MODE_C_SPEED_RESIDUAL,GBDT speed biased by -1.00 m/s causing along-track stretch
+OUT-010s-007_Driver_A_S3b,Driver_A_S3b,10.0,37.05547277990906,119.71909505657365,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 4.13 m/s causing along-track stretch
+OUT-010s-008_Driver_A_S3b,Driver_A_S3b,10.0,61.42928722581847,134.82483885072028,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 92.8 deg yaw error
+OUT-010s-009_Driver_A_S3b,Driver_A_S3b,10.0,63.17518333701059,164.03204739975072,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 90.9 deg yaw error
+OUT-010s-010_Driver_A_S3b,Driver_A_S3b,10.0,71.6076888930522,37.31244226040151,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 2.55 m/s causing along-track stretch
+OUT-010s-011_Driver_A_S3b,Driver_A_S3b,10.0,4.998091944731261,347.2343944260113,MODE_D_STANDSTILL_SINGULARITY,Small distance traveled inflated percentage drift
+OUT-010s-012_Driver_A_S3b,Driver_A_S3b,10.0,60.3097425035113,101.94334860594616,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 67.9 deg yaw error
+OUT-010s-013_Driver_A_S3b,Driver_A_S3b,10.0,75.17999278213952,99.12023396257223,MODE_MIXED,Combined speed residual and lateral drift
+OUT-010s-014_Driver_A_S3b,Driver_A_S3b,10.0,49.469523336240144,111.01533196566422,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 5.63 m/s causing along-track stretch
+OUT-010s-015_Driver_A_S3b,Driver_A_S3b,10.0,1.0,4804.149235613259,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 4.88 m/s causing along-track stretch
+OUT-010s-016_Driver_A_S3b,Driver_A_S3b,10.0,1.0,1986.869821924115,MODE_D_STANDSTILL_SINGULARITY,Small distance traveled inflated percentage drift
+OUT-010s-017_Driver_A_S3b,Driver_A_S3b,10.0,31.24358722402564,206.41951031362785,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 2.51 m/s causing along-track stretch
+OUT-010s-018_Driver_A_S3b,Driver_A_S3b,10.0,17.230682778774693,226.952689665694,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 3.96 m/s causing along-track stretch
+OUT-010s-019_Driver_A_S3b,Driver_A_S3b,10.0,57.763401947789816,138.53691262291844,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 83.0 deg yaw error
+OUT-010s-020_Driver_A_S3b,Driver_A_S3b,10.0,71.37674555971397,45.94234234502732,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 3.18 m/s causing along-track stretch
+OUT-010s-021_Driver_A_S3b,Driver_A_S3b,10.0,21.29624027900205,206.58935013873233,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 95.7 deg yaw error
+OUT-010s-022_Driver_A_S3b,Driver_A_S3b,10.0,73.72444278209036,10.621607986747025,MODE_MIXED,Combined speed residual and lateral drift
+OUT-010s-023_Driver_A_S3b,Driver_A_S3b,10.0,68.00750583730495,79.89164006624789,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 5.35 m/s causing along-track stretch
+OUT-010s-024_Driver_A_S3b,Driver_A_S3b,10.0,43.2539402803077,48.629893268069715,MODE_D_STANDSTILL_SINGULARITY,Small distance traveled inflated percentage drift
+OUT-010s-025_Driver_A_S3b,Driver_A_S3b,10.0,75.32927611549373,27.766691414796934,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 2.17 m/s causing along-track stretch
+OUT-010s-026_Driver_A_S3b,Driver_A_S3b,10.0,63.179094448102,153.21404659056262,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 65.8 deg yaw error
+OUT-010s-027_Driver_A_S3b,Driver_A_S3b,10.0,47.73096583614581,45.80969243294229,MODE_D_STANDSTILL_SINGULARITY,Small distance traveled inflated percentage drift
+OUT-010s-028_Driver_A_S3b,Driver_A_S3b,10.0,82.11237528256308,28.860550612613363,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 2.24 m/s causing along-track stretch
+OUT-010s-029_Driver_A_S3b,Driver_A_S3b,10.0,86.90977833839762,33.65665606472286,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 2.63 m/s causing along-track stretch
+OUT-010s-030_Driver_A_S3b,Driver_A_S3b,10.0,88.01267444959335,27.963695945304025,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 2.36 m/s causing along-track stretch
+OUT-010s-031_Driver_A_S3b,Driver_A_S3b,10.0,83.53072917153122,2.801092369544809,PASS,NONE
+OUT-010s-032_Driver_A_S3b,Driver_A_S3b,10.0,74.4498302821148,70.95837954813666,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 34.4 deg yaw error
+OUT-010s-033_Driver_A_S3b,Driver_A_S3b,10.0,33.48952472416949,121.49277464164308,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 1.88 m/s causing along-track stretch
+OUT-010s-034_Driver_A_S3b,Driver_A_S3b,10.0,19.02497055667295,130.47897212448734,MODE_D_STANDSTILL_SINGULARITY,Small distance traveled inflated percentage drift
+OUT-010s-035_Driver_A_S3b,Driver_A_S3b,10.0,46.93235833605653,112.30395034923943,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 46.3 deg yaw error
+OUT-010s-036_Driver_A_S3b,Driver_A_S3b,10.0,64.07203139261095,90.39998814095614,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 43.3 deg yaw error
+OUT-010s-037_Driver_A_S3b,Driver_A_S3b,10.0,68.50558333731055,109.74749160138619,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 70.0 deg yaw error
+OUT-010s-038_Driver_A_S3b,Driver_A_S3b,10.0,76.11128555998879,34.022760496762665,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 2.49 m/s causing along-track stretch
+OUT-010s-039_Driver_A_S3b,Driver_A_S3b,10.0,36.83800416881485,226.447610852278,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 89.3 deg yaw error
+OUT-010s-040_Driver_A_S3b,Driver_A_S3b,10.0,68.55540694842895,51.67112629662605,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 3.46 m/s causing along-track stretch
+OUT-010s-041_Driver_A_S3b,Driver_A_S3b,10.0,30.265411668455602,45.29098237866344,MODE_D_STANDSTILL_SINGULARITY,Small distance traveled inflated percentage drift
+OUT-010s-042_Driver_A_S3b,Driver_A_S3b,10.0,50.97572194740637,58.1992551534525,MODE_MIXED,Combined speed residual and lateral drift
+OUT-010s-043_Driver_A_S3b,Driver_A_S3b,10.0,53.91933778091084,171.31165592764143,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 2.99 m/s causing along-track stretch
+OUT-010s-044_Driver_A_S3b,Driver_A_S3b,10.0,69.29553611514415,33.9971563192383,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 4.16 m/s causing along-track stretch
+OUT-010s-045_Driver_A_S3b,Driver_A_S3b,10.0,36.006065835429986,66.29717892245402,MODE_D_STANDSTILL_SINGULARITY,Small distance traveled inflated percentage drift
+OUT-010s-046_Driver_A_S3b,Driver_A_S3b,10.0,51.94083055859353,41.847429345647974,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 81.7 deg yaw error
+OUT-010s-047_Driver_A_S3b,Driver_A_S3b,10.0,67.56213028170086,47.3034085149036,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 3.14 m/s causing along-track stretch
+OUT-010s-048_Driver_A_S3b,Driver_A_S3b,10.0,52.007068058592296,56.897856846717666,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 4.24 m/s causing along-track stretch
+OUT-010s-049_Driver_A_S3b,Driver_A_S3b,10.0,20.899232779009807,9.046300292175316,PASS,NONE
+OUT-010s-050_Driver_A_S3b,Driver_A_S3b,10.0,16.62656277873413,402.2533025004937,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 93.3 deg yaw error
+OUT-010s-051_Driver_A_S3b,Driver_A_S3b,10.0,73.88883861541427,32.643195819625944,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 2.28 m/s causing along-track stretch
+OUT-010s-052_Driver_A_S3b,Driver_A_S3b,10.0,28.29528861274158,275.87131206281043,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 87.0 deg yaw error
+OUT-010s-053_Driver_A_S3b,Driver_A_S3b,10.0,77.19158472671349,58.36774568522721,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 4.42 m/s causing along-track stretch
+OUT-010s-054_Driver_A_S3b,Driver_A_S3b,10.0,30.534691112917375,147.0465342369238,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 81.8 deg yaw error
+OUT-010s-055_Driver_A_S3b,Driver_A_S3b,10.0,102.00008528369895,18.801382085788397,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 1.82 m/s causing along-track stretch
+OUT-010s-056_Vta01b,Vta01b,10.0,180.87447833070806,37.46288053537086,MODE_C_SPEED_RESIDUAL,GBDT speed biased by -4.07 m/s causing along-track stretch
+OUT-010s-057_Vta01b,Vta01b,10.0,200.75756555262063,31.99102787344989,MODE_C_SPEED_RESIDUAL,GBDT speed biased by -6.22 m/s causing along-track stretch
+OUT-010s-058_Vta01b,Vta01b,10.0,114.87547583163058,40.685914217518224,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 41.7 deg yaw error
+OUT-010s-059_Vta01b,Vta01b,10.0,132.46836999807672,8.18210365531621,PASS,NONE
+OUT-010s-060_Vta01b,Vta01b,10.0,129.44453194256204,10.844893715715804,MODE_MIXED,Combined speed residual and lateral drift
+OUT-010s-061_Vta01b,Vta01b,10.0,132.7905516647191,7.652418682566077,PASS,NONE
+OUT-010s-062_Vta01b,Vta01b,10.0,105.78027610957513,35.558646252416224,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 3.52 m/s causing along-track stretch
+OUT-010s-063_Vta01b,Vta01b,10.0,91.59256277641684,34.8871685737635,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 2.88 m/s causing along-track stretch
+OUT-010s-064_Vta01b,Vta01b,10.0,42.0072377771716,101.21390440321886,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 4.08 m/s causing along-track stretch
+OUT-010s-065_Vta04,Vta04,10.0,117.76941194272993,17.153117433686933,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 2.15 m/s causing along-track stretch
+OUT-010s-066_Vta04,Vta04,10.0,112.73338638724778,25.58560527006348,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 2.98 m/s causing along-track stretch
+OUT-010s-067_Vta04,Vta04,10.0,108.09670360954335,31.646457247389375,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 3.23 m/s causing along-track stretch
+OUT-010s-068_Vta04,Vta04,10.0,124.38673166486247,24.477738854331875,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 3.52 m/s causing along-track stretch
+OUT-010s-069_Vta04,Vta04,10.0,129.55035472032958,14.955058014009055,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 2.34 m/s causing along-track stretch
+OUT-010s-070_Vta04,Vta04,10.0,117.7663911093882,13.992207122085604,MODE_C_SPEED_RESIDUAL,GBDT speed biased by -1.19 m/s causing along-track stretch
+OUT-010s-071_Vta04,Vta04,10.0,67.79010944346179,102.69861708497474,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 7.63 m/s causing along-track stretch
+OUT-010s-072_Vta04,Vta04,10.0,108.38243110953358,35.93786319492247,MODE_MIXED,Combined speed residual and lateral drift
+OUT-010s-073_Vta04,Vta04,10.0,110.90108583172564,16.107862274646063,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 1.65 m/s causing along-track stretch
+OUT-010s-074_Vta04,Vta04,10.0,118.27927277605951,15.90783546516629,MODE_MIXED,Combined speed residual and lateral drift
+OUT-010s-075_Vta04,Vta04,10.0,109.92975388728809,23.79696849251849,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 36.5 deg yaw error
+OUT-010s-076_Vta04,Vta04,10.0,111.09247888727096,10.359485535629256,MODE_MIXED,Combined speed residual and lateral drift
+OUT-010s-077_Vta04,Vta04,10.0,106.41443666511654,37.14663806549503,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 36.5 deg yaw error
+OUT-010s-078_Vta04,Vta04,10.0,125.49006277594758,21.45637793314817,MODE_MIXED,Combined speed residual and lateral drift
+OUT-010s-079_Vta04,Vta04,10.0,134.66039860915248,30.759621161628253,MODE_MIXED,Combined speed residual and lateral drift
+OUT-010s-080_Vta03,Vta03,10.0,30.72699361066647,10.83986905690027,MODE_D_STANDSTILL_SINGULARITY,Small distance traveled inflated percentage drift
+OUT-010s-081_Vta03,Vta03,10.0,12.99450416647912,176.13372627790662,MODE_D_STANDSTILL_SINGULARITY,Small distance traveled inflated percentage drift
+OUT-030s-082_Driver_A_S3b,Driver_A_S3b,30.0,183.0415633439206,65.68771087962892,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 149.6 deg yaw error
+OUT-030s-083_Driver_A_S3b,Driver_A_S3b,30.0,294.8671333504652,41.01726264119737,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 1.60 m/s causing along-track stretch
+OUT-030s-084_Driver_A_S3b,Driver_A_S3b,30.0,184.28407417737532,45.780482508123676,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 2.55 m/s causing along-track stretch
+OUT-030s-085_Driver_A_S3b,Driver_A_S3b,30.0,188.33174306652018,131.0088846508999,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 68.7 deg yaw error
+OUT-030s-086_Driver_A_S3b,Driver_A_S3b,30.0,145.00077278620904,125.14360532055775,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 31.5 deg yaw error
+OUT-030s-087_Driver_A_S3b,Driver_A_S3b,30.0,155.58288917570485,222.57819379315168,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 5.24 m/s causing along-track stretch
+OUT-030s-088_Driver_A_S3b,Driver_A_S3b,30.0,95.52664556114473,204.52164919253008,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 4.84 m/s causing along-track stretch
+OUT-030s-089_Driver_A_S3b,Driver_A_S3b,30.0,41.226894724617374,265.6509380314681,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 100.4 deg yaw error
+OUT-030s-090_Driver_A_S3b,Driver_A_S3b,30.0,135.18762861896974,98.67445195412186,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 73.6 deg yaw error
+OUT-030s-091_Driver_A_S3b,Driver_A_S3b,30.0,163.08340834282473,106.06027186562781,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 3.36 m/s causing along-track stretch
+OUT-030s-092_Driver_A_S3b,Driver_A_S3b,30.0,204.49316195637283,104.48591598873074,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 69.8 deg yaw error
+OUT-030s-093_Driver_A_S3b,Driver_A_S3b,30.0,168.57501445424705,146.15242197144804,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 2.44 m/s causing along-track stretch
+OUT-030s-094_Driver_A_S3b,Driver_A_S3b,30.0,184.0691713995904,83.80876286914491,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 3.53 m/s causing along-track stretch
+OUT-030s-095_Driver_A_S3b,Driver_A_S3b,30.0,264.86899251544713,34.21130279177791,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 35.4 deg yaw error
+OUT-030s-096_Driver_A_S3b,Driver_A_S3b,30.0,241.2619527918458,28.910228879427574,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 60.9 deg yaw error
+OUT-030s-097_Driver_A_S3b,Driver_A_S3b,30.0,122.08467639600967,75.90706596089589,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 1.63 m/s causing along-track stretch
+OUT-030s-098_Driver_A_S3b,Driver_A_S3b,30.0,136.95582556351488,131.54271031456446,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 97.5 deg yaw error
+OUT-030s-099_Driver_A_S3b,Driver_A_S3b,30.0,227.3690850132342,58.16847533500766,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 46.5 deg yaw error
+OUT-030s-100_Driver_A_S3b,Driver_A_S3b,30.0,176.2875433436058,155.9323998577625,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 114.3 deg yaw error
+OUT-030s-101_Driver_A_S3b,Driver_A_S3b,30.0,130.42526361871597,53.38044357727342,MODE_MIXED,Combined speed residual and lateral drift
+OUT-030s-102_Driver_A_S3b,Driver_A_S3b,30.0,184.6173477885128,173.19685620462434,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 2.74 m/s causing along-track stretch
+OUT-030s-103_Driver_A_S3b,Driver_A_S3b,30.0,141.94317417491823,132.6828614101251,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 2.47 m/s causing along-track stretch
+OUT-030s-104_Driver_A_S3b,Driver_A_S3b,30.0,168.05244834313172,49.44913167011282,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 3.15 m/s causing along-track stretch
+OUT-030s-105_Driver_A_S3b,Driver_A_S3b,30.0,90.2433833385821,176.44404655396195,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 114.7 deg yaw error
+OUT-030s-106_Driver_A_S3b,Driver_A_S3b,30.0,169.24435584318513,153.55850021955436,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 4.12 m/s causing along-track stretch
+OUT-030s-107_Driver_A_S3b,Driver_A_S3b,30.0,196.8620044559131,134.72420331441302,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 4.02 m/s causing along-track stretch
+OUT-030s-108_Vta01b,Vta01b,30.0,474.2643166597521,50.8746072719192,MODE_C_SPEED_RESIDUAL,GBDT speed biased by -2.12 m/s causing along-track stretch
+OUT-030s-109_Vta01b,Vta01b,30.0,392.9544541609229,24.601579244295806,MODE_E_TURNING_DYNAMICS,Complex maneuvering / roundabouts without sufficient heading constraint
+OUT-030s-110_Vta01b,Vta01b,30.0,366.79844055021215,11.930232267925781,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 1.55 m/s causing along-track stretch
+OUT-030s-111_Vta01b,Vta01b,30.0,253.727573051858,42.18281201635345,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 3.27 m/s causing along-track stretch
+OUT-030s-112_Vta04,Vta04,30.0,338.5995019395211,33.118164225211224,MODE_E_TURNING_DYNAMICS,Complex maneuvering / roundabouts without sufficient heading constraint
+OUT-030s-113_Vta04,Vta04,30.0,356.30107277259873,30.18258673149813,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 3.01 m/s causing along-track stretch
+OUT-030s-114_Vta04,Vta04,30.0,371.7034774945802,41.18330274478156,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 37.9 deg yaw error
+OUT-030s-115_Vta04,Vta04,30.0,301.4933402733833,30.27947372445736,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 3.07 m/s causing along-track stretch
+OUT-030s-116_Vta04,Vta04,30.0,287.073626384721,45.54017293415532,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 4.14 m/s causing along-track stretch
+OUT-030s-117_Vta04,Vta04,30.0,340.05751555061386,39.70577341844484,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 46.3 deg yaw error
+OUT-030s-118_Vta04,Vta04,30.0,339.3015055506186,59.46929212107362,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 71.1 deg yaw error
+OUT-030s-119_Vta04,Vta04,30.0,330.1906483285219,33.29969078331997,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 2.02 m/s causing along-track stretch
+OUT-030s-120_Vta04,Vta04,30.0,366.5648980502166,62.149436282735216,MODE_E_TURNING_DYNAMICS,Complex maneuvering / roundabouts without sufficient heading constraint
+OUT-060s-121_Driver_A_S3b,Driver_A_S3b,60.0,476.04983502764105,88.66915528659665,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 1.98 m/s causing along-track stretch
+OUT-060s-122_Driver_A_S3b,Driver_A_S3b,60.0,419.2615428021758,103.76858270656355,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 59.8 deg yaw error
+OUT-060s-123_Driver_A_S3b,Driver_A_S3b,60.0,301.97997862869875,131.88144685175246,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 160.2 deg yaw error
+OUT-060s-124_Driver_A_S3b,Driver_A_S3b,60.0,324.7725377966934,116.83852897429658,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 4.12 m/s causing along-track stretch
+OUT-060s-125_Driver_A_S3b,Driver_A_S3b,60.0,178.50453251039644,188.38230861482742,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 4.49 m/s causing along-track stretch
+OUT-060s-126_Driver_A_S3b,Driver_A_S3b,60.0,190.42897306660984,239.10032272175164,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 2.93 m/s causing along-track stretch
+OUT-060s-127_Driver_A_S3b,Driver_A_S3b,60.0,337.8321361307678,55.15717753497466,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 156.9 deg yaw error
+OUT-060s-128_Driver_A_S3b,Driver_A_S3b,60.0,356.0251247429451,175.73411946525047,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 3.14 m/s causing along-track stretch
+OUT-060s-129_Driver_A_S3b,Driver_A_S3b,60.0,374.11725224402176,180.06387997508205,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 70.5 deg yaw error
+OUT-060s-130_Driver_A_S3b,Driver_A_S3b,60.0,456.9413028044179,142.85050527546412,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 1.98 m/s causing along-track stretch
+OUT-060s-131_Driver_A_S3b,Driver_A_S3b,60.0,335.80000001957353,59.083543836655736,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 130.1 deg yaw error
+OUT-060s-132_Driver_A_S3b,Driver_A_S3b,60.0,295.1810408505029,209.2164654975791,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 2.63 m/s causing along-track stretch
+OUT-060s-133_Driver_A_S3b,Driver_A_S3b,60.0,391.2588272449999,110.13791304202354,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 90.7 deg yaw error
+OUT-060s-134_Driver_A_S3b,Driver_A_S3b,60.0,292.8249500170568,125.77768894616392,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 2.93 m/s causing along-track stretch
+OUT-060s-135_Driver_A_S3b,Driver_A_S3b,60.0,311.2745414069834,190.071999150902,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 2.86 m/s causing along-track stretch
+OUT-060s-136_Driver_A_S3b,Driver_A_S3b,60.0,287.67118085009827,185.456190911887,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 2.48 m/s causing along-track stretch
+OUT-060s-137_Driver_A_S3b,Driver_A_S3b,60.0,237.9944158472005,151.81007279232335,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 139.8 deg yaw error
+OUT-060s-138_Driver_A_S3b,Driver_A_S3b,60.0,349.2319930758676,144.25329033767557,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 4.02 m/s causing along-track stretch
+OUT-060s-139_Vta01b,Vta01b,60.0,841.0627572099643,76.26836593173925,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 54.2 deg yaw error
+OUT-060s-140_Vta01b,Vta01b,60.0,646.6820272127809,20.768564446563307,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 1.84 m/s causing along-track stretch
+OUT-060s-141_Vta04,Vta04,60.0,710.3029794341014,61.450740042026176,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 65.5 deg yaw error
+OUT-060s-142_Vta04,Vta04,60.0,655.9727216571189,76.25678064574053,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 52.2 deg yaw error
+OUT-060s-143_Vta04,Vta04,60.0,652.6696449904983,29.181476478579917,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 2.58 m/s causing along-track stretch
+OUT-060s-144_Vta04,Vta04,60.0,626.3751319353396,80.00900141575927,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 108.6 deg yaw error
+OUT-060s-145_Vta04,Vta04,60.0,682.1070908234083,20.02633189200775,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 82.6 deg yaw error
+OUT-120s-146_Driver_A_S3b,Driver_A_S3b,120.0,834.5155558818501,70.51471593196645,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 120.5 deg yaw error
+OUT-120s-147_Driver_A_S3b,Driver_A_S3b,120.0,677.8580628172499,27.638136270231207,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 3.55 m/s causing along-track stretch
+OUT-120s-148_Driver_A_S3b,Driver_A_S3b,120.0,444.7560880814285,41.88251501785858,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 3.72 m/s causing along-track stretch
+OUT-120s-149_Driver_A_S3b,Driver_A_S3b,120.0,475.92408558327736,101.6632157062056,MODE_B_LONG_OUTAGE_ACCUMULATION,Open-loop inertial drift accumulation over 120s
+OUT-120s-150_Driver_A_S3b,Driver_A_S3b,120.0,660.5364683718138,82.76309858439832,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 155.8 deg yaw error
+OUT-120s-151_Driver_A_S3b,Driver_A_S3b,120.0,838.2218783821882,89.3870725061478,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 73.1 deg yaw error
+OUT-120s-152_Driver_A_S3b,Driver_A_S3b,120.0,745.6161564323183,71.33156073116271,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 2.41 m/s causing along-track stretch
+OUT-120s-153_Driver_A_S3b,Driver_A_S3b,120.0,712.6709050415162,116.93119874835301,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 35.0 deg yaw error
+OUT-120s-154_Driver_A_S3b,Driver_A_S3b,120.0,655.426720871488,109.69282958083208,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 3.01 m/s causing along-track stretch
+OUT-120s-155_Driver_A_S3b,Driver_A_S3b,120.0,641.3512142040155,22.269234204817558,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 2.83 m/s causing along-track stretch
+OUT-120s-156_Driver_A_S3b,Driver_A_S3b,120.0,564.9985558662117,134.2110652761236,MODE_C_SPEED_RESIDUAL,GBDT speed biased by 3.12 m/s causing along-track stretch
+OUT-120s-157_Vta04,Vta04,120.0,1336.678111369441,81.63759372454416,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 33.2 deg yaw error
+OUT-120s-158_Vta04,Vta04,120.0,1364.6435074801363,87.35232111313289,MODE_A_HEADING_OBSERVABILITY,Unobserved gyro drift accumulated 96.8 deg yaw error

@@ -8,9 +8,9 @@
 #include <algorithm>
 
 #if defined(__has_include)
-  #if __has_include(<optional>) && __cplusplus >= 201703L
+  #if __has_include(<optional>)
     #include <optional>
-  #else
+  #elif __has_include(<experimental/optional>)
     #include <experimental/optional>
     namespace std {
         using experimental::optional;
@@ -20,13 +20,7 @@
     }
   #endif
 #else
-  #include <experimental/optional>
-  namespace std {
-      using experimental::optional;
-      using experimental::nullopt;
-      using experimental::nullopt_t;
-      using experimental::make_optional;
-  }
+  #include <optional>
 #endif
 
 #if __cplusplus < 201703L

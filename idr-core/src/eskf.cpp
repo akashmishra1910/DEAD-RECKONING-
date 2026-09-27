@@ -451,6 +451,15 @@ void ErrorStateKalmanFilter::update_zupt(double r_zupt) {
     apply_kalman_update<3>(dz, H, R_cov);
 }
 
+void ErrorStateKalmanFilter::update_zaru(double gyro_z_meas, double r_zaru) {
+    std::array<double, 1> dz = {gyro_z_meas - bg_.z};
+    std::array<std::array<double, 15>, 1> H{};
+    H[0][14] = 1.0;
+    std::array<std::array<double, 1>, 1> R_cov{};
+    R_cov[0][0] = r_zaru * r_zaru;
+    apply_kalman_update<1>(dz, H, R_cov);
+}
+
 void ErrorStateKalmanFilter::update_altitude(double alt_meas, double r_alt) {
     std::array<double, 1> dz = {alt_meas - p_.z};
     std::array<std::array<double, 15>, 1> H{};

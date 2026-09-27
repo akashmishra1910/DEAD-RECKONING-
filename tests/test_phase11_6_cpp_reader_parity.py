@@ -43,7 +43,7 @@ class TestPhase116CppReaderParity(unittest.TestCase):
         include_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "idr-core", "include"))
 
         cmd = [
-            "g++", "-std=c++14", "-O3", "-Wall", "-Wextra",
+            "g++", "-std=c++17", "-O3", "-Wall", "-Wextra",
             f"-I{include_dir}",
             src_path, test_path,
             "-o", cls.exe_path

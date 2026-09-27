@@ -1,0 +1,386 @@
+{
+  "benchmark_regime": "Regime B: Pure Autonomous IMU Dead Reckoning (Zero CAN/GT Speed)",
+  "total_outages": 158,
+  "production_baseline_B0": {
+    "median_drift_pct": 60.102055767170285,
+    "mean_drift_pct": 128.74664421730748,
+    "p90_drift_pct": 180.7943064075519,
+    "p95_drift_pct": 236.49501014900517,
+    "pass_count": 5,
+    "pass_rate_pct": 3.1645569620253164,
+    "median_along_track_m": 41.30989222962178,
+    "median_cross_track_m": 45.863557003361336,
+    "duration_breakdown": {
+      "10s": {
+        "median_drift_pct": 54.59481630620048,
+        "pass_count": 4,
+        "count": 81
+      },
+      "30s": {
+        "median_drift_pct": 60.39730894346462,
+        "pass_count": 1,
+        "count": 39
+      },
+      "60s": {
+        "median_drift_pct": 105.2173628804165,
+        "pass_count": 0,
+        "count": 25
+      },
+      "120s": {
+        "median_drift_pct": 97.20716333609451,
+        "pass_count": 0,
+        "count": 13
+      }
+    },
+    "geometry_breakdown": {
+      "straight": {
+        "median_drift_pct": 0.0,
+        "pass_count": 0
+      },
+      "curved": {
+        "median_drift_pct": 60.102055767170285,
+        "pass_count": 5
+      }
+    },
+    "motion_breakdown": {
+      "cruising": {
+        "median_drift_pct": 56.339744485623356
+      },
+      "turning": {
+        "median_drift_pct": 59.80680259087594
+      },
+      "stop_and_go": {
+        "median_drift_pct": 116.76907613183812
+      },
+      "low_speed": {
+        "median_drift_pct": 125.83588017747834
+      },
+      "vibration": {
+        "median_drift_pct": 119.70050711714748
+      }
+    },
+    "worst_10_outages": [
+      {
+        "outage_id": "OUT-010s-015_Driver_A_S3b",
+        "drive": "Driver_A_S3b",
+        "duration_s": 10.0,
+        "distance_m": 1.0,
+        "drift_pct": 4802.372295260726,
+        "along_err_m": 47.96783404413542,
+        "cross_err_m": 2.3162174645443177,
+        "final_err_m": 48.02372295260726,
+        "pass_10pct": false,
+        "regime": "standstill",
+        "is_straight": false
+      },
+      {
+        "outage_id": "OUT-010s-016_Driver_A_S3b",
+        "drive": "Driver_A_S3b",
+        "duration_s": 10.0,
+        "distance_m": 1.0,
+        "drift_pct": 1971.7873025374765,
+        "along_err_m": 19.711458203365883,
+        "cross_err_m": 0.5029235943577417,
+        "final_err_m": 19.717873025374764,
+        "pass_10pct": false,
+        "regime": "standstill",
+        "is_straight": false
+      },
+      {
+        "outage_id": "OUT-010s-050_Driver_A_S3b",
+        "drive": "Driver_A_S3b",
+        "duration_s": 10.0,
+        "distance_m": 16.62656277873413,
+        "drift_pct": 428.558923545878,
+        "along_err_m": 41.17957938263613,
+        "cross_err_m": 58.150347331539045,
+        "final_err_m": 71.2546184672226,
+        "pass_10pct": false,
+        "regime": "stop_and_go",
+        "is_straight": false
+      },
+      {
+        "outage_id": "OUT-010s-011_Driver_A_S3b",
+        "drive": "Driver_A_S3b",
+        "duration_s": 10.0,
+        "distance_m": 4.998091944731261,
+        "drift_pct": 355.587848017803,
+        "along_err_m": 17.72946382163938,
+        "cross_err_m": 1.2376158863205093,
+        "final_err_m": 17.772607588221053,
+        "pass_10pct": false,
+        "regime": "stop_and_go",
+        "is_straight": false
+      },
+      {
+        "outage_id": "OUT-030s-089_Driver_A_S3b",
+        "drive": "Driver_A_S3b",
+        "duration_s": 30.0,
+        "distance_m": 41.226894724617374,
+        "drift_pct": 261.0378453661802,
+        "along_err_m": 46.43824515928597,
+        "cross_err_m": 97.08285002222118,
+        "final_err_m": 107.61779770052459,
+        "pass_10pct": false,
+        "regime": "stop_and_go",
+        "is_straight": false
+      },
+      {
+        "outage_id": "OUT-010s-052_Driver_A_S3b",
+        "drive": "Driver_A_S3b",
+        "duration_s": 10.0,
+        "distance_m": 28.29528861274158,
+        "drift_pct": 257.7753433250858,
+        "along_err_m": 9.727134150520815,
+        "cross_err_m": 72.28675650756357,
+        "final_err_m": 72.93827736631852,
+        "pass_10pct": false,
+        "regime": "turning",
+        "is_straight": false
+      },
+      {
+        "outage_id": "OUT-030s-087_Driver_A_S3b",
+        "drive": "Driver_A_S3b",
+        "duration_s": 30.0,
+        "distance_m": 155.58288917570485,
+        "drift_pct": 246.3635518232269,
+        "along_err_m": 364.56245823729876,
+        "cross_err_m": 118.37544138867602,
+        "final_err_m": 383.29953180246133,
+        "pass_10pct": false,
+        "regime": "stop_and_go",
+        "is_straight": false
+      },
+      {
+        "outage_id": "OUT-010s-018_Driver_A_S3b",
+        "drive": "Driver_A_S3b",
+        "duration_s": 10.0,
+        "distance_m": 17.230682778774693,
+        "drift_pct": 237.9912029800983,
+        "along_err_m": 33.660535333243686,
+        "cross_err_m": 23.421873837781728,
+        "final_err_m": 41.00750922689052,
+        "pass_10pct": false,
+        "regime": "stop_and_go",
+        "is_straight": false
+      },
+      {
+        "outage_id": "OUT-060s-126_Driver_A_S3b",
+        "drive": "Driver_A_S3b",
+        "duration_s": 60.0,
+        "distance_m": 190.42897306660984,
+        "drift_pct": 236.23097611998872,
+        "along_err_m": 441.0355664718343,
+        "cross_err_m": 88.62646696505753,
+        "final_err_m": 449.85222189052286,
+        "pass_10pct": false,
+        "regime": "stop_and_go",
+        "is_straight": false
+      },
+      {
+        "outage_id": "OUT-010s-021_Driver_A_S3b",
+        "drive": "Driver_A_S3b",
+        "duration_s": 10.0,
+        "distance_m": 21.29624027900205,
+        "drift_pct": 234.15680255544777,
+        "along_err_m": 34.24467170692513,
+        "cross_err_m": 36.24885910869569,
+        "final_err_m": 49.86659530183657,
+        "pass_10pct": false,
+        "regime": "stop_and_go",
+        "is_straight": false
+      }
+    ]
+  },
+  "promoted_candidate_B1_N8": {
+    "median_drift_pct": 54.858500630333594,
+    "mean_drift_pct": 123.13931918469945,
+    "p90_drift_pct": 183.53440376424797,
+    "p95_drift_pct": 229.91951520819325,
+    "pass_count": 9,
+    "pass_rate_pct": 5.69620253164557,
+    "median_along_track_m": 37.10207963992747,
+    "median_cross_track_m": 41.53341040784799,
+    "duration_breakdown": {
+      "10s": {
+        "median_drift_pct": 40.91871610239997,
+        "pass_count": 7,
+        "count": 81
+      },
+      "30s": {
+        "median_drift_pct": 66.25015749884672,
+        "pass_count": 1,
+        "count": 39
+      },
+      "60s": {
+        "median_drift_pct": 88.50701273185868,
+        "pass_count": 1,
+        "count": 25
+      },
+      "120s": {
+        "median_drift_pct": 81.89108776429637,
+        "pass_count": 0,
+        "count": 13
+      }
+    },
+    "geometry_breakdown": {
+      "straight": {
+        "median_drift_pct": 0.0,
+        "pass_count": 0
+      },
+      "curved": {
+        "median_drift_pct": 54.858500630333594,
+        "pass_count": 9
+      }
+    },
+    "motion_breakdown": {
+      "cruising": {
+        "median_drift_pct": 45.527888623015514
+      },
+      "turning": {
+        "median_drift_pct": 51.2218005719155
+      },
+      "stop_and_go": {
+        "median_drift_pct": 103.7180031993765
+      },
+      "low_speed": {
+        "median_drift_pct": 132.5633073768397
+      },
+      "vibration": {
+        "median_drift_pct": 88.34994348080792
+      }
+    },
+    "worst_10_outages": [
+      {
+        "outage_id": "OUT-010s-015_Driver_A_S3b",
+        "drive": "Driver_A_S3b",
+        "duration_s": 10.0,
+        "distance_m": 1.0,
+        "drift_pct": 4801.133908453882,
+        "along_err_m": 47.97370901078379,
+        "cross_err_m": 1.9005063638957385,
+        "final_err_m": 48.011339084538825,
+        "pass_10pct": false,
+        "regime": "standstill",
+        "is_straight": false
+      },
+      {
+        "outage_id": "OUT-010s-016_Driver_A_S3b",
+        "drive": "Driver_A_S3b",
+        "duration_s": 10.0,
+        "distance_m": 1.0,
+        "drift_pct": 1975.3460210555752,
+        "along_err_m": 19.749025609147367,
+        "cross_err_m": 0.4185424461756426,
+        "final_err_m": 19.75346021055575,
+        "pass_10pct": false,
+        "regime": "standstill",
+        "is_straight": false
+      },
+      {
+        "outage_id": "OUT-010s-050_Driver_A_S3b",
+        "drive": "Driver_A_S3b",
+        "duration_s": 10.0,
+        "distance_m": 16.62656277873413,
+        "drift_pct": 397.01339697420167,
+        "along_err_m": 14.482525113239682,
+        "cross_err_m": 64.40135513234438,
+        "final_err_m": 66.00968168790058,
+        "pass_10pct": false,
+        "regime": "stop_and_go",
+        "is_straight": false
+      },
+      {
+        "outage_id": "OUT-010s-011_Driver_A_S3b",
+        "drive": "Driver_A_S3b",
+        "duration_s": 10.0,
+        "distance_m": 4.998091944731261,
+        "drift_pct": 353.3315222654481,
+        "along_err_m": 17.614569038254743,
+        "cross_err_m": 1.2636087036383863,
+        "final_err_m": 17.6598343525457,
+        "pass_10pct": false,
+        "regime": "stop_and_go",
+        "is_straight": false
+      },
+      {
+        "outage_id": "OUT-010s-052_Driver_A_S3b",
+        "drive": "Driver_A_S3b",
+        "duration_s": 10.0,
+        "distance_m": 28.29528861274158,
+        "drift_pct": 265.93482304783913,
+        "along_err_m": 6.2581187409050045,
+        "cross_err_m": 74.98633760224733,
+        "final_err_m": 75.24702570316968,
+        "pass_10pct": false,
+        "regime": "turning",
+        "is_straight": false
+      },
+      {
+        "outage_id": "OUT-030s-089_Driver_A_S3b",
+        "drive": "Driver_A_S3b",
+        "duration_s": 30.0,
+        "distance_m": 41.226894724617374,
+        "drift_pct": 262.33539702222475,
+        "along_err_m": 48.076111691068036,
+        "cross_err_m": 96.8798338767938,
+        "final_err_m": 108.15273795575963,
+        "pass_10pct": false,
+        "regime": "stop_and_go",
+        "is_straight": false
+      },
+      {
+        "outage_id": "OUT-010s-018_Driver_A_S3b",
+        "drive": "Driver_A_S3b",
+        "duration_s": 10.0,
+        "distance_m": 17.230682778774693,
+        "drift_pct": 237.69242636994062,
+        "along_err_m": 33.68205844249697,
+        "cross_err_m": 23.30054005226375,
+        "final_err_m": 40.956027976977076,
+        "pass_10pct": false,
+        "regime": "stop_and_go",
+        "is_straight": false
+      },
+      {
+        "outage_id": "OUT-060s-126_Driver_A_S3b",
+        "drive": "Driver_A_S3b",
+        "duration_s": 60.0,
+        "distance_m": 190.42897306660984,
+        "drift_pct": 236.3513371175722,
+        "along_err_m": 440.9158437881684,
+        "cross_err_m": 90.36872810008067,
+        "final_err_m": 450.0814241021938,
+        "pass_10pct": false,
+        "regime": "stop_and_go",
+        "is_straight": false
+      },
+      {
+        "outage_id": "OUT-030s-087_Driver_A_S3b",
+        "drive": "Driver_A_S3b",
+        "duration_s": 30.0,
+        "distance_m": 155.58288917570485,
+        "drift_pct": 228.78448781242042,
+        "along_err_m": 355.651427007046,
+        "cross_err_m": 14.564357076363251,
+        "final_err_m": 355.94951612440207,
+        "pass_10pct": false,
+        "regime": "stop_and_go",
+        "is_straight": false
+      },
+      {
+        "outage_id": "OUT-060s-132_Driver_A_S3b",
+        "drive": "Driver_A_S3b",
+        "duration_s": 60.0,
+        "distance_m": 295.1810408505029,
+        "drift_pct": 212.13104849292154,
+        "along_err_m": 624.6773716399506,
+        "cross_err_m": 43.21860580106727,
+        "final_err_m": 626.1706369084908,
+        "pass_10pct": false,
+        "regime": "turning",
+        "is_straight": false
+      }
+    ]
+  }
+}

@@ -1,0 +1,141 @@
+{
+  "benchmark_name": "IO-VNBD 158-Outage Authentic Naturalistic Driving Benchmark",
+  "baseline_version": "B0 (N7 Production Frozen Baseline)",
+  "model_checkpoint": "models/production/gbdt_speed_model_iovnbd_top45.joblib",
+  "evaluation_engine": "idr-core C++17 Reference / idr_pipeline Python Reference",
+  "total_outages": 158,
+  "median_drift_pct": 35.710359942373955,
+  "mean_drift_pct": 45.863176326324755,
+  "p90_drift_pct": 105.58265840055132,
+  "p95_drift_pct": 133.71104728371688,
+  "pass_count_under_10pct": 36,
+  "pass_rate_pct": 22.78481012658228,
+  "duration_breakdown": {
+    "10s": {
+      "count": 81,
+      "median_drift_pct": 20.101633742739285,
+      "mean_drift_pct": 32.77240968746884,
+      "pass_count": 27,
+      "pass_rate_pct": 33.33333333333333
+    },
+    "30s": {
+      "count": 39,
+      "median_drift_pct": 36.238616087858425,
+      "mean_drift_pct": 53.35808425583244,
+      "pass_count": 6,
+      "pass_rate_pct": 15.384615384615385
+    },
+    "60s": {
+      "count": 25,
+      "median_drift_pct": 59.35012737113989,
+      "mean_drift_pct": 68.26738455357216,
+      "pass_count": 2,
+      "pass_rate_pct": 8.0
+    },
+    "120s": {
+      "count": 13,
+      "median_drift_pct": 51.24221410236592,
+      "mean_drift_pct": 61.85898269673574,
+      "pass_count": 1,
+      "pass_rate_pct": 7.6923076923076925
+    }
+  },
+  "motion_slices": {
+    "straight": {
+      "count": 12,
+      "median_drift_pct": 29.80783388775103,
+      "mean_drift_pct": 43.250740204274585,
+      "pass_count": 4,
+      "pass_rate_pct": 33.33333333333333
+    },
+    "curved": {
+      "count": 146,
+      "median_drift_pct": 35.710359942373955,
+      "mean_drift_pct": 46.07789710347955,
+      "pass_count": 32,
+      "pass_rate_pct": 21.91780821917808
+    }
+  },
+  "worst_10_outages": [
+    {
+      "outage_id": "OUT-030s-102_Driver_A_S3b",
+      "drive_name": "Driver_A_S3b",
+      "duration_s": 30.0,
+      "distance_m": 184.6173477885128,
+      "drift_pct": 173.19663026888747,
+      "is_curve": true
+    },
+    {
+      "outage_id": "OUT-060s-126_Driver_A_S3b",
+      "drive_name": "Driver_A_S3b",
+      "duration_s": 60.0,
+      "distance_m": 190.42897306660984,
+      "drift_pct": 156.7291338755385,
+      "is_curve": true
+    },
+    {
+      "outage_id": "OUT-060s-135_Driver_A_S3b",
+      "drive_name": "Driver_A_S3b",
+      "duration_s": 60.0,
+      "distance_m": 311.2745414069834,
+      "drift_pct": 155.78826223885213,
+      "is_curve": true
+    },
+    {
+      "outage_id": "OUT-010s-017_Driver_A_S3b",
+      "drive_name": "Driver_A_S3b",
+      "duration_s": 10.0,
+      "distance_m": 31.24358722402564,
+      "drift_pct": 154.34517503347635,
+      "is_curve": true
+    },
+    {
+      "outage_id": "OUT-060s-132_Driver_A_S3b",
+      "drive_name": "Driver_A_S3b",
+      "duration_s": 60.0,
+      "distance_m": 295.1810408505029,
+      "drift_pct": 144.55048676704416,
+      "is_curve": true
+    },
+    {
+      "outage_id": "OUT-030s-089_Driver_A_S3b",
+      "drive_name": "Driver_A_S3b",
+      "duration_s": 30.0,
+      "distance_m": 41.226894724617374,
+      "drift_pct": 140.82477997881767,
+      "is_curve": true
+    },
+    {
+      "outage_id": "OUT-060s-129_Driver_A_S3b",
+      "drive_name": "Driver_A_S3b",
+      "duration_s": 60.0,
+      "distance_m": 374.11725224402176,
+      "drift_pct": 140.23008305281095,
+      "is_curve": true
+    },
+    {
+      "outage_id": "OUT-060s-136_Driver_A_S3b",
+      "drive_name": "Driver_A_S3b",
+      "duration_s": 60.0,
+      "distance_m": 287.67118085009827,
+      "drift_pct": 134.46082697600264,
+      "is_curve": true
+    },
+    {
+      "outage_id": "OUT-030s-092_Driver_A_S3b",
+      "drive_name": "Driver_A_S3b",
+      "duration_s": 30.0,
+      "distance_m": 204.49316195637283,
+      "drift_pct": 133.57873322037233,
+      "is_curve": true
+    },
+    {
+      "outage_id": "OUT-030s-087_Driver_A_S3b",
+      "drive_name": "Driver_A_S3b",
+      "duration_s": 30.0,
+      "distance_m": 155.58288917570485,
+      "drift_pct": 127.2058589825902,
+      "is_curve": true
+    }
+  ]
+}

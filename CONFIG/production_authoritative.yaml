@@ -1,0 +1,118 @@
+# CONFIG/production_authoritative.yaml
+# ===================================
+# Authoritative Production System Configuration for SIH PS 26168
+# AI-ML Based Intelligent Dead Reckoning System for Seamless Navigation
+
+pipeline_metadata:
+  system_name: "ISRO-IDR Production Dead Reckoning Engine"
+  architecture_version: "B1/N8"
+  git_commit_hash: "af1b68fb451b0587500aa1ba15ad433221cf8239"
+  release_date: "2026-09-27"
+  target_hardware: "Commodity Android Smartphone (ARM64/x86_64) + Edge Embedded C++"
+
+causality_policy:
+  strict_temporal_causality: true
+  allow_future_samples: false
+  allow_future_gnss: false
+  allow_offline_smoothing: false
+  allow_rts_smoothing: false
+  allow_centered_windows: false
+  prohibit_gt_speed_in_inference: true
+  prohibit_can_speed_in_inference: true
+  prohibit_obd_speed_in_inference: true
+
+model:
+  name: "Production Top-45 Huber GBDT Speed Regressor"
+  framework: "scikit-learn / Transpiled Static C++ Decision Tables"
+  checkpoint_path: "models/production/gbdt_speed_model_iovnbd_top45.joblib"
+  checksum_sha256: "dc05b8de795732233082c3c687553d983d358bd4581514c5ffc4bdd9d58ad242"
+  n_estimators: 120
+  max_depth: 5
+  learning_rate: 0.08
+  loss: "huber"
+  huber_alpha: 0.9
+  leaf_clamp_min_mps: 0.0
+  leaf_clamp_max_mps: 35.0
+
+features:
+  feature_count: 45
+  base_feature_count: 57
+  window_size_samples: 10
+  window_duration_seconds: 1.0
+  sampling_rate_hz: 10.0
+  stride_samples: 1
+  include_jerk: true
+  include_frequency: false
+  normalization: "StandardScaler"
+
+calibration:
+  in_vehicle_alignment:
+    method: "gravity_leveling_and_pca"
+    min_calibration_samples: 100
+    max_calibration_samples: 150
+    stationary_variance_threshold: 0.015
+  vibration_filter:
+    filter_order: 4
+    low_cutoff_hz: 0.5
+    high_cutoff_hz: 20.0
+    idle_band_hz: [20.0, 30.0]
+
+eskf:
+  state_dimension: 15
+  states: ["pos_e", "pos_n", "pos_u", "vel_e", "vel_n", "vel_u", "roll", "pitch", "yaw", "ba_x", "ba_y", "ba_z", "bg_x", "bg_y", "bg_z"]
+  nominal_dt: 0.10
+  accel_noise_sigma: 0.15
+  gyro_noise_sigma: 0.008
+  baro_noise_sigma: 0.80
+  initial_covariance:
+    pos_var: 1.0e-2
+    vel_var: 1.0e-2
+    att_var: 1.0e-4
+    ba_var: 1.0e-2
+    bg_var: 1.0e-4
+
+nhc:
+  r_zero_mps: 0.05
+  r_zero_var: 0.0025
+  r_max_mps: 0.40
+  r_max_var: 0.16
+  alpha_omega: 25.0
+  alpha_centripetal: 12.0
+  alpha_lateral_accel: 5.0
+  smoothing_beta: 0.70
+  r_vert_mps: 0.05
+
+zupt:
+  speed_threshold_mps: 0.20
+  engine_idle_override: true
+  r_zupt_mps: 0.01
+
+zaru:
+  enabled: true
+  yaw_rate_threshold_rad_s: 0.005
+  lat_accel_threshold_mps2: 0.15
+  forward_speed_threshold_mps: 4.0
+  min_consecutive_ticks: 8
+  r_zaru_rad_s: 0.005
+
+gnss_handover:
+  enabled: true
+  pre_outage_window_seconds: 3.0
+  doppler_velocity_variance: 0.1225
+  course_heading_variance: 0.08
+  warm_start_states: ["ba", "bg", "P"]
+
+map_matching:
+  enabled: true
+  graph_type: "offline_topological_multilevel_osm"
+  elevation_barrier_meters: 4.0
+  search_radius_meters: 75.0
+  candidate_beam_width: 3
+  heading_innovation_gate: 25.0
+  r_road_heading_min_rad: 0.050
+  r_road_heading_max_rad: 0.087
+
+benchmark:
+  outage_catalog: "158 authentic IO-VNBD outages"
+  duration_buckets: [10, 30, 60, 120]
+  authoritative_metric: "Median Relative Endpoint Drift (%)"

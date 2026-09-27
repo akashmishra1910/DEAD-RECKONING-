@@ -65,7 +65,7 @@ class TestPhase118OfflineNavigation(unittest.TestCase):
             test_path
         ]
 
-        cmd = ["g++", "-std=c++14", "-O2", f"-I{include_dir}"] + src_files + ["-o", cls.exe_path]
+        cmd = ["g++", "-std=c++17", "-O2", f"-I{include_dir}"] + src_files + ["-o", cls.exe_path]
         res = subprocess.run(cmd, capture_output=True, text=True)
         if res.returncode != 0:
             raise RuntimeError(f"C++ build failed:\n{res.stderr}")

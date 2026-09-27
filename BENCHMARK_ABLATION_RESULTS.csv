@@ -1,0 +1,9 @@
+experiment_id,name,median_drift_pct,mean_drift_pct,p25_drift_pct,p75_drift_pct,p90_drift_pct,p95_drift_pct,pass_count_le_10pct,median_along_track_m,median_cross_track_m,median_yaw_err_deg,runtime_s
+M0,B1/N8 Golden Baseline,54.86,123.14,27.91,124.4,183.53,229.92,9,37.1,38.04,36.32,19.84
+M1,B1/N8 + Motion-State Manager,54.35,115.18,28.11,118.67,171.37,203.64,10,38.03,32.69,37.51,21.11
+M2,B1/N8 + Speed Uncertainty,54.86,123.14,27.91,124.4,183.53,229.92,9,37.1,38.04,36.32,19.88
+M3,B1/N8 + Adaptive NHC,54.35,115.03,27.64,118.37,171.3,203.64,9,38.0,31.29,37.58,21.1
+M4,B1/N8 + Innovation Monitor,58.16,120.26,27.66,123.33,179.29,219.17,9,36.52,32.76,37.49,20.17
+M5,B1/N8 + Uncertainty-Aware Map,54.86,123.13,27.87,124.4,183.53,230.2,9,37.1,38.04,36.32,20.17
+M6,B1/N8 + MotionState + MapConf,54.35,115.12,28.07,118.67,171.37,203.64,10,38.17,31.11,37.51,21.48
+M7,B1/N8 + Full Integrated Policy,54.96,108.38,28.08,115.25,164.15,203.58,12,35.81,30.9,42.98,20.95

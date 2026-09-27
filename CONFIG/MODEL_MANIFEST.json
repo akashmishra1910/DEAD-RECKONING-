@@ -1,0 +1,54 @@
+{
+  "manifest_version": "1.1.0",
+  "document_id": "MANIFEST-MODEL-B1-N8-01",
+  "model_identity": {
+    "model_name": "Production Top-45 Huber GBDT Speed Regressor",
+    "architecture": "GradientBoostingRegressor",
+    "framework": "scikit-learn / Transpiled C++17 Branchless Decision Tables",
+    "primary_artifact_path": "models/production/gbdt_speed_model_iovnbd_top45.joblib",
+    "primary_artifact_sha256": "dc05b8de795732233082c3c687553d983d358bd4581514c5ffc4bdd9d58ad242",
+    "cpp_transpiled_header": "idr-core/include/idr/gbdt_model.hpp",
+    "cpp_transpiled_source": "idr-core/src/gbdt_model.cpp",
+    "release_date": "2026-09-27"
+  },
+  "hyperparameters": {
+    "n_estimators": 120,
+    "max_depth": 5,
+    "learning_rate": 0.08,
+    "loss": "huber",
+    "alpha": 0.9,
+    "min_samples_split": 2,
+    "min_samples_leaf": 1,
+    "random_state": 42
+  },
+  "feature_specification": {
+    "total_feature_count": 45,
+    "base_feature_count": 57,
+    "feature_order_sha256": "4c0e6e515e0e7b718626f02ff821cebcd7b29133d995ecfca5421894f847eec3",
+    "indices": [
+      5, 16, 32, 49, 52, 7, 15, 55, 20, 11, 53, 37, 56, 1, 25, 18, 33, 40, 38,
+      13, 43, 19, 24, 17, 41, 47, 22, 50, 46, 0, 12, 8, 3, 36, 29, 35, 21, 44,
+      23, 34, 14, 2, 28, 51, 48
+    ],
+    "window_size_samples": 10,
+    "sampling_frequency_hz": 10.0,
+    "window_duration_seconds": 1.0,
+    "stride_samples": 1,
+    "include_jerk_features": true,
+    "include_frequency_features": false,
+    "output_clamping_mps": [0.0, 35.0]
+  },
+  "preprocessing": {
+    "normalization_type": "StandardScaler",
+    "centering": true,
+    "scaling": true,
+    "missing_value_policy": "zero_imputation",
+    "outlier_handling": "huber_loss_robust"
+  },
+  "verification": {
+    "parity_test_vectors": 5101,
+    "max_absolute_error_mps": 0.0,
+    "mean_absolute_error_mps": 0.0,
+    "gate_status": "BIT_FOR_BIT_IDENTICAL_PARITY"
+  }
+}

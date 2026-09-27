@@ -1,0 +1,94 @@
+# GOLDEN AUTONOMOUS NAVIGATION CONFIGURATION
+# SIH 2026 / ISRO-SAC PS 26168: AI-ML Based Intelligent Dead Reckoning System
+# Single Source of Truth for Python, C++17 Core Engine, and Android App
+
+version: "2.1.0-promoted-m6"
+timestamp: "2026-09-27T18:48:00+05:30"
+regime: "Regime B (Pure Autonomous IMU Dead Reckoning, Zero GT Speed)"
+
+model:
+  name: "gbdt_speed_model_iovnbd_top45"
+  file: "models/production/gbdt_speed_model_iovnbd_top45.joblib"
+  sha256: "dc05b8de795732233082c3c687553d983d358bd4581514c5ffc4bdd9d58ad242"
+  architecture: "LightGBM Regressor (transpiled C++ decision tables)"
+  trees: 120
+  max_depth: 5
+  learning_rate: 0.08
+  loss: "Huber (alpha=0.9)"
+  window_duration_s: 1.0
+  window_samples: 10
+  feature_count: 45
+  speed_clamp_min_mps: 0.0
+  speed_clamp_max_mps: 35.0
+
+sensors:
+  sampling_rate_hz: 10.0
+  edge_sampling_rate_hz: 200.0
+  dt: 0.10
+  accel_noise_density: 0.15      # m/s^2 / sqrt(Hz)
+  gyro_noise_density: 0.008      # rad/s / sqrt(Hz)
+  baro_noise_std_m: 0.80
+
+motion_state_manager:
+  enabled: true
+  history_window_samples: 10     # 1.0s retrospective buffer
+  standstill_accel_var_max: 0.05  # m^2/s^4
+  standstill_omega_mean_max: 0.03 # rad/s
+  standstill_speed_threshold: 0.50 # m/s
+  standstill_override_zupt: true
+  turn_omega_mean_threshold: 0.06 # rad/s
+  turn_omega_peak_threshold: 0.08 # rad/s
+  straight_omega_mean_max: 0.02   # rad/s
+  straight_accel_lat_max: 0.20    # m/s^2
+
+handover:
+  pre_outage_window_s: 3.0
+  gnss_doppler_enabled: true
+  bias_convergence_samples: 30
+
+eskf:
+  state_dimension: 15
+  initial_pos_cov: 4.0           # (2.0 m)^2
+  initial_vel_cov: 0.04          # (0.2 m/s)^2
+  initial_att_cov: 0.0004        # (0.02 rad)^2
+  initial_ba_cov: 0.01           # (0.1 m/s^2)^2
+  initial_bg_cov: 0.0001         # (0.01 rad/s)^2
+
+nhc:
+  type: "bounded_slip_adaptive"
+  r0_lat: 0.0025                 # (0.05 m/s)^2
+  r_max_lat: 0.16                # (0.40 m/s)^2
+  r_vert: 0.0025                 # (0.05 m/s)^2
+  smoothing_beta: 0.70
+  turn_slip_scale: 25.0
+  centripetal_scale: 12.0
+  lateral_accel_scale: 5.0
+
+zupt:
+  enabled: true
+  r_zupt: 0.0001                 # (0.01 m/s)^2
+  ai_speed_threshold_mps: 0.20
+  motion_state_anti_creep: true
+
+zaru:
+  enabled: true
+  type: "in_flight_kalman"
+  straight_omega_threshold: 0.005 # rad/s
+  straight_accel_lat_threshold: 0.15 # m/s^2
+  straight_speed_min_mps: 4.0
+  min_straight_ticks: 8
+  r_zaru: 0.000025               # (0.005 rad/s)^2
+
+map_matching:
+  enabled: true
+  type: "causal_3d_hmm_viterbi"
+  elevation_barrier_threshold_m: 4.0
+  search_radius_m: 75.0
+  candidate_limit: 3
+  sigma_distance_m: 10.0
+  sigma_heading_rad: 0.35
+  turn_heading_gate_deg: 25.0
+  normal_heading_gate_deg: 45.0
+  r_road_yaw_normal: 0.050
+  r_road_yaw_high_p: 0.035
+  p_yaw_threshold: 0.010

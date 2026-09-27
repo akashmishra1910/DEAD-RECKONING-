@@ -467,7 +467,7 @@ fun RealGeographicMapCanvas(
                     .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
                 Text(
-                    text = if (isDrActive) String.format("Drift: %.1f%% (PS <10%%)", liveDriftPercentage.coerceIn(0.5, 9.9)) else "Drift: 0.0% (LOCKED)",
+                    text = if (isDrActive) String.format("Est. Uncertainty: %.1f%% (PS <10%% Bound)", liveDriftPercentage.coerceIn(0.5, 9.9)) else "GNSS Lock: 0.0% Uncertainty",
                     color = if (isDrActive) Color(0xFFFFAB40) else Color(0xFF18D47B),
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,

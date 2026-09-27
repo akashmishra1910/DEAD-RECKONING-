@@ -128,4 +128,30 @@ class OfflineNavigationModulesTest {
         val offLine = OfflineRoadRouter.isOffRoute(25.4400, 81.8300, waypoints, thresholdM = 30.0)
         assertTrue("Point 500m away must be off-route", offLine)
     }
+
+    @Test
+    fun testOneWayRestrictionRouting() {
+        val onewayEdge = RoadEdgeGeometry(
+            edgeId = 10,
+            osmWayId = 201L,
+            name = "One Way Express",
+            roadClass = "motorway",
+            layer = 0,
+            isBridge = false,
+            isTunnel = false,
+            isOneway = true,
+            maxspeedKmh = 80,
+            lengthM = 1000f,
+            pointsWgs84 = listOf(Pair(25.4100, 81.8100), Pair(25.4200, 81.8100))
+        )
+        val graph = RoadMapGraph(
+            mapName = "oneway_map",
+            minLat = 25.40, minLon = 81.80, maxLat = 25.50, maxLon = 81.90,
+            nodeCount = 2, edgeCount = 1, edges = listOf(onewayEdge)
+        )
+
+        val forwardPlan = OfflineRoadRouter.route(25.4100, 81.8100, 25.4200, 81.8100, "North End", graph)
+        assertNotNull(forwardPlan)
+        assertTrue(forwardPlan.waypoints.size >= 2)
+    }
 }

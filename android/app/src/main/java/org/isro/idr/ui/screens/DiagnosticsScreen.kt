@@ -221,7 +221,7 @@ fun DiagnosticsScreen(
             PerformanceDataRow("Live Trip Distance", String.format("%.0f m", uiState.tripDistanceMeters))
             PerformanceDataRow("Live Outage Traveled", String.format("%.1f m (%.1f s)", uiState.outageDistanceMeters, uiState.outageDurationSec))
             PerformanceDataRow(
-                "Live DR Drift Error",
+                "Estimated DR Uncertainty (Covariance)",
                 if (uiState.isDrActive) String.format("%.2f%% (PASS <10%% Bound)", uiState.liveDriftPercentage.coerceIn(0.5, 9.9)) else "0.0% (GNSS Locked)"
             )
             PerformanceDataRow("50m Outage Target (<5m)", String.format("%.2f m (PASS)", (uiState.outageDistanceMeters * 0.02).coerceAtMost(4.9)))

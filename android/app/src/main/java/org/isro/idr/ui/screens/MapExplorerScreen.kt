@@ -44,28 +44,11 @@ import org.isro.idr.ui.map.RealGeographicMapCanvas
 import org.isro.idr.ui.state.MapStyleType
 import org.isro.idr.ui.state.NavigationUiState
 
-data class SearchPoiResult(
-    val title: String,
-    val subtitle: String,
-    val lat: Double,
-    val lon: Double,
-    val category: String = "Place"
-)
-
-private val PopularPois = listOf(
-    SearchPoiResult("Sangam Confluence", "Prayagraj, Uttar Pradesh", 25.4290, 81.8840, "Landmark"),
-    SearchPoiResult("Civil Lines Market", "Prayagraj, Uttar Pradesh", 25.4520, 81.8340, "Commercial"),
-    SearchPoiResult("Naini Bridge (New Yamuna Bridge)", "Prayagraj, Uttar Pradesh", 25.4260, 81.8540, "Bridge"),
-    SearchPoiResult("Prayagraj Junction Railway Station", "Leader Road, Prayagraj", 25.4450, 81.8260, "Transit"),
-    SearchPoiResult("ISRO Headquarters", "Antariksh Bhavan, New BEL Road, Bengaluru", 13.0334, 77.5645, "Aerospace"),
-    SearchPoiResult("Space Applications Centre (SAC / ISRO)", "Ahmedabad, Gujarat", 23.0225, 72.5167, "Aerospace"),
-    SearchPoiResult("India Gate", "Rajpath, New Delhi", 28.6129, 77.2295, "Monument"),
-    SearchPoiResult("Marine Drive", "South Mumbai, Maharashtra", 18.9438, 72.8233, "Corridor"),
-    SearchPoiResult("Hitec City Cyber Towers", "Hyderabad, Telangana", 17.4504, 78.3808, "Tech Park")
-)
+import org.isro.idr.map.OfflineSearchEngine
+import org.isro.idr.map.SearchPoiResult
 
 /**
- * Screen 6: Map Explorer & Google Maps-Style Route Trip Planner.
+ * Screen 6: Map Explorer & Offline-First Turn-by-Turn Route Trip Planner.
  */
 @Composable
 fun MapExplorerScreen(
@@ -91,15 +74,11 @@ fun MapExplorerScreen(
     var selectedStart by remember { mutableStateOf<SearchPoiResult?>(null) }
     var isSearchActive by remember { mutableStateOf(false) }
 
-    val filteredPois = remember(searchQuery) {
-        if (searchQuery.isBlank()) {
-            PopularPois
-        } else {
-            PopularPois.filter {
-                it.title.contains(searchQuery, ignoreCase = true) ||
-                it.subtitle.contains(searchQuery, ignoreCase = true)
-            }
-        }
+    val currentLat = if (uiState.gnssStatus.fixValid && uiState.gnssStatus.latitude != 0.0) uiState.gnssStatus.latitude else (uiState.roadMapGraph?.centerLat ?: 25.4331)
+    val currentLon = if (uiState.gnssStatus.fixValid && uiState.gnssStatus.longitude != 0.0) uiState.gnssStatus.longitude else (uiState.roadMapGraph?.centerLon ?: 81.8148)
+
+    val filteredPois = remember(searchQuery, uiState.roadMapGraph, currentLat, currentLon) {
+        OfflineSearchEngine.search(searchQuery, currentLat, currentLon, uiState.roadMapGraph)
     }
 
     Box(

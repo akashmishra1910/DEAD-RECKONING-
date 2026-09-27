@@ -233,10 +233,62 @@ class GnssIngestionManager(
         onGnssSampleListener?.invoke(sample)
     }
 
-    override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
-    override fun onProviderEnabled(provider: String) {}
+    private val providerReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: android.content.Intent?) {
+            if (intent?.action == LocationManager.PROVIDERS_CHANGED_ACTION) {
+                android.util.Log.d("IDR_GNSS", "Location providers changed action received")
+                recheckAndRestartProviders()
+            }
+        }
+    }
+    private var isReceiverRegistered = false
+
+    override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {
+        android.util.Log.d("IDR_GNSS", "Provider status changed: $provider -> status $status")
+    }
+
+    override fun onProviderEnabled(provider: String) {
+        android.util.Log.i("IDR_GNSS", "GNSS Provider enabled mid-session: $provider")
+        recheckAndRestartProviders()
+    }
+
     override fun onProviderDisabled(provider: String) {
-        latestGnssSample = null
+        android.util.Log.w("IDR_GNSS", "GNSS Provider disabled: $provider")
+        if (provider == LocationManager.GPS_PROVIDER) {
+            latestGnssSample = latestGnssSample?.copy(isValid = false)
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    fun recheckAndRestartProviders() {
+        if (!isRunning || locationManager == null) return
+        try {
+            if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+                try {
+                    locationManager.requestLocationUpdates(
+                        LocationManager.GPS_PROVIDER,
+                        minUpdateIntervalMs,
+                        minUpdateDistanceM,
+                        this,
+                        Looper.getMainLooper()
+                    )
+                } catch (_: Exception) {}
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && gnssStatusCallback != null) {
+                try {
+                    locationManager.registerGnssStatusCallback(gnssStatusCallback!!, mainHandler)
+                } catch (_: Exception) {}
+            }
+
+            // Check if fresh last location is available
+            val freshGps = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+            if (freshGps != null) {
+                onLocationChanged(freshGps)
+            }
+        } catch (e: SecurityException) {
+            android.util.Log.e("IDR_GNSS", "Security exception re-checking providers", e)
+        }
     }
 
     fun setExplicitAnchor(latDeg: Double, lonDeg: Double, altM: Double) {

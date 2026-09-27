@@ -45,69 +45,32 @@ import org.isro.idr.theme.IdrTypography
 import org.isro.idr.ui.state.NavigationUiState
 import org.isro.idr.ui.state.TripEvent
 
-data class HistoricalTripRecord(
-    val id: String,
-    val title: String,
-    val dateStr: String,
-    val durationStr: String,
-    val distanceKm: Double,
-    val avgSpeedKmh: Double,
-    val maxSpeedKmh: Double,
-    val outageDurationSec: Int,
-    val maxDriftPct: Double,
-    val status: String = "SUCCESS"
-)
-
-private val SampleTripHistory = listOf(
-    HistoricalTripRecord(
-        id = "trip_01",
-        title = "Prayagraj Corridor Field Trial",
-        dateStr = "24 Sep 2026, 18:30",
-        durationStr = "12m 45s",
-        distanceKm = 3.24,
-        avgSpeedKmh = 28.4,
-        maxSpeedKmh = 62.1,
-        outageDurationSec = 60,
-        maxDriftPct = 2.01
-    ),
-    HistoricalTripRecord(
-        id = "trip_02",
-        title = "Civil Lines Stop-and-Go Trial",
-        dateStr = "24 Sep 2026, 16:15",
-        durationStr = "18m 10s",
-        distanceKm = 4.15,
-        avgSpeedKmh = 21.2,
-        maxSpeedKmh = 48.0,
-        outageDurationSec = 120,
-        maxDriftPct = 2.88
-    ),
-    HistoricalTripRecord(
-        id = "trip_03",
-        title = "Yamuna Bridge Flyover Disambiguation",
-        dateStr = "23 Sep 2026, 11:20",
-        durationStr = "15m 30s",
-        distanceKm = 5.80,
-        avgSpeedKmh = 38.6,
-        maxSpeedKmh = 78.4,
-        outageDurationSec = 90,
-        maxDriftPct = 2.15
-    )
-)
+import androidx.compose.ui.platform.LocalContext
+import org.isro.idr.storage.TripHistoryItem
+import org.isro.idr.storage.TripHistoryStorage
 
 /**
- * Screen 9: Trip & Analytics with Interactive Trip History and Drift Progression.
+ * Screen 9: Trip & Analytics with Interactive Real-World Trip History and Drift Progression.
  */
 @Composable
 fun TripAnalyticsScreen(
     uiState: NavigationUiState,
     modifier: Modifier = Modifier
 ) {
-    var selectedHistoricalTrip by remember { mutableStateOf<HistoricalTripRecord?>(null) }
+    val context = LocalContext.current
+    val recordedTrips = remember { TripHistoryStorage.getTrips(context) }
+    var selectedHistoricalTrip by remember { mutableStateOf<TripHistoryItem?>(null) }
 
-    val displayDistance = selectedHistoricalTrip?.distanceKm ?: (uiState.tripDistanceMeters / 1000.0)
+    val displayDistance = selectedHistoricalTrip?.let { it.distanceMeters / 1000.0 } ?: (uiState.tripDistanceMeters / 1000.0)
     val displayAvgSpeed = selectedHistoricalTrip?.avgSpeedKmh ?: uiState.tripAvgSpeedKmh
     val displayMaxSpeed = selectedHistoricalTrip?.maxSpeedKmh ?: uiState.tripMaxSpeedKmh
-    val displayDuration = selectedHistoricalTrip?.durationStr ?: run {
+    val displayDuration = selectedHistoricalTrip?.let {
+        val s = it.durationSeconds.toInt()
+        val h = s / 3600
+        val m = (s % 3600) / 60
+        val sec = s % 60
+        if (h > 0) String.format("%02d:%02d:%02d", h, m, sec) else String.format("%02d:%02d", m, sec)
+    } ?: run {
         val h = uiState.tripDurationSec / 3600
         val m = (uiState.tripDurationSec % 3600) / 60
         val s = uiState.tripDurationSec % 60
@@ -163,7 +126,7 @@ fun TripAnalyticsScreen(
                 Column {
                     Text(text = "Trip Name", style = IdrTypography.labelSmall.copy(fontSize = 10.sp), color = Color(0xFF64748B))
                     Text(
-                        text = selectedHistoricalTrip?.title ?: "Active Navigation Session",
+                        text = selectedHistoricalTrip?.let { "${it.startLocation} → ${it.destination}" } ?: "Active Navigation Session",
                         style = IdrTypography.bodyMedium.copy(fontSize = 12.sp, fontWeight = FontWeight.Bold),
                         color = Color.White
                     )
@@ -321,46 +284,64 @@ fun TripAnalyticsScreen(
                 color = Color.White
             )
 
-            SampleTripHistory.forEach { trip ->
-                val isSelected = selectedHistoricalTrip?.id == trip.id
-                Row(
+            if (recordedTrips.isEmpty()) {
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(if (isSelected) Color(0xFF17324A) else Color(0xFF06111F))
-                        .border(1.dp, if (isSelected) Color(0xFFFF8A00) else Color(0xFF0F273D), RoundedCornerShape(10.dp))
-                        .clickable { selectedHistoricalTrip = trip }
-                        .padding(12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(vertical = 12.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = trip.title,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = "${trip.dateStr} • ${trip.durationStr} • ${trip.distanceKm} km",
-                            fontSize = 10.sp,
-                            color = Color(0xFF94A3B8)
-                        )
-                    }
+                    Text(
+                        text = "No saved trips yet. Completed navigation sessions and field trials will appear here automatically.",
+                        fontSize = 11.sp,
+                        color = Color(0xFF64748B),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                }
+            } else {
+                recordedTrips.forEach { trip ->
+                    val isSelected = selectedHistoricalTrip?.id == trip.id
+                    val distKm = trip.distanceMeters / 1000.0
+                    val durMin = (trip.durationSeconds / 60.0).toInt()
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (isSelected) Color(0xFF17324A) else Color(0xFF06111F))
+                            .border(1.dp, if (isSelected) Color(0xFFFF8A00) else Color(0xFF0F273D), RoundedCornerShape(10.dp))
+                            .clickable { selectedHistoricalTrip = trip }
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "${trip.startLocation} → ${trip.destination}",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "${trip.dateString} • ${durMin}m • ${String.format("%.2f", distKm)} km",
+                                fontSize = 10.sp,
+                                color = Color(0xFF94A3B8)
+                            )
+                        }
 
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text(
-                            text = "Drift: ${trip.maxDriftPct}%",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF18D47B)
-                        )
-                        Text(
-                            text = "${trip.outageDurationSec}s Outage",
-                            fontSize = 9.sp,
-                            color = Color(0xFFFFAB40)
-                        )
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text(
+                                text = "Drift: ${String.format("%.2f", trip.driftPercentage)}%",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (trip.driftPercentage < 10.0) Color(0xFF18D47B) else Color(0xFFFF4F5E)
+                            )
+                            Text(
+                                text = "${trip.drDurationSeconds.toInt()}s DR Outage",
+                                fontSize = 9.sp,
+                                color = Color(0xFFFFAB40)
+                            )
+                        }
                     }
                 }
             }

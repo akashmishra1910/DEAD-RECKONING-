@@ -95,6 +95,8 @@ fun RealGeographicMapCanvas(
     isStationary: Boolean = true,
     enuAnchor: GeoCoordinates.Wgs84Coordinate? = null,
     liveDriftPercentage: Double = 0.0,
+    lastTrustedFix: org.isro.idr.ui.state.TrustedLocationFix? = null,
+    isAwaitingInitialFix: Boolean = false,
     onZoomIn: (() -> Unit)? = null,
     onZoomOut: (() -> Unit)? = null,
     onToggleNorthUp: (() -> Unit)? = null,
@@ -111,8 +113,10 @@ fun RealGeographicMapCanvas(
 
     val isDrActive = telemetry?.mode?.isDeadReckoning == true || (!gnssStatus.fixValid && !gnssStatus.isSearching)
 
-    // Base default coordinate anchor
-    val defaultAnchor = enuAnchor ?: GeoCoordinates.Wgs84Coordinate(
+    // Base default coordinate anchor: prefer live ENU anchor, then last trusted fix, fallback to map center
+    val defaultAnchor = enuAnchor ?: lastTrustedFix?.let {
+        GeoCoordinates.Wgs84Coordinate(it.latitude, it.longitude, it.altitude)
+    } ?: GeoCoordinates.Wgs84Coordinate(
         latitude = if (gnssStatus.fixValid && gnssStatus.latitude != 0.0) gnssStatus.latitude else (roadMapGraph?.centerLat ?: 25.4331),
         longitude = if (gnssStatus.fixValid && gnssStatus.longitude != 0.0) gnssStatus.longitude else (roadMapGraph?.centerLon ?: 81.8148),
         altitude = gnssStatus.altitude
@@ -125,6 +129,9 @@ fun RealGeographicMapCanvas(
         }
         telemetry != null && enuAnchor != null -> {
             GeoCoordinates.enuToWgs84(telemetry.posX, telemetry.posY, telemetry.posZ, defaultAnchor)
+        }
+        lastTrustedFix != null -> {
+            GeoCoordinates.Wgs84Coordinate(lastTrustedFix.latitude, lastTrustedFix.longitude, lastTrustedFix.altitude)
         }
         gnssStatus.latitude != 0.0 -> {
             GeoCoordinates.Wgs84Coordinate(gnssStatus.latitude, gnssStatus.longitude, gnssStatus.altitude)

@@ -19,7 +19,9 @@ data class RoadEdgeGeometry(
     val maxspeedKmh: Int,
     val lengthM: Float,
     val pointsWgs84: List<Pair<Double, Double>>, // (lat, lon) pairs
-    val pointsEnu: List<Vector3D> = emptyList()   // (enuX, enuY, enuZ) in meters relative to anchor
+    val pointsEnu: List<Vector3D> = emptyList(),   // (enuX, enuY, enuZ) in meters relative to anchor
+    val startNodeId: Int = 0,
+    val endNodeId: Int = 0
 )
 
 /**

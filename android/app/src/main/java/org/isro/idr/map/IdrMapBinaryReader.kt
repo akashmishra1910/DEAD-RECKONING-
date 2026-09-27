@@ -85,8 +85,8 @@ object IdrMapBinaryReader {
 
             val edgeId = byteBuffer.int
             val osmWayId = byteBuffer.long
-            byteBuffer.int // startNodeId
-            byteBuffer.int // endNodeId
+            val startNodeId = byteBuffer.int
+            val endNodeId = byteBuffer.int
             val geomStartIdx = byteBuffer.int
             val geomCount = byteBuffer.short.toInt() and 0xFFFF
             val roadClassId = byteBuffer.get().toInt() and 0xFF
@@ -128,7 +128,9 @@ object IdrMapBinaryReader {
                     isOneway = isOneway,
                     maxspeedKmh = maxspeed,
                     lengthM = lengthM,
-                    pointsWgs84 = pointsWgs84
+                    pointsWgs84 = pointsWgs84,
+                    startNodeId = startNodeId,
+                    endNodeId = endNodeId
                 )
             )
         }

@@ -715,7 +715,15 @@ class NavigationViewModel(
                         satellites = existingSats
                     ),
                     gnssTrajectory = synchronized(gnssPoints) { gnssPoints.toList() },
-                    enuAnchor = anchor ?: current.enuAnchor
+                    enuAnchor = anchor ?: current.enuAnchor,
+                    lastTrustedFix = org.isro.idr.ui.state.TrustedLocationFix(
+                        latitude = sample.latitudeDeg,
+                        longitude = sample.longitudeDeg,
+                        altitude = sample.altitudeM,
+                        accuracyM = sample.horizontalAccuracyMeters.toDouble(),
+                        timestampMs = System.currentTimeMillis()
+                    ),
+                    isAwaitingInitialFix = false
                 )
             }
         } else {
@@ -738,7 +746,8 @@ class NavigationViewModel(
                         navicSatellitesUsed = navicUsed,
                         satellites = existingSats
                     ),
-                    enuAnchor = anchor ?: current.enuAnchor
+                    enuAnchor = anchor ?: current.enuAnchor,
+                    isAwaitingInitialFix = (current.lastTrustedFix == null && current.enuAnchor == null)
                 )
             }
         }

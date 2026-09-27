@@ -29,8 +29,8 @@ data class RoutePlanResult(
  * Production Offline Road Network Routing Engine.
  * Builds an in-memory topological graph from OpenStreetMap road edges,
  * computes exact shortest paths using Dijkstra's algorithm,
- * connects continuous road geometry without zig-zags,
- * and extracts turn-by-turn maneuvers.
+ * performs forward/reverse geometry slicing to eliminate backtrack zig-zags,
+ * and extracts turn-by-turn maneuvers along true road centerlines.
  */
 object OfflineRoadRouter {
 
@@ -76,13 +76,24 @@ object OfflineRoadRouter {
             return generateFallbackDirectRoute(startLat, startLon, destLat, destLon, destName)
         }
 
-        // 2. If start and destination snap to the same road edge
+        // 2. If start and destination snap to the SAME road edge
         if (startEdge.edgeId == destEdge.edgeId) {
             val pts = extractSubPolyline(startEdge.pointsWgs84, startLat, startLon, destLat, destLon)
-            val dist = calculatePolylineDistance(pts)
+            val fullRoutePoints = mutableListOf<Pair<Double, Double>>()
+            fullRoutePoints.add(Pair(startLat, startLon))
+            for (p in pts) {
+                if (haversineDistanceMeters(fullRoutePoints.last().first, fullRoutePoints.last().second, p.first, p.second) > 1.0) {
+                    fullRoutePoints.add(p)
+                }
+            }
+            if (haversineDistanceMeters(fullRoutePoints.last().first, fullRoutePoints.last().second, destLat, destLon) > 1.0) {
+                fullRoutePoints.add(Pair(destLat, destLon))
+            }
+
+            val dist = calculatePolylineDistance(fullRoutePoints)
             val maneuvers = listOf(
                 ManeuverStep(
-                    instruction = "Follow ${startEdge.name.ifBlank { "Road" }} towards destination",
+                    instruction = "Follow ${startEdge.name.ifBlank { "Road" }} towards $destName",
                     icon = "↑",
                     distanceMeters = dist,
                     roadName = startEdge.name.ifBlank { "Road" },
@@ -102,60 +113,119 @@ object OfflineRoadRouter {
             return RoutePlanResult(
                 totalDistanceMeters = dist,
                 estimatedTimeMinutes = mins,
-                waypoints = pts,
+                waypoints = fullRoutePoints,
                 maneuvers = maneuvers,
                 startRoadName = startEdge.name.ifBlank { "Current Location" },
                 destRoadName = destName
             )
         }
 
-        // 3. Build topological graph and run Dijkstra shortest path
+        // 3. Build topological graph and find optimal edge sequence
         val (nodeMap, adjacencyList) = buildTopologicalGraph(validEdges)
 
-        val startNodeIdA = getNodeKey(startEdge.pointsWgs84.first(), nodeMap)
-        val startNodeIdB = getNodeKey(startEdge.pointsWgs84.last(), nodeMap)
-        val destNodeIdA = getNodeKey(destEdge.pointsWgs84.first(), nodeMap)
-        val destNodeIdB = getNodeKey(destEdge.pointsWgs84.last(), nodeMap)
+        data class StartExitOption(val exitNodeId: Int, val dist: Double, val edge: GraphEdge)
+        data class DestEntryOption(val entryNodeId: Int, val dist: Double, val edge: GraphEdge)
 
-        val destNodeSet = setOf(destNodeIdA, destNodeIdB)
-        val pathGraphEdges = runDijkstra(
-            startNodes = listOf(startNodeIdA, startNodeIdB),
-            destNodeSet = destNodeSet,
-            adjacencyList = adjacencyList
-        )
+        val startOptions = mutableListOf<StartExitOption>()
+        // Forward exit (at end node)
+        val sSliceFwd = slicePolylineFromStartToEnd(startEdge.pointsWgs84, startLat, startLon)
+        val fwdDist = calculatePolylineDistance(sSliceFwd)
+        val endNodeKey = getNodeKey(startEdge.endNodeId, startEdge.pointsWgs84.last(), nodeMap)
+        startOptions.add(StartExitOption(endNodeKey, fwdDist, GraphEdge(endNodeKey, fwdDist, startEdge, isForward = true)))
+
+        // Reverse exit (at start node) if two-way
+        if (!startEdge.isOneway) {
+            val revPts = startEdge.pointsWgs84.reversed()
+            val sSliceRev = slicePolylineFromStartToEnd(revPts, startLat, startLon)
+            val revDist = calculatePolylineDistance(sSliceRev)
+            val startNodeKey = getNodeKey(startEdge.startNodeId, startEdge.pointsWgs84.first(), nodeMap)
+            startOptions.add(StartExitOption(startNodeKey, revDist, GraphEdge(startNodeKey, revDist, startEdge, isForward = false)))
+        }
+
+        val destOptions = mutableListOf<DestEntryOption>()
+        // Forward entry (at start node)
+        val dSliceFwd = slicePolylineFromStartToDest(destEdge.pointsWgs84, destLat, destLon)
+        val destFwdDist = calculatePolylineDistance(dSliceFwd)
+        val destStartNodeKey = getNodeKey(destEdge.startNodeId, destEdge.pointsWgs84.first(), nodeMap)
+        destOptions.add(DestEntryOption(destStartNodeKey, destFwdDist, GraphEdge(getNodeKey(destEdge.endNodeId, destEdge.pointsWgs84.last(), nodeMap), destFwdDist, destEdge, isForward = true)))
+
+        // Reverse entry (at end node) if two-way
+        if (!destEdge.isOneway) {
+            val revPts = destEdge.pointsWgs84.reversed()
+            val dSliceRev = slicePolylineFromStartToDest(revPts, destLat, destLon)
+            val destRevDist = calculatePolylineDistance(dSliceRev)
+            val destEndNodeKey = getNodeKey(destEdge.endNodeId, destEdge.pointsWgs84.last(), nodeMap)
+            destOptions.add(DestEntryOption(destEndNodeKey, destRevDist, GraphEdge(getNodeKey(destEdge.startNodeId, destEdge.pointsWgs84.first(), nodeMap), destRevDist, destEdge, isForward = false)))
+        }
+
+        var bestPathEdges: List<GraphEdge> = emptyList()
+        var bestTotalDist = Double.MAX_VALUE
+
+        for (sOpt in startOptions) {
+            for (dOpt in destOptions) {
+                if (sOpt.exitNodeId == dOpt.entryNodeId) {
+                    // Direct connection at common node
+                    val directDist = sOpt.dist + dOpt.dist
+                    if (directDist < bestTotalDist) {
+                        bestTotalDist = directDist
+                        bestPathEdges = listOf(sOpt.edge, dOpt.edge)
+                    }
+                } else {
+                    // Dijkstra search through intermediate edges
+                    val dijkstraResult = runDijkstraFromTo(sOpt.exitNodeId, dOpt.entryNodeId, adjacencyList)
+                    if (dijkstraResult != null) {
+                        val total = sOpt.dist + dijkstraResult.second + dOpt.dist
+                        if (total < bestTotalDist) {
+                            bestTotalDist = total
+                            bestPathEdges = listOf(sOpt.edge) + dijkstraResult.first + listOf(dOpt.edge)
+                        }
+                    }
+                }
+            }
+        }
 
         val routePoints = mutableListOf<Pair<Double, Double>>()
-        routePoints.add(Pair(startLat, startLon))
-
         val maneuvers = mutableListOf<ManeuverStep>()
 
-        if (pathGraphEdges.isNotEmpty()) {
+        if (bestPathEdges.isNotEmpty()) {
             var currentRoadName = ""
             var currentRoadDist = 0.0
             var currentManeuverIcon = "↑"
             var currentRoadStartCoord = Pair(startLat, startLon)
 
-            for (i in pathGraphEdges.indices) {
-                val ge = pathGraphEdges[i]
-                val edgePts = if (ge.isForward) ge.roadEdge.pointsWgs84 else ge.roadEdge.pointsWgs84.reversed()
-                
-                // Add points avoiding duplicates
-                for (pt in edgePts) {
+            for (i in bestPathEdges.indices) {
+                val ge = bestPathEdges[i]
+                val rawPts = if (ge.isForward) ge.roadEdge.pointsWgs84 else ge.roadEdge.pointsWgs84.reversed()
+
+                val slicedPts = when {
+                    i == 0 && bestPathEdges.size == 1 -> {
+                        extractSubPolyline(rawPts, startLat, startLon, destLat, destLon)
+                    }
+                    i == 0 -> {
+                        slicePolylineFromStartToEnd(rawPts, startLat, startLon)
+                    }
+                    i == bestPathEdges.size - 1 -> {
+                        slicePolylineFromStartToDest(rawPts, destLat, destLon)
+                    }
+                    else -> rawPts
+                }
+
+                for (pt in slicedPts) {
                     val last = routePoints.lastOrNull()
-                    if (last == null || haversineDistanceMeters(last.first, last.second, pt.first, pt.second) > 2.0) {
+                    if (last == null || haversineDistanceMeters(last.first, last.second, pt.first, pt.second) > 0.5) {
                         routePoints.add(pt)
                     }
                 }
 
                 val edgeRoadName = ge.roadEdge.name.ifBlank { "Main Road" }
-                val edgeDist = ge.weightMeters
+                val edgeDist = calculatePolylineDistance(slicedPts)
 
                 if (i == 0) {
                     currentRoadName = edgeRoadName
                     currentRoadDist = edgeDist
-                    currentRoadStartCoord = edgePts.first()
+                    currentRoadStartCoord = slicedPts.firstOrNull() ?: Pair(startLat, startLon)
                 } else {
-                    val prevEdge = pathGraphEdges[i - 1]
+                    val prevEdge = bestPathEdges[i - 1]
                     val turnAngle = computeTurnAngle(prevEdge, ge)
 
                     if (Math.abs(turnAngle) > 25.0 || edgeRoadName != currentRoadName) {
@@ -166,7 +236,7 @@ object OfflineRoadRouter {
                             turnAngle in -65.0..-25.0 -> "Slight left onto $edgeRoadName"
                             turnAngle in -120.0..-65.0 -> "Turn left onto $edgeRoadName"
                             turnAngle < -120.0 -> "Sharp left onto $edgeRoadName"
-                            else -> "Continue on $edgeRoadName"
+                            else -> "Continue onto $edgeRoadName"
                         }
                         val icon = when {
                             turnAngle > 25.0 -> "↱"
@@ -181,13 +251,13 @@ object OfflineRoadRouter {
                                 distanceMeters = currentRoadDist,
                                 roadName = currentRoadName,
                                 startCoord = currentRoadStartCoord,
-                                endCoord = edgePts.first()
+                                endCoord = slicedPts.firstOrNull() ?: Pair(startLat, startLon)
                             )
                         )
                         currentRoadName = edgeRoadName
                         currentRoadDist = edgeDist
                         currentManeuverIcon = icon
-                        currentRoadStartCoord = edgePts.first()
+                        currentRoadStartCoord = slicedPts.firstOrNull() ?: Pair(startLat, startLon)
                     } else {
                         currentRoadDist += edgeDist
                     }
@@ -206,17 +276,15 @@ object OfflineRoadRouter {
                 )
             )
         } else {
-            // If graph is partitioned, connect startEdge and destEdge smoothly
-            val startPts = startEdge.pointsWgs84
-            val destPts = destEdge.pointsWgs84
-            routePoints.addAll(startPts)
-            routePoints.addAll(destPts)
-            routePoints.add(Pair(destLat, destLon))
-
+            // Disconnected fallback
+            val sSlice = startEdge.pointsWgs84
+            val dSlice = destEdge.pointsWgs84
+            routePoints.addAll(sSlice)
+            routePoints.addAll(dSlice)
             val dist = calculatePolylineDistance(routePoints)
             maneuvers.add(
                 ManeuverStep(
-                    instruction = "Proceed on ${startEdge.name.ifBlank { "Road" }} towards $destName",
+                    instruction = "Follow ${startEdge.name.ifBlank { "Road" }} towards $destName",
                     icon = "↑",
                     distanceMeters = dist,
                     roadName = startEdge.name.ifBlank { "Road" },
@@ -234,12 +302,6 @@ object OfflineRoadRouter {
                     endCoord = Pair(destLat, destLon)
                 )
             )
-        }
-
-        // Ensure destination coordinate is attached cleanly
-        val lastPt = routePoints.lastOrNull()
-        if (lastPt == null || haversineDistanceMeters(lastPt.first, lastPt.second, destLat, destLon) > 5.0) {
-            routePoints.add(Pair(destLat, destLon))
         }
 
         val totalDist = calculatePolylineDistance(routePoints)
@@ -263,8 +325,8 @@ object OfflineRoadRouter {
 
         for (edge in edges) {
             if (edge.pointsWgs84.size < 2) continue
-            val uKey = getNodeKey(edge.pointsWgs84.first(), nodeMap)
-            val vKey = getNodeKey(edge.pointsWgs84.last(), nodeMap)
+            val uKey = getNodeKey(edge.startNodeId, edge.pointsWgs84.first(), nodeMap)
+            val vKey = getNodeKey(edge.endNodeId, edge.pointsWgs84.last(), nodeMap)
             val weight = if (edge.lengthM > 1f) edge.lengthM.toDouble() else calculatePolylineDistance(edge.pointsWgs84)
 
             // Forward direction
@@ -280,30 +342,34 @@ object OfflineRoadRouter {
         return Pair(nodeMap, adjacencyList)
     }
 
-    private fun getNodeKey(pt: Pair<Double, Double>, nodeMap: MutableMap<String, Int>): Int {
-        // Quantize coordinate to 4 decimal places (~11 meters) to merge road junctions
+    private fun getNodeKey(explicitNodeId: Int, pt: Pair<Double, Double>, nodeMap: MutableMap<String, Int>): Int {
+        if (explicitNodeId > 0) {
+            val key = "node_$explicitNodeId"
+            return nodeMap.computeIfAbsent(key) { nodeMap.size }
+        }
+        // Spatial clustering to 4 decimal places (~11 meters)
         val latQ = Math.round(pt.first * 10000.0) / 10000.0
         val lonQ = Math.round(pt.second * 10000.0) / 10000.0
-        val key = "$latQ,$lonQ"
+        val key = "geo_${latQ}_${lonQ}"
         return nodeMap.computeIfAbsent(key) { nodeMap.size }
     }
 
-    private fun runDijkstra(
-        startNodes: List<Int>,
-        destNodeSet: Set<Int>,
+    private fun runDijkstraFromTo(
+        startNode: Int,
+        destNode: Int,
         adjacencyList: Map<Int, List<GraphEdge>>
-    ): List<GraphEdge> {
+    ): Pair<List<GraphEdge>, Double>? {
+        if (startNode == destNode) return Pair(emptyList(), 0.0)
+
         val distMap = mutableMapOf<Int, Double>()
         val prevEdgeMap = mutableMapOf<Int, GraphEdge>()
         val prevNodeMap = mutableMapOf<Int, Int>()
         val pq = PriorityQueue<PathNode>()
 
-        for (s in startNodes) {
-            distMap[s] = 0.0
-            pq.add(PathNode(s, 0.0))
-        }
+        distMap[startNode] = 0.0
+        pq.add(PathNode(startNode, 0.0))
 
-        var targetFoundNode: Int? = null
+        var targetFound = false
 
         while (pq.isNotEmpty()) {
             val curr = pq.poll() ?: break
@@ -312,8 +378,8 @@ object OfflineRoadRouter {
 
             if (d > (distMap[u] ?: Double.MAX_VALUE)) continue
 
-            if (destNodeSet.contains(u)) {
-                targetFoundNode = u
+            if (u == destNode) {
+                targetFound = true
                 break
             }
 
@@ -330,16 +396,16 @@ object OfflineRoadRouter {
             }
         }
 
-        if (targetFoundNode == null) return emptyList()
+        if (!targetFound) return null
 
         val path = mutableListOf<GraphEdge>()
-        var currNode = targetFoundNode
-        while (currNode != null && prevEdgeMap.containsKey(currNode)) {
+        var currNode = destNode
+        while (currNode != startNode && prevEdgeMap.containsKey(currNode)) {
             val edge = prevEdgeMap[currNode]!!
             path.add(0, edge)
-            currNode = prevNodeMap[currNode]
+            currNode = prevNodeMap[currNode]!!
         }
-        return path
+        return Pair(path, distMap[destNode] ?: 0.0)
     }
 
     private fun computeTurnAngle(e1: GraphEdge, e2: GraphEdge): Double {
@@ -361,6 +427,53 @@ object OfflineRoadRouter {
         return diff
     }
 
+    private fun findNearestPointIndex(lat: Double, lon: Double, points: List<Pair<Double, Double>>): Int {
+        var minD = Double.MAX_VALUE
+        var bestIdx = 0
+        for (i in points.indices) {
+            val d = haversineDistanceMeters(lat, lon, points[i].first, points[i].second)
+            if (d < minD) {
+                minD = d
+                bestIdx = i
+            }
+        }
+        return bestIdx
+    }
+
+    data class ProjectionResult(val segmentIndex: Int, val t: Double, val param: Double, val projCoord: Pair<Double, Double>)
+
+    private fun projectPointOntoPolyline(
+        lat: Double, lon: Double,
+        points: List<Pair<Double, Double>>
+    ): ProjectionResult {
+        if (points.size < 2) {
+            val p = points.firstOrNull() ?: Pair(lat, lon)
+            return ProjectionResult(0, 0.0, 0.0, p)
+        }
+        var minD = Double.MAX_VALUE
+        var bestSeg = 0
+        var bestT = 0.0
+        var bestProj = points.first()
+
+        for (i in 0 until points.size - 1) {
+            val a = points[i]
+            val b = points[i + 1]
+            val l2 = (b.first - a.first) * (b.first - a.first) + (b.second - a.second) * (b.second - a.second)
+            val t = if (l2 == 0.0) 0.0 else (((lat - a.first) * (b.first - a.first) + (lon - a.second) * (b.second - a.second)) / l2).coerceIn(0.0, 1.0)
+            val projLat = a.first + t * (b.first - a.first)
+            val projLon = a.second + t * (b.second - a.second)
+            val d = haversineDistanceMeters(lat, lon, projLat, projLon)
+            if (d < minD) {
+                minD = d
+                bestSeg = i
+                bestT = t
+                bestProj = Pair(projLat, projLon)
+            }
+        }
+        val param = bestSeg.toDouble() + bestT
+        return ProjectionResult(bestSeg, bestT, param, bestProj)
+    }
+
     private fun extractSubPolyline(
         points: List<Pair<Double, Double>>,
         startLat: Double,
@@ -368,30 +481,97 @@ object OfflineRoadRouter {
         destLat: Double,
         destLon: Double
     ): List<Pair<Double, Double>> {
-        if (points.size <= 2) return points
-        var startIdx = 0
-        var minStartD = Double.MAX_VALUE
-        var destIdx = points.size - 1
-        var minDestD = Double.MAX_VALUE
+        if (points.isEmpty()) return emptyList()
+        if (points.size == 1) return points
 
-        for (i in points.indices) {
-            val d1 = haversineDistanceMeters(startLat, startLon, points[i].first, points[i].second)
-            if (d1 < minStartD) {
-                minStartD = d1
-                startIdx = i
-            }
-            val d2 = haversineDistanceMeters(destLat, destLon, points[i].first, points[i].second)
-            if (d2 < minDestD) {
-                minDestD = d2
-                destIdx = i
-            }
-        }
+        val pStart = projectPointOntoPolyline(startLat, startLon, points)
+        val pDest = projectPointOntoPolyline(destLat, destLon, points)
 
-        return if (startIdx <= destIdx) {
-            points.subList(startIdx, destIdx + 1)
+        val result = mutableListOf<Pair<Double, Double>>()
+        result.add(pStart.projCoord)
+
+        if (pStart.param <= pDest.param) {
+            val startSeg = pStart.segmentIndex
+            val destSeg = pDest.segmentIndex
+            for (j in (startSeg + 1)..destSeg) {
+                if (j < points.size) {
+                    result.add(points[j])
+                }
+            }
         } else {
-            points.subList(destIdx, startIdx + 1).reversed()
+            val startSeg = pStart.segmentIndex
+            val destSeg = pDest.segmentIndex
+            for (j in startSeg downTo (destSeg + 1)) {
+                if (j < points.size) {
+                    result.add(points[j])
+                }
+            }
         }
+
+        result.add(pDest.projCoord)
+
+        val clean = mutableListOf<Pair<Double, Double>>()
+        for (pt in result) {
+            val last = clean.lastOrNull()
+            if (last == null || haversineDistanceMeters(last.first, last.second, pt.first, pt.second) > 0.5) {
+                clean.add(pt)
+            }
+        }
+        return clean
+    }
+
+    private fun slicePolylineFromStartToEnd(
+        points: List<Pair<Double, Double>>,
+        startLat: Double,
+        startLon: Double
+    ): List<Pair<Double, Double>> {
+        if (points.isEmpty()) return emptyList()
+        if (points.size == 1) return points
+
+        val pStart = projectPointOntoPolyline(startLat, startLon, points)
+        val result = mutableListOf<Pair<Double, Double>>()
+        result.add(pStart.projCoord)
+
+        for (j in (pStart.segmentIndex + 1) until points.size) {
+            result.add(points[j])
+        }
+
+        val clean = mutableListOf<Pair<Double, Double>>()
+        for (pt in result) {
+            val last = clean.lastOrNull()
+            if (last == null || haversineDistanceMeters(last.first, last.second, pt.first, pt.second) > 0.5) {
+                clean.add(pt)
+            }
+        }
+        return clean
+    }
+
+    private fun slicePolylineFromStartToDest(
+        points: List<Pair<Double, Double>>,
+        destLat: Double,
+        destLon: Double
+    ): List<Pair<Double, Double>> {
+        if (points.isEmpty()) return emptyList()
+        if (points.size == 1) return points
+
+        val pDest = projectPointOntoPolyline(destLat, destLon, points)
+        val result = mutableListOf<Pair<Double, Double>>()
+
+        for (j in 0..pDest.segmentIndex) {
+            if (j < points.size) {
+                result.add(points[j])
+            }
+        }
+        result.add(pDest.projCoord)
+
+        val clean = mutableListOf<Pair<Double, Double>>()
+        for (pt in result) {
+            val last = clean.lastOrNull()
+            if (last == null || haversineDistanceMeters(last.first, last.second, pt.first, pt.second) > 0.5) {
+                clean.add(pt)
+            }
+        }
+        return clean
     }
 
     private fun findNearestEdge(lat: Double, lon: Double, edges: List<RoadEdgeGeometry>): RoadEdgeGeometry? {

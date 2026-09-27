@@ -75,6 +75,8 @@ fun MainNavigationScreen(
             isStationary = uiState.isStationary,
             enuAnchor = uiState.enuAnchor,
             liveDriftPercentage = uiState.liveDriftPercentage,
+            lastTrustedFix = uiState.lastTrustedFix,
+            isAwaitingInitialFix = uiState.isAwaitingInitialFix,
             onZoomIn = onZoomIn,
             onZoomOut = onZoomOut,
             onToggleNorthUp = onToggleNorthUp,

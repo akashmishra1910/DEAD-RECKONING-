@@ -76,12 +76,15 @@ enum class SensorPlotTab(val label: String) {
     BARO("Baro")
 }
 
-enum class ConstellationType {
-    GPS,
-    NAVIC,
-    GLONASS,
-    GALILEO,
-    BEIDOU
+enum class ConstellationType(val displayName: String) {
+    GPS("GPS"),
+    NAVIC("NavIC / IRNSS"),
+    GLONASS("GLONASS"),
+    GALILEO("Galileo"),
+    BEIDOU("BeiDou"),
+    QZSS("QZSS"),
+    SBAS("SBAS"),
+    UNKNOWN("Unknown")
 }
 
 data class SatelliteInfo(
@@ -90,7 +93,17 @@ data class SatelliteInfo(
     val elevationDeg: Float,
     val azimuthDeg: Float,
     val snrDbHz: Float,
-    val usedInFix: Boolean
+    val usedInFix: Boolean,
+    val carrierFreqHz: Float = 0.0f
+)
+
+data class TrustedLocationFix(
+    val latitude: Double,
+    val longitude: Double,
+    val altitude: Double,
+    val accuracyM: Double,
+    val timestampMs: Long,
+    val isPreservedFromStorage: Boolean = false
 )
 
 data class SystemHealthState(
@@ -185,6 +198,8 @@ data class NavigationUiState(
     val isDrActive: Boolean = false,
     val isGnssOutage: Boolean = false,
     val isGnssReacquired: Boolean = false,
+    val lastTrustedFix: TrustedLocationFix? = null,
+    val isAwaitingInitialFix: Boolean = false,
 
     // Road Map & 3D HMM State
     val mapDataState: MapDataState = MapDataState.READY,

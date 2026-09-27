@@ -137,25 +137,20 @@ class GnssIngestionManager(
                             totalInView++
                             val constTypeInt = status.getConstellationType(i)
                             
-                            // Check carrier frequency on API 26+ for NavIC L5 band (~1176.45 MHz)
-                            var isNavicCarrier = false
+                            var freqHz = 0.0f
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && status.hasCarrierFrequencyHz(i)) {
-                                val freqHz = status.getCarrierFrequencyHz(i)
-                                // NavIC L5 is 1176.45 MHz (+/- 2 MHz) or S band 2492.028 MHz
-                                if (freqHz in 1174_000_000f..1178_000_000f && constTypeInt == 7) {
-                                    isNavicCarrier = true
-                                }
+                                freqHz = status.getCarrierFrequencyHz(i)
                             }
 
-                            val constType = when {
-                                constTypeInt == GnssStatus.CONSTELLATION_IRNSS || constTypeInt == 7 || isNavicCarrier -> org.isro.idr.ui.state.ConstellationType.NAVIC
-                                constTypeInt == GnssStatus.CONSTELLATION_GPS -> org.isro.idr.ui.state.ConstellationType.GPS
-                                constTypeInt == GnssStatus.CONSTELLATION_SBAS -> org.isro.idr.ui.state.ConstellationType.GPS
-                                constTypeInt == GnssStatus.CONSTELLATION_GLONASS -> org.isro.idr.ui.state.ConstellationType.GLONASS
-                                constTypeInt == GnssStatus.CONSTELLATION_QZSS -> org.isro.idr.ui.state.ConstellationType.GPS
-                                constTypeInt == GnssStatus.CONSTELLATION_BEIDOU -> org.isro.idr.ui.state.ConstellationType.BEIDOU
-                                constTypeInt == GnssStatus.CONSTELLATION_GALILEO -> org.isro.idr.ui.state.ConstellationType.GALILEO
-                                else -> org.isro.idr.ui.state.ConstellationType.GPS
+                            val constType = when (constTypeInt) {
+                                GnssStatus.CONSTELLATION_IRNSS, 7 -> org.isro.idr.ui.state.ConstellationType.NAVIC
+                                GnssStatus.CONSTELLATION_GPS -> org.isro.idr.ui.state.ConstellationType.GPS
+                                GnssStatus.CONSTELLATION_SBAS -> org.isro.idr.ui.state.ConstellationType.SBAS
+                                GnssStatus.CONSTELLATION_GLONASS -> org.isro.idr.ui.state.ConstellationType.GLONASS
+                                GnssStatus.CONSTELLATION_QZSS -> org.isro.idr.ui.state.ConstellationType.QZSS
+                                GnssStatus.CONSTELLATION_BEIDOU -> org.isro.idr.ui.state.ConstellationType.BEIDOU
+                                GnssStatus.CONSTELLATION_GALILEO -> org.isro.idr.ui.state.ConstellationType.GALILEO
+                                else -> org.isro.idr.ui.state.ConstellationType.UNKNOWN
                             }
                             val isNavic = (constType == org.isro.idr.ui.state.ConstellationType.NAVIC)
                             if (isNavic) {
@@ -175,7 +170,8 @@ class GnssIngestionManager(
                                     elevationDeg = status.getElevationDegrees(i),
                                     azimuthDeg = status.getAzimuthDegrees(i),
                                     snrDbHz = status.getCn0DbHz(i),
-                                    usedInFix = inFix
+                                    usedInFix = inFix,
+                                    carrierFreqHz = freqHz
                                 )
                             )
                         }
